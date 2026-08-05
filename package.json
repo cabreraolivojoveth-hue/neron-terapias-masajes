@@ -1,0 +1,38 @@
+{
+  "name": "neron-terapias",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "previa": "vite preview",
+    "tipos": "tsc -p tsconfig.json --noEmit",
+    "pruebas": "vitest run",
+    "fronteras": "tsx guardias/fronteras.ts",
+    "consistencia": "tsx scripts/consistencia.ts",
+    "ataques": "tsx pruebas-bd/ataques.ts"
+  },
+  "dependencies": {
+    "@neron/base": "github:cabreraolivojoveth-hue/base-neronprogramas#v1.0.1",
+    "@supabase/supabase-js": "^2.49.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.3",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.20.4",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^5.1.1",
+    "happy-dom": "^20.11.1",
+    "pg": "^8.22.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^7.2.4",
+    "vitest": "^4.1.10"
+  },
+  "engines": { "node": ">=20" }
+}
