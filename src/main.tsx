@@ -9,6 +9,7 @@ import { generarCss } from '@neron/base/ui';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Aplicacion } from './aplicacion.js';
+import { BarreraDeRaiz } from './pantallas/barrera-raiz.js';
 import { cssDeMarca } from './marca.js';
 import { estilosDelProducto } from './estilos.js';
 
@@ -31,6 +32,10 @@ if (!raiz) throw new Error('Falta <div id="raiz"> en index.html.');
 
 createRoot(raiz).render(
   <StrictMode>
-    <Aplicacion />
+    {/* La barrera va POR FUERA de todo: si algo revienta al arrancar, la
+        pantalla dice que paso en vez de quedarse en blanco. */}
+    <BarreraDeRaiz>
+      <Aplicacion />
+    </BarreraDeRaiz>
   </StrictMode>,
 );

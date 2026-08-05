@@ -113,9 +113,23 @@ function guardiaRegistroCompleto(): void {
  * contraste, se ve bien en la laptop de quien lo escribio, y desaparece en la
  * tableta del mostrador con el sol encima.
  */
+/**
+ * LA UNICA EXCEPCION, y esta nombrada a proposito.
+ *
+ * `barrera-raiz.tsx` es la red de seguridad de hasta arriba: lo que se pinta
+ * cuando el arranque revienta. Si usara las variables del sistema de diseño,
+ * y lo que fallo fue justamente la hoja de estilos, la pantalla de error
+ * saldria sin estilos — o sea, otra pantalla en blanco.
+ *
+ * Por eso sus colores van en linea. Es el unico archivo del producto que
+ * tiene permiso, y la lista se queda corta a proposito: en cuanto crezca,
+ * la regla deja de significar algo.
+ */
+const PUEDEN_LLEVAR_COLOR = ['marca.ts', 'barrera-raiz.tsx'];
+
 function guardiaSinColoresSueltos(): void {
   for (const archivo of FUENTE) {
-    if (archivo.endsWith('marca.ts')) continue;
+    if (PUEDEN_LLEVAR_COLOR.some((n) => archivo.endsWith(n))) continue;
     const limpio = sinComentarios(readFileSync(archivo, 'utf8'));
     const lineas = limpio.split('\n');
     for (let i = 0; i < lineas.length; i += 1) {

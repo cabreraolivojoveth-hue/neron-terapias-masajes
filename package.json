@@ -14,7 +14,7 @@
     "ataques": "tsx pruebas-bd/ataques.ts"
   },
   "dependencies": {
-    "@neron/base": "github:cabreraolivojoveth-hue/base-neronprogramas#v1.0.1",
+    "@neron/base": "git+https://github.com/cabreraolivojoveth-hue/base-neronprogramas.git#v1.0.2",
     "@supabase/supabase-js": "^2.49.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
@@ -34,5 +34,7 @@
     "vite": "^7.2.4",
     "vitest": "^4.1.10"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

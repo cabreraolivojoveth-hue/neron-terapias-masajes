@@ -37,6 +37,15 @@ export interface Sesion {
    * mezclan y nadie sospecha de la pantalla.
    */
   readonly llave: string;
+  /**
+   * Lo ultimo que fallo al hablar con el servidor.
+   *
+   * EXISTE POR UNA PANTALLA ATORADA: si la primera consulta no responde, el
+   * portero se queda en 'cargando' para siempre y lo unico que se ve es la
+   * silueta, sin fin. El error se guardaba solo en la consola del navegador
+   * —que nadie abre— y desde afuera parecia que el sistema no arrancaba.
+   */
+  readonly fallo: string | null;
   cerrarSesion(): Promise<void>;
   refrescar(): Promise<void>;
 }
@@ -46,6 +55,8 @@ const Contexto = createContext<Sesion | null>(null);
 export function ProveedorDeSesion({ children }: { readonly children: ReactNode }) {
   // El portero se crea UNA VEZ. Recrearlo en cada render abriria una sesion
   // nueva por pulsacion de tecla en cualquier formulario de arriba.
+  const [fallo, setFallo] = useState<string | null>(null);
+
   const portero = useMemo<Portero>(() => {
     const cliente = clienteParaLaBase();
     return crearPortero({
@@ -53,12 +64,15 @@ export function ProveedorDeSesion({ children }: { readonly children: ReactNode }
       directorio: crearDirectorioSupabase(cliente),
       alFallar: (error, que) => {
         console.error(`[sesion] ${que}: ${error.message}`);
+        // Y ademas SE MUESTRA. Un error que solo vive en la consola es un
+        // error que la persona nunca va a ver.
+        setFallo(`${que}: ${error.message}`);
       },
     });
   }, []);
 
   useEffect(() => {
-    void portero.iniciar();
+    portero.iniciar().catch((e: Error) => setFallo(`arrancar la sesion: ${e.message}`));
     return () => portero.detener();
   }, [portero]);
 
@@ -88,10 +102,11 @@ export function ProveedorDeSesion({ children }: { readonly children: ReactNode }
       estado,
       acceso,
       llave,
+      fallo,
       cerrarSesion: () => portero.cerrarSesion(),
       refrescar: () => portero.refrescar(),
     }),
-    [estado, acceso, llave, portero],
+    [estado, acceso, llave, fallo, portero],
   );
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
@@ -125,15 +140,21 @@ export function usePuede(capacidad: string): boolean {
   return usePermisos()[capacidad] === true;
 }
 
-export function useEstadoDeCarga(): boolean {
-  const [tardando, setTardando] = useState(false);
+/**
+ * ¿Ya lleva DEMASIADO cargando?
+ *
+ * Ocho segundos. Una conexion normal resuelve en menos de uno; si a los ocho
+ * sigue esperando, algo esta mal —la direccion, la llave, la red— y hay que
+ * decirlo. Quedarse en la silueta para siempre no es "cargando": es una
+ * pantalla rota que finge que trabaja.
+ */
+export function useTardaDemasiado(segundos = 8): boolean {
+  const [tarde, setTarde] = useState(false);
   const { estado } = useSesion();
   useEffect(() => {
-    if (estado !== 'cargando') { setTardando(false); return; }
-    // Solo se avisa que va lento despues de un rato. Poner "cargando..." de
-    // inmediato hace que una carga de 200 ms se sienta lenta.
-    const t = setTimeout(() => setTardando(true), 1200);
+    if (estado !== 'cargando') { setTarde(false); return; }
+    const t = setTimeout(() => setTarde(true), segundos * 1000);
     return () => clearTimeout(t);
-  }, [estado]);
-  return tardando;
+  }, [estado, segundos]);
+  return tarde;
 }

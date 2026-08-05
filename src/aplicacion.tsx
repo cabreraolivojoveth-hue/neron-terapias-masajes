@@ -12,7 +12,7 @@
 import { Marco, ProveedorDeNavegacion, resolverMenu, useNavegacion } from '@neron/base/marco';
 import { Boton } from '@neron/base/ui';
 import { useEffect, type ReactNode } from 'react';
-import { ProveedorDeSesion, useSesion } from './identidad/sesion.js';
+import { ProveedorDeSesion, useSesion, useTardaDemasiado } from './identidad/sesion.js';
 import { Hoja } from './marco/hoja.js';
 import { MarcaVisible } from './marco/marca-visible.js';
 import { Agenda } from './agenda/agenda.js';
@@ -48,6 +48,45 @@ function Aviso({
 }
 
 function Cargando() {
+  const tarde = useTardaDemasiado();
+  const { fallo } = useSesion();
+
+  /**
+   * A los ocho segundos se deja de fingir que carga.
+   *
+   * Una conexion normal responde en menos de un segundo. Si a los ocho sigue
+   * esperando, algo esta mal y quedarse en la silueta para siempre no ayuda a
+   * nadie: la persona no sabe si tardar es normal, si se colgo, o si tiene
+   * que hacer algo.
+   */
+  if (tarde) {
+    return (
+      <main className="terapias-aviso">
+        <div className="terapias-aviso__caja">
+          <Hoja />
+          <h1 className="terapias-aviso__titulo">No pudimos conectar</h1>
+          <div className="terapias-aviso__texto">
+            {fallo ? (
+              <p>
+                Esto fue lo que dijo el servidor: <code>{fallo}</code>
+              </p>
+            ) : (
+              <p>La conexión con la base de datos no respondió.</p>
+            )}
+            <p>
+              Lo más común es que la <strong>dirección</strong> o la <strong>llave</strong> del
+              archivo <code>.env</code> no sean las de este proyecto. Vuelve a correr{' '}
+              <strong>CONECTAR.bat</strong> con los datos de Supabase → Settings → API.
+            </p>
+          </div>
+          <Boton tono="contorno" onClick={() => window.location.reload()}>
+            Reintentar
+          </Boton>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="terapias-cargando" aria-busy="true" aria-live="polite">
       {/**

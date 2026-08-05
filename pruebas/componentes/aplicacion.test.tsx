@@ -21,6 +21,7 @@ const sesionFalsa = vi.hoisted(() => ({
     estado: 'cargando' as string,
     acceso: null as unknown,
     llave: 'x',
+    fallo: null as string | null,
     cerrarSesion: async () => {},
     refrescar: async () => {},
   },
@@ -29,6 +30,9 @@ const sesionFalsa = vi.hoisted(() => ({
 vi.mock('../../src/identidad/sesion.js', () => ({
   ProveedorDeSesion: ({ children }: { children: React.ReactNode }) => children,
   useSesion: () => sesionFalsa.valor,
+  // Sin tardanza: lo que se prueba aqui es el repartidor de estados, no el
+  // reloj. La pantalla de "no pudimos conectar" tiene su propia prueba.
+  useTardaDemasiado: () => false,
 }));
 
 const { Aplicacion } = await import('../../src/aplicacion.js');
@@ -168,5 +172,29 @@ describe('ya dentro', () => {
   it('se puede salir desde la barra superior', () => {
     conEstado('listo', ACCESO_DUENA);
     expect(screen.getByRole('button', { name: 'Salir' })).toBeDefined();
+  });
+});
+
+describe('cuando la conexion no responde', () => {
+  it('a los ocho segundos DEJA de fingir que carga', async () => {
+    /**
+     * El caso que la origino: la primera consulta no respondia, el portero se
+     * quedaba en "cargando" para siempre, y lo unico que se veia era la
+     * silueta. Desde afuera parecia que el sistema no arrancaba, y el error
+     * vivia solo en la consola del navegador — que nadie abre.
+     */
+    vi.resetModules();
+    vi.doMock('../../src/identidad/sesion.js', () => ({
+      ProveedorDeSesion: ({ children }: { children: React.ReactNode }) => children,
+      useSesion: () => ({ ...sesionFalsa.valor, estado: 'cargando', fallo: 'Invalid API key' }),
+      useTardaDemasiado: () => true,
+    }));
+    const { Aplicacion: Otra } = await import('../../src/aplicacion.js');
+    render(<Otra />);
+    expect(screen.getByText('No pudimos conectar')).toBeDefined();
+    // Y dice QUE fallo, con las palabras del servidor.
+    expect(screen.getByText('Invalid API key')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeDefined();
+    vi.doUnmock('../../src/identidad/sesion.js');
   });
 });

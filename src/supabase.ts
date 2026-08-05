@@ -15,8 +15,50 @@
 import type { ClienteSupabase } from '@neron/base/contratos';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const URL = import.meta.env['VITE_SUPABASE_URL'];
-const LLAVE = import.meta.env['VITE_SUPABASE_ANON_KEY'];
+/**
+ * Se RECORTAN los espacios, y no es un detalle.
+ *
+ * El archivo .env se escribe pegando valores copiados del portapapeles. Un
+ * espacio o un salto de linea al final se cuela sin que nadie lo vea, y
+ * `createClient("https://algo.supabase.co ")` revienta con "Invalid URL"
+ * durante el primer render — pantalla en blanco, sin ninguna pista.
+ *
+ * Tambien se quitan las comillas: mucha gente escribe VITE_SUPABASE_URL="..."
+ * porque asi se hace en otros formatos, y aqui las comillas viajan dentro del
+ * valor.
+ */
+const limpiar = (v: unknown): string =>
+  String(v ?? '').trim().replace(/^["']|["']$/g, '');
+
+/**
+ * ENDEREZA LA DIRECCION, y esto salio de un caso real.
+ *
+ * Al pegar la direccion en la consola de Windows se perdio la primera letra y
+ * quedo guardado `ttps://algo.supabase.co`. El cliente de Supabase la rechazo
+ * con "Invalid supabaseUrl" y la pantalla se quedaba en blanco.
+ *
+ * En vez de confiar en que se pegue perfecto, se reconstruye: se le quita
+ * cualquier cosa que parezca un prefijo de direccion —bien o mal escrito— y
+ * se le pone `https://` a lo que queda. Asi funciona igual si alguien escribe
+ * solo `algo.supabase.co`, que es lo que la mitad de la gente hace.
+ */
+function enderezar(direccion: string): string {
+  if (!direccion) return '';
+  const host = direccion
+    /**
+     * Solo se quita el prefijo cuando de verdad HAY dobles diagonales.
+     *
+     * La primera version decia `^[a-zA-Z]*:?\/*` y era demasiado glotona:
+     * con `abc.supabase.co` —sin nada adelante— se comia el `abc` y dejaba
+     * `.supabase.co`. Una prueba lo cacho antes de salir.
+     */
+    .replace(/^([a-zA-Z]*:)?\/\/+/, '')
+    .replace(/\/+$/, '');
+  return host ? `https://${host}` : '';
+}
+
+const URL = enderezar(limpiar(import.meta.env['VITE_SUPABASE_URL']));
+const LLAVE = limpiar(import.meta.env['VITE_SUPABASE_ANON_KEY']);
 
 /**
  * ¿Esta configurada la conexion?
@@ -36,7 +78,7 @@ export function supabase(): SupabaseClient {
         'VITE_SUPABASE_ANON_KEY — los pasos estan en CONFIGURAR-CONEXION.md.',
     );
   }
-  cliente ??= createClient(URL as string, LLAVE as string, {
+  cliente ??= createClient(URL, LLAVE, {
     auth: {
       // La sesion sobrevive a cerrar la pestaña, y se renueva sola. Sin esto
       // la persona tiene que volver a entrar cada vez que abre el sistema.
