@@ -323,6 +323,61 @@ function guardiaCandadoAlDiaConLaBase(): void {
 }
 
 /* ------------------------------------------------------------------ */
+/* 10 — Las capacidades del producto llegan hasta el portero           */
+/* ------------------------------------------------------------------ */
+/**
+ * POR QUE EXISTE, Y CUANTO COSTO NO TENERLA.
+ *
+ * El rol de dueña se guarda con la lista de permisos vacia: es la proteccion
+ * anti-bloqueo y la base de datos la entiende —`app.tiene_permiso` devuelve
+ * true en cuanto ve el rol `dueno`, sin mirar nada mas—. El navegador no lo
+ * puede deducir: para la base, `gestionarAgenda` es un texto sin significado.
+ * Por eso hay que DECLARARLE al portero las capacidades del producto.
+ *
+ * Sin esa linea, la dueña entra a su propio sistema y el menu le muestra tres
+ * opciones de doce. No hay error, no hay excepcion, no hay nada en la consola:
+ * cada modulo pregunta por su permiso, le contestan que no, y desaparece. Se ve
+ * exactamente igual que un sistema al que le falta la mitad del codigo.
+ *
+ * Y es un olvido facilisimo de repetir: basta con reescribir `sesion.tsx` sin
+ * mirar el registro, o mover la creacion del portero a otro archivo. Por eso la
+ * guardia tambien avisa si `crearPortero` ya no vive aqui: una guardia que deja
+ * de encontrar lo que vigila y se queda callada es peor que no tenerla.
+ */
+function guardiaCapacidadesLleganAlPortero(): void {
+  const registro = readFileSync(join(RAIZ, 'src', 'modulos', 'registro.ts'), 'utf8');
+
+  if (!/CAPACIDADES_DE_TERAPIAS\s*=\s*\[/.test(registro)) {
+    fallar('src/modulos/registro.ts', 'no se encontro CAPACIDADES_DE_TERAPIAS',
+      'Es la lista de la que salen los permisos del producto. Si cambia de nombre o de forma, ' +
+      'esta guardia deja de vigilar sin avisar, que es peor que no tenerla.');
+    return;
+  }
+
+  /**
+   * Se comprueba que la LISTA ENTERA llegue al portero, no capacidad por
+   * capacidad. No todas cuelgan de un modulo del menu: `verExpediente` decide
+   * si dentro de Clientes se ven las notas clinicas, y no es un modulo aparte.
+   * Vigilar una por una obligaria a inventarle un modulo a cada permiso.
+   */
+  const archivo = join(RAIZ, 'src', 'identidad', 'sesion.tsx');
+  const sesion = sinComentarios(readFileSync(archivo, 'utf8'));
+
+  if (!/crearPortero\s*\(/.test(sesion)) {
+    fallar('src/identidad/sesion.tsx', 'aqui ya no se crea el portero',
+      'Esta guardia vigila la llamada a crearPortero. Si se mudo de archivo, hay que mudar la ' +
+      'guardia con ella o deja de proteger nada.');
+    return;
+  }
+  if (!/capacidadesDelProducto:\s*CAPACIDADES_DE_TERAPIAS/.test(sesion)) {
+    fallar('src/identidad/sesion.tsx', 'el portero no recibe capacidadesDelProducto',
+      'Sin esa linea la dueña entra a un sistema sin menu: cada modulo pregunta por su permiso, ' +
+      'le contestan que no, y desaparece. Abre bien, no falla, y se ve vacio. Ya paso una vez, ' +
+      'con el sistema publicado. Va: capacidadesDelProducto: CAPACIDADES_DE_TERAPIAS.');
+  }
+}
+
+/* ------------------------------------------------------------------ */
 
 const GUARDIAS = [
   { nombre: 'ni un dato de ejemplo', correr: guardiaSinDatosDeEjemplo },
@@ -334,6 +389,7 @@ const GUARDIAS = [
   { nombre: 'todo archivo tiene su prueba', correr: guardiaTodoTienePrueba },
   { nombre: 'el segundo factor apagado es deuda con fecha', correr: guardiaSegundoFactorEsDeudaConFecha },
   { nombre: 'el candado apunta a la misma base que el package.json', correr: guardiaCandadoAlDiaConLaBase },
+  { nombre: 'las capacidades del producto llegan al portero', correr: guardiaCapacidadesLleganAlPortero },
 ];
 
 for (const g of GUARDIAS) g.correr();

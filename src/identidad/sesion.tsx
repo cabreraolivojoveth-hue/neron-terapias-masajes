@@ -24,6 +24,7 @@ import {
   type ReactNode,
 } from 'react';
 import { clienteParaLaBase } from '../supabase.js';
+import { CAPACIDADES_DE_TERAPIAS } from '../modulos/registro.js';
 
 export interface Sesion {
   readonly estado: EstadoDelPortero;
@@ -81,6 +82,24 @@ export function ProveedorDeSesion({ children }: { readonly children: ReactNode }
        * aparezca `src/configuracion/`, justo para que esta linea no se quede
        * aqui para siempre.
        */
+      /**
+       * LAS CAPACIDADES DE TERAPIAS, DECLARADAS A LA BASE.
+       *
+       * EL ERROR QUE ESTO ARREGLA, Y QUE SE VIO EN PRODUCCION: el rol de dueña
+       * se guarda con la lista de permisos VACIA —es la proteccion anti-bloqueo,
+       * y `app.tiene_permiso` la entiende: si el rol es dueño devuelve true sin
+       * mirar nada mas—. El navegador no puede deducirlo solo: `gestionarAgenda`
+       * y `cobrar` no significan nada para la base, asi que le salian en false.
+       *
+       * La dueña entro a su propio centro y el menu le mostro TRES opciones de
+       * doce. La Agenda estaba programada, probada y publicada; no habia boton.
+       * Nada revento y no quedo ni una linea en la consola.
+       *
+       * Se pasan aqui, una sola vez. Hay una guardia en `guardias/fronteras.ts`
+       * que revienta la publicacion si esta linea desaparece o si el registro
+       * declara una capacidad que no llega hasta aqui.
+       */
+      capacidadesDelProducto: CAPACIDADES_DE_TERAPIAS,
       segundoFactorApagado: true,
       alFallar: (error, que) => {
         console.error(`[sesion] ${que}: ${error.message}`);
