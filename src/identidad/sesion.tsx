@@ -62,6 +62,26 @@ export function ProveedorDeSesion({ children }: { readonly children: ReactNode }
     return crearPortero({
       proveedor: crearProveedorSupabase(cliente),
       directorio: crearDirectorioSupabase(cliente),
+      /**
+       * EL SEGUNDO FACTOR, APAGADO A PROPOSITO. ES DEUDA, NO AJUSTE.
+       *
+       * La base exige verificacion en dos pasos a dueño y administrador, y
+       * hace bien: son las cuentas que mueven usuarios, permisos e historial.
+       * Pero Terapias todavia no tiene la pantalla donde una persona da de
+       * alta su segundo factor — eso llega con Configuracion.
+       *
+       * EL RESULTADO EN PRODUCCION FUE ESTE: el dueño entro con su correo y
+       * contraseña, la conexion funciono, y el sistema le respondio "falta el
+       * segundo paso". Un paso que no existia forma de completar. Quedo
+       * encerrado afuera de su propio centro, con el sistema ya publicado.
+       *
+       * CUANDO SE QUITA: en cuanto Configuracion tenga la pantalla de alta del
+       * segundo factor. No es opcional ni queda a criterio — hay una guardia
+       * en `guardias/fronteras.ts` que revienta la publicacion en cuanto
+       * aparezca `src/configuracion/`, justo para que esta linea no se quede
+       * aqui para siempre.
+       */
+      segundoFactorApagado: true,
       alFallar: (error, que) => {
         console.error(`[sesion] ${que}: ${error.message}`);
         // Y ademas SE MUESTRA. Un error que solo vive en la consola es un

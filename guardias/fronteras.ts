@@ -229,6 +229,49 @@ function guardiaTodoTienePrueba(): void {
 }
 
 /* ------------------------------------------------------------------ */
+/* 8 — La deuda del segundo factor se paga cuando llegue Configuracion */
+/* ------------------------------------------------------------------ */
+/**
+ * ESTA GUARDIA EXISTE PARA APAGAR UN ATAJO QUE YO MISMO ENCENDI.
+ *
+ * `src/identidad/sesion.tsx` apaga la verificacion en dos pasos porque el
+ * producto todavia no tiene pantalla para darla de alta, y sin ese apagado el
+ * dueño quedaba encerrado afuera de su propio centro.
+ *
+ * El problema de los atajos con buena razon es que la razon se olvida y el
+ * atajo se queda. Asi que se ata a algo que no se puede olvidar: en cuanto
+ * exista `src/configuracion/` —el modulo que trae esa pantalla— esta guardia
+ * revienta la publicacion y obliga a decidir. No se confia en la memoria de
+ * nadie, ni en la mia.
+ *
+ * Y mientras siga encendido, exige que la razon este escrita al lado. Un
+ * `segundoFactorApagado: true` pelon, sin explicacion, es exactamente lo que
+ * dentro de un año nadie se atreve a quitar por miedo a romper algo.
+ */
+function guardiaSegundoFactorEsDeudaConFecha(): void {
+  const MARCA = 'ES DEUDA, NO AJUSTE';
+  const hayConfiguracion = archivosDe(join(RAIZ, 'src', 'configuracion')).length > 0;
+
+  for (const archivo of FUENTE) {
+    const crudo = readFileSync(archivo, 'utf8');
+    if (!/segundoFactorApagado\s*:\s*true/.test(sinComentarios(crudo))) continue;
+
+    if (hayConfiguracion) {
+      fallar(archivo, 'sigue apagando la verificacion en dos pasos',
+        'Ya existe src/configuracion/, que es donde vive la pantalla para dar de alta el segundo ' +
+        'factor. La razon por la que se apago —que no habia forma de completarlo— ya no aplica: ' +
+        'quita `segundoFactorApagado` y deja que la base se lo exija a dueño y administrador.');
+    }
+
+    if (!crudo.includes(MARCA)) {
+      fallar(archivo, 'apaga la verificacion en dos pasos sin decir por que',
+        `Escribe al lado el comentario con "${MARCA}", que paso en produccion y cuando se quita. ` +
+        'Un apagado de seguridad sin explicacion es el que nadie se atreve a tocar despues.');
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
 
 const GUARDIAS = [
   { nombre: 'ni un dato de ejemplo', correr: guardiaSinDatosDeEjemplo },
@@ -238,6 +281,7 @@ const GUARDIAS = [
   { nombre: 'sin conversiones de tipo sueltas', correr: guardiaSinConversionesSueltas },
   { nombre: 'dos archivos no se llaman igual', correr: guardiaNombresUnicos },
   { nombre: 'todo archivo tiene su prueba', correr: guardiaTodoTienePrueba },
+  { nombre: 'el segundo factor apagado es deuda con fecha', correr: guardiaSegundoFactorEsDeudaConFecha },
 ];
 
 for (const g of GUARDIAS) g.correr();

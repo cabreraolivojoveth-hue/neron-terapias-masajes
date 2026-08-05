@@ -11,6 +11,8 @@ const porteroFalso = vi.hoisted(() => {
     acceso: null as unknown,
     iniciado: 0,
     detenido: 0,
+    /** Con que se armo el portero. Se revisa abajo, no se ignora. */
+    opciones: null as Record<string, unknown> | null,
     cambiar(estado: string, acceso: unknown = null) {
       this.estado = estado;
       this.acceso = acceso;
@@ -37,7 +39,10 @@ vi.mock('../../src/supabase.js', () => ({
   clienteParaLaBase: () => ({}),
 }));
 vi.mock('@neron/base/identidad', () => ({
-  crearPortero: () => porteroFalso.obj,
+  crearPortero: (opciones: Record<string, unknown>) => {
+    porteroFalso.opciones = opciones;
+    return porteroFalso.obj;
+  },
   crearProveedorSupabase: () => ({}),
   crearDirectorioSupabase: () => ({}),
 }));
@@ -84,6 +89,25 @@ describe('el enganche con el portero', () => {
     porteroFalso.estado = 'sin-sesion';
     pintar();
     expect(screen.getByTestId('estado').textContent).toBe('sin-sesion');
+  });
+
+  it('arma el portero con el segundo factor APAGADO, y eso es a proposito', () => {
+    /**
+     * Lo que paso en produccion: el dueño entro con su correo y contraseña,
+     * la conexion funciono, y el sistema le contesto "falta el segundo paso"
+     * — un paso que Terapias todavia no tiene pantalla para completar. Quedo
+     * afuera de su propio centro.
+     *
+     * Esta prueba NO celebra el apagado. Lo fija por escrito para que se vea
+     * en la lista de pruebas, y para que el dia que se quite falle aqui y no
+     * en la cara de alguien que intenta entrar. La otra mitad la hace la
+     * guardia que revienta en cuanto exista `src/configuracion/`.
+     */
+    pintar();
+    expect(porteroFalso.opciones?.['segundoFactorApagado']).toBe(true);
+    // Y jamas las dos cosas a la vez: seria configuracion contradictoria, y
+    // la base resuelve eso cerrando la puerta — de vuelta al mismo encierro.
+    expect(porteroFalso.opciones?.['segundoFactorParaTodos']).toBeUndefined();
   });
 });
 
