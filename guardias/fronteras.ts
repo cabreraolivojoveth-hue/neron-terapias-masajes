@@ -272,6 +272,57 @@ function guardiaSegundoFactorEsDeudaConFecha(): void {
 }
 
 /* ------------------------------------------------------------------ */
+/* 9 — El candado apunta a la MISMA base que el package.json           */
+/* ------------------------------------------------------------------ */
+/**
+ * ESTA CASI SE PUBLICA, Y HABRIA SIDO INVISIBLE.
+ *
+ * Lo que paso: `package.json` se actualizo a la base v1.0.3, pero el
+ * `package-lock.json` que quedo en el repositorio seguia apuntando a v1.0.1.
+ * npm le hace caso AL CANDADO: leyo, dijo "todo al dia" en menos de medio
+ * segundo, y no bajo nada nuevo.
+ *
+ * Lo grave no es que falle. Es que NO falla. La compilacion sale en verde, el
+ * sitio se publica, y adentro corre una version vieja de la base — sin los
+ * arreglos que uno cree que acaba de subir. En este caso se habria ido sin el
+ * arreglo del bloqueo de sesion, que deja la pantalla cargando para siempre
+ * sin un solo error en la consola. Se hubiera buscado el problema en el codigo
+ * nuevo durante horas.
+ *
+ * La comprobacion es tonta a proposito: el candado escribe el mismo texto que
+ * pide el package.json. Si los dos textos no son identicos, el candado esta
+ * viejo. No hace falta red ni resolver etiquetas.
+ */
+function guardiaCandadoAlDiaConLaBase(): void {
+  const rutaPaquete = join(RAIZ, 'package.json');
+  const rutaCandado = join(RAIZ, 'package-lock.json');
+
+  let candado: { packages?: Record<string, { dependencies?: Record<string, string> }> };
+  try {
+    candado = JSON.parse(readFileSync(rutaCandado, 'utf8')) as typeof candado;
+  } catch {
+    fallar(rutaCandado, 'no existe o no se puede leer',
+      'Sin candado, cada compilacion resuelve la base por su cuenta y dos despliegues del mismo ' +
+      'commit pueden traer codigo distinto. Corre npm install y sube el package-lock.json.');
+    return;
+  }
+
+  const paquete = JSON.parse(readFileSync(rutaPaquete, 'utf8')) as {
+    dependencies?: Record<string, string>;
+  };
+  const pedido = paquete.dependencies?.['@neron/base'];
+  const trabado = candado.packages?.['']?.dependencies?.['@neron/base'];
+
+  if (!pedido) return;
+  if (pedido !== trabado) {
+    fallar(rutaCandado, `pide "${String(trabado)}" pero el package.json pide "${pedido}"`,
+      'npm le hace caso al candado, no al package.json: se compilaria una version vieja de la ' +
+      'base sin que nada falle ni avise. Corre npm install (no npm ci) y sube el package-lock.json ' +
+      'corregido junto con el cambio.');
+  }
+}
+
+/* ------------------------------------------------------------------ */
 
 const GUARDIAS = [
   { nombre: 'ni un dato de ejemplo', correr: guardiaSinDatosDeEjemplo },
@@ -282,6 +333,7 @@ const GUARDIAS = [
   { nombre: 'dos archivos no se llaman igual', correr: guardiaNombresUnicos },
   { nombre: 'todo archivo tiene su prueba', correr: guardiaTodoTienePrueba },
   { nombre: 'el segundo factor apagado es deuda con fecha', correr: guardiaSegundoFactorEsDeudaConFecha },
+  { nombre: 'el candado apunta a la misma base que el package.json', correr: guardiaCandadoAlDiaConLaBase },
 ];
 
 for (const g of GUARDIAS) g.correr();
