@@ -46,7 +46,7 @@ import {
 } from '../datos/servicios.js';
 import { useSesion } from '../identidad/sesion.js';
 import { Icono } from '../ui/iconos.js';
-import { AdministrarCategorias } from './categorias.js';
+import { AdministrarCategorias } from '../ui/administrar-categorias.js';
 import { CifrasDeServicios } from './cifras-de-servicios.js';
 import { DetalleDeServicio } from './detalle.js';
 import { FormularioDeServicio, SERVICIO_VACIO } from './formulario-de-servicio.js';

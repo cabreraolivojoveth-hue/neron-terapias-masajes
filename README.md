@@ -286,6 +286,54 @@ por servicio vuelve a cuadrar.
 diseño; el horario del centro lo administra Configuración, que todavía no llega. Mientras tanto
 dice **"Según el horario del centro"**, que es la verdad.
 
+**Bloque 3 — Cursos.** Talleres y formaciones, con sus sesiones y sus alumnos.
+
+**Cuatro entidades separadas a propósito.** `curso` es la *definición* —qué se enseña, cuánto
+cuesta, cuánto cabe—; `sesion_curso` es la *ejecución* —qué día, a qué hora, con quién—;
+`inscripcion` es la relación de una persona con un curso; `material_curso` es lo que se reparte.
+Un curso de un día y uno de veinte sesiones son la **misma tabla** con distinto número de
+renglones: columnas `sesion1`, `sesion2`, `sesion3` obligan a migrar el día que alguien programe
+la cuarta.
+
+**El alumno es un cliente.** No hay tabla de alumnos: hay `cliente` con una `inscripcion`. Con dos
+listas de personas, la misma señora acaba capturada dos veces —una porque vino a un masaje y otra
+porque tomó el taller— y su historial queda partido en dos mitades que ya no se vuelven a juntar.
+
+**La sobreventa la impide la base, no el navegador.** La forma obvia —contar los inscritos y, si
+caben, insertar— tiene una ventana entre las dos operaciones: si dos personas compran el último
+lugar a la vez, las dos cuentas ven once de doce, las dos insertan, y el sábado llegan trece
+personas a un salón de doce sillas. El `for update` sobre el renglón del curso cierra esa ventana.
+**Está probado con dos conexiones pidiendo el último lugar a la vez: una entra, la otra va a lista
+de espera.**
+
+**Lleno no rechaza: apunta.** Rechazar pierde al cliente; apuntarlo deja constancia de cuánta
+demanda hubo de verdad. Y la lista de espera **no ocupa lugar** — contarla como ocupada dejaría
+fuera a quien sí cabe. Subir a alguien de la espera vuelve a pasar por el mismo candado: si no,
+sería la puerta de atrás del cupo.
+
+**Inscripción y pago son cosas distintas.** Se puede estar inscrito y deber; se puede haber pagado
+y después cancelar. Son dos columnas y dos etiquetas, no una: una sola que mezclara las dos haría
+imposible saber a quién hay que cobrarle.
+
+**Las sesiones salen en la Agenda, consultadas.** No hay una cita espejo por cada sesión: crear
+copias garantiza que el día que alguien reprograme la sesión, la copia se quede con la fecha vieja
+y haya dos calendarios diciendo cosas distintas. En la agenda se ven **distintas de una cita** —es
+otro tipo de evento— y se abren en Cursos, que es donde se administran.
+
+**El choque de instructor se comprueba contra las dos agendas**: las citas y las demás sesiones.
+Mirar sólo una deja exactamente la otra mitad del problema sin resolver.
+
+**El estado del curso se deriva de las fechas.** Sólo *cancelado* y *apagado* se guardan, porque no
+se deducen de un calendario — y un curso cancelado y uno que simplemente terminó no son lo mismo
+para nadie. Un estado guardado a mano se queda viejo el primer lunes que nadie entra al sistema.
+
+**"Sin cupo" no es cero.** Cero sería un curso al que nadie puede entrar. Sin límite se dice con
+nulo, nunca con 999999.
+
+**La fecha no miente.** Del 15 al 16 son *dos* días, no uno. Y cinco sábados salteados **no** son
+un rango de cinco semanas: se dicen "5 sesiones", porque enseñarlos como rango hace creer que el
+curso dura cinco semanas corridas.
+
 ### La orden única
 
 ```bash
@@ -301,7 +349,7 @@ cuerpo de una función `plpgsql` al crearla, así que un nombre de columna equiv
 los tipos, a las guardias y a las 620 pruebas — y revienta en el SQL Editor. Aplicando el
 instalador real, cada función se parsea contra un Postgres de carne y hueso y el error sale aquí.
 
-**620 pruebas · 11 guardias · 90 ataques.**
+**764 pruebas · 11 guardias · 111 ataques.**
 
 ---
 
@@ -314,7 +362,7 @@ instalador real, cada función se parsea contra un Postgres de carne y hueso y e
 | **4** ✅ | **Agenda** — día, semana, mes, sin choques de horario |
 | **8** ✅ | **Inicio** — el tablero, el buscador global y los avisos |
 | **2** ✅ | **Clientes** — el expediente comercial de cada persona |
-| **3** ◐ | **Servicios** ✅ — el catálogo · Cursos, pendiente |
+| **3** ✅ | **Servicios** — el catálogo · **Cursos** — talleres, sesiones e inscripciones |
 | 5 | Productos · 6 · Ventas, Pagos y Caja · 7 · Gastos y Recordatorios |
 | 9 | Reportes · 10 · Configuración · 11 · Mensajes · 12 · Publicación |
 

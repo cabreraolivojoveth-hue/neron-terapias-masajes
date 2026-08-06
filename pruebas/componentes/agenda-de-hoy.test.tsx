@@ -12,6 +12,7 @@ import { AgendaDeHoy, citasParaHoy, iniciales } from '../../src/inicio/agenda-de
 afterEach(cleanup);
 
 const cita = (c: Partial<CitaEnAgenda> = {}): CitaEnAgenda => ({
+  tipo: 'cita', cursoId: null,
   id: 'a1', fecha: '06/08/2026', horaInicio: '10:00', horaFin: '11:00',
   estado: 'confirmada', notas: null,
   clienteId: 'c1', cliente: 'Paciente Uno', clienteTelefono: null, clienteCorreo: null,

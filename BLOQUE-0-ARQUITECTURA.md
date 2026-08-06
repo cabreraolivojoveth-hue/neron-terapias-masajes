@@ -61,14 +61,16 @@ referencia por id y la resuelve al leer.
 | Pacientes | `cliente` | nombre, teléfono, correo, notas clínicas |
 | Catálogo | `servicio` | nombre, duración, precio, promoción, disponibilidad |
 | Agrupación del catálogo | `categoria` | nombre y color del grupo — **una sola tabla** para servicios y cursos, separados por `ambito` |
-| Cursos | `curso` | fechas, cupo, precio, estado |
+| Cursos | `curso` | qué se enseña, cupo, precio, modalidad, instructor |
+| Sesiones de curso | `sesion_curso` | **la ejecución** — día, hora, instructor y lugar de cada reunión |
+| Material de curso | `material_curso` | el enlace a lo que se reparte, y a quién se le enseña |
 | Inventario | `producto` | precio, costo, existencias, umbral bajo |
 | Agenda | `cita` | fecha, hora, estado, a quién y con quién |
 | Transacciones | `venta` + `venta_item` | qué se vendió y en cuánto |
 | Pagos | `pago` | con qué se pagó |
 | Egresos | `gasto` | lo que sale |
 | Caja | `movimiento_caja` | **derivada** — nace de una venta, un gasto o un ajuste |
-| Inscripciones | `inscripcion` | quién va a qué curso |
+| Inscripciones | `inscripcion` | quién va a qué curso, y en qué estado — **el alumno es un `cliente`**, no otra tabla de personas |
 | Pendientes | `recordatorio` | qué falta hacer, y **de qué entidad salió** |
 | Personas del sistema | `membresia` *(de la base)* | quién entra y con qué rol |
 

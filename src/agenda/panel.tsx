@@ -35,6 +35,8 @@ export interface PropiedadesDelPanel {
   onCambiarEstado(estado: EstadoDeCita): void;
   /** Abre Mensajes con ESTE paciente y ESTA cita como contexto. */
   onEnviarMensaje(): void;
+  /** Abre CURSOS con el curso de esta sesion. Solo aplica a las sesiones. */
+  onVerCurso(): void;
   onCerrar(): void;
 }
 
@@ -90,6 +92,7 @@ export function PanelDeCita({
   onReagendar,
   onCambiarEstado,
   onEnviarMensaje,
+  onVerCurso,
   onCerrar,
 }: PropiedadesDelPanel) {
   if (!cita) {
@@ -98,6 +101,60 @@ export function PanelDeCita({
         <p className="agenda-panel__pista">
           Toca una cita para ver los datos del paciente, su historial y las acciones.
         </p>
+      </aside>
+    );
+  }
+
+  /**
+   * UNA SESION DE CURSO NO ES UNA CITA, y no se administra desde aqui.
+   *
+   * No tiene un paciente ni un servicio: tiene un grupo y un curso. Ofrecerle
+   * "Confirmar" o "Reagendar" haria algo raro con el curso —o nada—, y las dos
+   * cosas son peores que mandar a donde de verdad se administra.
+   */
+  if (cita.tipo === 'sesion') {
+    return (
+      <aside className="agenda-panel" aria-label="Sesión de curso seleccionada">
+        <div className="agenda-panel__barra">
+          <span className="agenda-panel__titulo">Sesión de curso</span>
+          <span className="agenda-panel__estado agenda-estado--curso">Curso</span>
+          <button
+            type="button"
+            className="agenda-panel__cerrar"
+            onClick={onCerrar}
+            aria-label="Cerrar el panel"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="agenda-panel__cuerpo">
+          <Renglon icono="birrete" titulo="Curso">
+            {cita.servicio}
+          </Renglon>
+          <Renglon icono="reloj" titulo="Horario">
+            {cita.horaInicio} – {cita.horaFin}
+            <span className="agenda-panel__secundario">
+              {' '}
+              · {duracionEnPalabras(cita.servicioMinutos)}
+            </span>
+          </Renglon>
+          <Renglon icono="calendario" titulo="Día">
+            {fechaLarga(cita.fecha)}
+          </Renglon>
+          <Renglon icono="personas" titulo="Alumnos">
+            {cita.cliente}
+          </Renglon>
+          <Renglon icono="persona" titulo="Instructor">
+            {cita.profesional ?? 'Sin asignar'}
+          </Renglon>
+        </div>
+
+        <div className="agenda-panel__acciones">
+          <Boton tono="principal" onClick={onVerCurso}>
+            Ver el curso
+          </Boton>
+        </div>
       </aside>
     );
   }

@@ -16,8 +16,8 @@ import {
   CATEGORIA_VACIA,
   comoSeDiceElUso,
   validarCategoria,
-} from '../../src/servicios/categorias.js';
-import type { Categoria } from '../../src/datos/servicios.js';
+} from '../../src/ui/administrar-categorias.js';
+import type { Categoria } from '../../src/datos/categorias.js';
 
 afterEach(cleanup);
 

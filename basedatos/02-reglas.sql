@@ -46,6 +46,19 @@ alter table movimiento_caja  enable row level security;  alter table movimiento_
 alter table inscripcion      enable row level security;  alter table inscripcion      force row level security;
 alter table recordatorio     enable row level security;  alter table recordatorio     force row level security;
 alter table categoria        enable row level security;  alter table categoria        force row level security;
+-- Estas dos las crea `INSTALAR-EN-TERAPIAS.sql`, que se aplica DESPUES. Este
+-- archivo tambien se usa para restaurar las reglas despues del control
+-- negativo, y entonces si existen — asi que se encienden solo si estan.
+do $$ begin
+  if to_regclass('public.sesion_curso') is not null then
+    execute 'alter table sesion_curso enable row level security';
+    execute 'alter table sesion_curso force row level security';
+  end if;
+  if to_regclass('public.material_curso') is not null then
+    execute 'alter table material_curso enable row level security';
+    execute 'alter table material_curso force row level security';
+  end if;
+end $$;
 
 -- El visitante sin sesion no ve absolutamente nada del producto.
 revoke all on cliente, servicio, curso, producto, cita, venta, venta_item,

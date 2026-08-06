@@ -30,6 +30,10 @@ const clasesDe = (c: CitaEnAgenda, puesta: boolean, compacta: boolean): string =
     'agenda-cita',
     compacta ? 'agenda-cita--compacta' : 'agenda-cita--ancha',
     `agenda-cita--${c.estado}`,
+    // Una sesion de curso se ve DISTINTA de una cita: es otro tipo de evento,
+    // y pintarlas igual hace que nadie distinga una clase de veinte personas
+    // de una sesion individual.
+    c.tipo === 'sesion' ? 'agenda-cita--curso' : '',
     puesta ? 'agenda-cita--puesta' : '',
   ]
     .filter(Boolean)
@@ -43,7 +47,9 @@ const clasesDe = (c: CitaEnAgenda, puesta: boolean, compacta: boolean): string =
  * no comunica absolutamente nada.
  */
 const comoSeLee = (c: CitaEnAgenda): string =>
-  `${c.horaInicio} a ${c.horaFin}, ${c.cliente}, ${c.servicio}, ${etiquetaDeEstado(c.estado)}` +
+  (c.tipo === 'sesion'
+    ? `Sesión de curso, ${c.horaInicio} a ${c.horaFin}, ${c.servicio}, ${c.cliente}`
+    : `${c.horaInicio} a ${c.horaFin}, ${c.cliente}, ${c.servicio}, ${etiquetaDeEstado(c.estado)}`) +
   (c.profesional ? `, con ${c.profesional}` : '');
 
 /* ------------------------------------------------------------------ */
@@ -125,9 +131,16 @@ function ColumnaDelDia({
             {!compacta ? <span className="agenda-cita__que">{cita.servicio}</span> : null}
           </span>
 
-          {/* El estado va con PALABRA, no solo con el color del bloque. */}
-          <span className={`agenda-cita__estado agenda-estado--${cita.estado}`}>
-            {etiquetaDeEstado(cita.estado)}
+          {/* El estado va con PALABRA, no solo con el color del bloque. En una
+              sesion de curso la palabra es "Curso": su estado propio se
+              administra en Cursos, y enseñar "Confirmada" aqui haria pensar
+              que se confirma como una cita. */}
+          <span
+            className={`agenda-cita__estado agenda-estado--${cita.estado}${
+              cita.tipo === 'sesion' ? ' agenda-estado--curso' : ''
+            }`}
+          >
+            {cita.tipo === 'sesion' ? 'Curso' : etiquetaDeEstado(cita.estado)}
           </span>
         </button>
       ))}

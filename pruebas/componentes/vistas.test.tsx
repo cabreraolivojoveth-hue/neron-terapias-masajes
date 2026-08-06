@@ -10,6 +10,7 @@ import { VistaDia, VistaMes, VistaSemana } from '../../src/agenda/vistas.js';
 afterEach(cleanup);
 
 const cita = (p: Partial<CitaEnAgenda> & { id: string }): CitaEnAgenda => ({
+  tipo: 'cita', cursoId: null,
   fecha: '10/07/2026', horaInicio: '09:00', horaFin: '10:00', estado: 'confirmada',
   notas: null, clienteId: 'c1', cliente: 'Paciente Uno', clienteTelefono: null,
   clienteCorreo: null, servicioId: 's1', servicio: 'Sesión', servicioMinutos: 60,

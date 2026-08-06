@@ -23,7 +23,7 @@
  * justo el que la persona esta mirando.
  */
 
-import type { Fecha } from '@neron/base/utils';
+import { diasEntre, esFecha, type Fecha } from '@neron/base/utils';
 
 const DIAS = [
   'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado',
@@ -118,4 +118,16 @@ export function duracionEnPalabras(minutos: number): string {
   if (horas === 0) return `${resto} min`;
   const parteHoras = horas === 1 ? '1 hora' : `${horas} horas`;
   return resto === 0 ? parteHoras : `${horas} h ${resto} min`;
+}
+
+/**
+ * Cuantos DIAS abarca un curso, contando los dos extremos.
+ *
+ * Del 15 al 16 son DOS dias, no uno. `diasEntre` de la base contesta la resta
+ * —uno—, que es lo correcto para "faltan N dias" y lo equivocado para "dura N
+ * dias". Confundirlas hace que todo curso salga con un dia de menos.
+ */
+export function diasEntreInclusive(desde: Fecha, hasta: Fecha): number {
+  if (!esFecha(desde) || !esFecha(hasta)) return 0;
+  return diasEntre(desde, hasta) + 1;
 }

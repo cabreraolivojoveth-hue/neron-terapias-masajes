@@ -2094,5 +2094,192 @@ body {
   .srv-descripcion { display: none; }
   .srv-detalle { position: static; }
 }
+
+/* ================================================================ */
+/* CURSOS — el programa                                             */
+/* ================================================================ */
+/*
+ * Reusa el esqueleto de Servicios —tarjetas, tabla, menu, paginacion, panel
+ * con pestañas— y solo agrega lo suyo: la portada, las pestañas de la lista,
+ * los lugares, los alumnos, las sesiones y el material.
+ *
+ * EN CELULAR LA TABLA SE VUELVE TARJETAS. Siete columnas en cuatrocientos
+ * pixeles no se leen: se adivinan.
+ */
+.cur { min-width: 0; }
+
+.cur-pestanas {
+  display: flex; gap: 2px;
+  border-bottom: 1px solid ${v('borde-suave')};
+  overflow-x: auto;
+  min-width: 0;
+}
+.cur-pestana {
+  flex: none; min-height: 38px; padding: 0 ${v('espacio-3')};
+  border: none; border-bottom: 2px solid transparent;
+  background: transparent; color: ${v('texto-suave')};
+  font-family: ${v('familia')}; font-size: ${v('texto-chico')};
+  cursor: pointer; white-space: nowrap;
+}
+/* La pestaña puesta lleva color Y linea: solo con color, quien no distingue
+   verde de gris no sabe cual esta escogida. */
+.cur-pestana--puesta {
+  color: ${v('marca')}; border-bottom-color: ${v('marca')};
+  font-weight: ${v('peso-fuerte')};
+}
+.cur-pestana:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
+
+/* ---------------------------------------------------------------- */
+/* La portada                                                        */
+/* ---------------------------------------------------------------- */
+.cur-portada {
+  width: 44px; height: 34px; flex: none;
+  object-fit: cover;
+  border-radius: ${v('radio-sistema')};
+  background: ${v('superficie-tenue')};
+}
+/* Sin imagen NO se carga una de ejemplo: va un icono neutro. */
+.cur-portada--vacia {
+  display: flex; align-items: center; justify-content: center;
+  color: ${v('texto-tenue')};
+}
+
+.cur-fecha { display: flex; flex-direction: column; white-space: nowrap; }
+.cur-fecha__cuanto { color: ${v('texto-suave')}; font-size: ${v('texto-micro')}; }
+
+.cur-lugares { font-variant-numeric: ${v('cifra-numeros')}; white-space: nowrap; }
+/* Lleno lleva color Y peso: el color solo no lo comunica a todo el mundo. */
+.cur-lugares--lleno { color: ${v('advertencia')}; font-weight: ${v('peso-fuerte')}; }
+
+/* ---------------------------------------------------------------- */
+/* Los estados                                                       */
+/* ---------------------------------------------------------------- */
+.cur-estado--proximo    { color: ${v('cat-cursos')};  border-color: ${v('cat-cursos')}; }
+.cur-estado--activo     { color: ${v('exito')};       border-color: ${v('exito')}; }
+.cur-estado--finalizado { color: ${v('texto-suave')}; border-color: ${v('borde')}; }
+.cur-estado--cancelado  { color: ${v('peligro')};     border-color: ${v('peligro')}; }
+.cur-estado--inactivo   { color: ${v('texto-suave')}; border-color: ${v('borde')}; }
+
+.cur-insc--inscrito     { color: ${v('exito')};       border-color: ${v('exito')}; }
+.cur-insc--asistio      { color: ${v('cat-cursos')};  border-color: ${v('cat-cursos')}; }
+.cur-insc--lista_espera { color: ${v('advertencia')}; border-color: ${v('advertencia')}; }
+.cur-insc--cancelado    { color: ${v('texto-suave')}; border-color: ${v('borde')}; }
+.cur-insc--debe         { color: ${v('advertencia')}; border-color: ${v('advertencia')}; }
+
+.cur-ses--programada { color: ${v('cat-cursos')}; border-color: ${v('cat-cursos')}; }
+.cur-ses--impartida  { color: ${v('exito')};      border-color: ${v('exito')}; }
+.cur-ses--cancelada  { color: ${v('peligro')};    border-color: ${v('peligro')}; }
+
+/* ---------------------------------------------------------------- */
+/* La cabecera del panel                                             */
+/* ---------------------------------------------------------------- */
+.cur-cabecera { position: relative; min-width: 0; }
+.cur-cabecera__imagen {
+  width: 100%; height: 130px;
+  object-fit: cover;
+  border-radius: ${v('radio-tarjeta')};
+  background: ${v('superficie-tenue')};
+  display: block;
+}
+.cur-cabecera__imagen--vacia {
+  display: flex; align-items: center; justify-content: center;
+  color: ${v('texto-tenue')};
+}
+.cur-cabecera__estado {
+  position: absolute; top: ${v('espacio-2')}; right: ${v('espacio-2')};
+  background: ${v('superficie-elevada')};
+}
+
+/* ---------------------------------------------------------------- */
+/* Alumnos                                                           */
+/* ---------------------------------------------------------------- */
+.cur-alumnos__cabeza {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  flex-wrap: wrap; min-width: 0;
+}
+.cur-alumnos__cabeza .cli-exp__etiqueta { flex: 1; min-width: 0; }
+.cur-alumnos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.cur-alumno {
+  display: flex; flex-wrap: wrap; align-items: center; gap: ${v('espacio-2')};
+  padding: ${v('espacio-2')} 0;
+  border-bottom: 1px solid ${v('borde-suave')};
+  min-width: 0;
+}
+.cur-alumno:last-child { border-bottom: none; }
+.cur-alumno__quien {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  flex: 1 1 160px; min-width: 0;
+  background: transparent; border: none; padding: 0; cursor: pointer;
+  font-family: ${v('familia')}; font-size: ${v('texto-chico')}; color: ${v('texto')};
+  text-align: left;
+}
+.cur-alumno__quien:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.cur-alumno__estados { display: flex; gap: ${v('espacio-1')}; flex-wrap: wrap; flex: none; }
+
+/* ---------------------------------------------------------------- */
+/* Sesiones y material                                               */
+/* ---------------------------------------------------------------- */
+.cur-sesiones, .cur-material {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column;
+}
+.cur-sesion, .cur-material__renglon {
+  display: flex; flex-wrap: wrap; align-items: center; gap: ${v('espacio-2')};
+  padding: ${v('espacio-2')} 0;
+  border-bottom: 1px solid ${v('borde-suave')};
+  min-width: 0;
+}
+.cur-sesion:last-child, .cur-material__renglon:last-child { border-bottom: none; }
+.cur-sesion__cuando { display: flex; flex-direction: column; flex: 1 1 160px; min-width: 0; }
+.cur-sesion__titulo { font-size: ${v('texto-chico')}; font-weight: ${v('peso-medio')}; }
+
+/* ---------------------------------------------------------------- */
+/* Las tarjetas de celular                                           */
+/* ---------------------------------------------------------------- */
+/* En pantalla ancha manda la tabla; en angosta, las tarjetas. Nunca las dos. */
+.cur-tarjetas { display: none; list-style: none; margin: 0; padding: 0; }
+
+@media (max-width: 720px) {
+  .cur-solo-ancho { display: none; }
+  .cur-tarjetas { display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
+  .cur-tarjeta {
+    display: flex; flex-direction: column; gap: ${v('espacio-2')};
+    width: 100%; min-width: 0;
+    padding: ${v('espacio-3')};
+    border: 1px solid ${v('borde-suave')}; border-radius: ${v('radio-tarjeta')};
+    background: ${v('superficie')};
+    font-family: ${v('familia')}; font-size: ${v('texto-chico')}; color: ${v('texto')};
+    text-align: left; cursor: pointer;
+  }
+  .cur-tarjeta--marcada { border-color: ${v('marca')}; background: ${v('marca-tenue')}; }
+  .cur-tarjeta:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+  .cur-tarjeta__cabeza {
+    display: flex; align-items: center; gap: ${v('espacio-2')}; min-width: 0;
+  }
+  .cur-tarjeta__cabeza .srv-nombre { flex: 1; min-width: 0; }
+  .cur-tarjeta__datos {
+    display: flex; flex-wrap: wrap; gap: ${v('espacio-3')};
+    color: ${v('texto-suave')}; font-size: ${v('texto-micro')};
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* La sesion de curso DENTRO de la agenda                            */
+/* ---------------------------------------------------------------- */
+/*
+ * Se ve distinta de una cita a proposito: es otro tipo de evento. Pintarlas
+ * igual hace que nadie distinga una clase de veinte personas de una sesion
+ * individual — y la diferencia importa para saber si la sala esta libre.
+ */
+.agenda-cita--curso {
+  border-left-color: ${v('cat-cursos')};
+  background: ${v('cat-cursos-tenue')};
+}
+.agenda-estado--curso {
+  color: ${v('cat-cursos')};
+  border-color: ${v('cat-cursos')};
+  background: ${v('superficie')};
+}
+
 `;
 }

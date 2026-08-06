@@ -10,6 +10,7 @@ import type { CitaEnAgenda, Historial } from '../../src/datos/citas.js';
 afterEach(cleanup);
 
 const CITA: CitaEnAgenda = {
+  tipo: 'cita', cursoId: null,
   id: 'a', fecha: '10/07/2026', horaInicio: '09:00', horaFin: '10:00', estado: 'confirmada',
   notas: null, clienteId: 'c1', cliente: 'Paciente Uno', clienteTelefono: '6461234567',
   clienteCorreo: 'uno@correo.mx', servicioId: 's1', servicio: 'Sesión', servicioMinutos: 60,
@@ -27,7 +28,7 @@ const pintar = (props: Record<string, unknown> = {}) =>
     <PanelDeCita
       cita={CITA} historial={HISTORIAL} cargandoHistorial={false} puedeGestionar
       onEditar={vi.fn()} onReagendar={vi.fn()} onCambiarEstado={vi.fn()}
-      onEnviarMensaje={vi.fn()} onCerrar={vi.fn()}
+      onEnviarMensaje={vi.fn()} onVerCurso={vi.fn()} onCerrar={vi.fn()}
       {...props}
     />,
   );

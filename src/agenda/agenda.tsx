@@ -365,6 +365,11 @@ export function Agenda() {
             })
           }
           onCambiarEstado={(e: EstadoDeCita) => void estado.ejecutar(cita!.id, e)}
+          // La sesion se administra en CURSOS, no aqui: se navega con un
+          // recado con su id. La agenda no conoce las tripas de Cursos.
+          onVerCurso={() => {
+            if (cita?.cursoId) ir('cursos', { intencion: `cursos:abrir:${cita.cursoId}` });
+          }}
           onEnviarMensaje={() => {
             if (!cita) return;
             /**

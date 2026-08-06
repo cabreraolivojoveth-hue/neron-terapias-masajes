@@ -1,7 +1,11 @@
 /**
  * LA ADMINISTRACION DE CATEGORIAS.
  *
- * Sirve igual para servicios y para cursos: cambia el `ambito` y nada mas. Dos
+ * VIVE EN `ui/` Y NO EN UN MODULO porque la usan Servicios y Cursos por igual.
+ * Dejarla dentro de Servicios obligaria a que Cursos importara de las tripas
+ * de otro modulo — y esa es justo la dependencia que despues no se deshace.
+ *
+ * Sirve igual para los dos: cambia el `ambito` y nada mas. Dos
  * pantallas iguales con distinto titulo se acaban separando —una recibe un
  * arreglo y la otra no— y ese arreglo es justo el que despues nadie encuentra.
  *
@@ -13,9 +17,9 @@
 
 import { Boton, Campo, Confirmacion, Modal } from '@neron/base/ui';
 import { useState } from 'react';
-import type { Categoria, DatosDeCategoria } from '../datos/servicios.js';
+import type { Categoria, DatosDeCategoria } from '../datos/categorias.js';
 import { COLOR_POR_OMISION } from '../marca.js';
-import { Icono } from '../ui/iconos.js';
+import { Icono } from './iconos.js';
 
 export const CATEGORIA_VACIA: DatosDeCategoria = {
   nombre: '',

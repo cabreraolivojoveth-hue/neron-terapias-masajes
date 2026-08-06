@@ -21,6 +21,7 @@ import { Agenda } from './agenda/agenda.js';
 import { Inicio } from './inicio/inicio.js';
 import { Directorio } from './clientes/directorio.js';
 import { Catalogo } from './servicios/catalogo.js';
+import { Programa } from './cursos/programa.js';
 import { Pendiente } from './modulos/pendiente.js';
 import { GRUPOS, MODULOS, MODULO_POR_OMISION, modulosVisibles } from './modulos/registro.js';
 import { LEMA, NOMBRE_DEL_PRODUCTO } from './marca.js';
@@ -164,6 +165,8 @@ function Interior() {
           <Directorio />
         ) : modulo === 'servicios' ? (
           <Catalogo />
+        ) : modulo === 'cursos' ? (
+          <Programa />
         ) : (
           <Pendiente modulo={modulo} />
         )

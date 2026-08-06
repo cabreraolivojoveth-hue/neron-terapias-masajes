@@ -44,7 +44,7 @@ const anotar = (titulo: string, paso: boolean, detalle = ''): void => {
 /** Las doce tablas del producto. Una sola lista, para que no se desincronicen. */
 const TABLAS = ['cliente', 'servicio', 'curso', 'producto', 'cita', 'venta',
   'venta_item', 'pago', 'gasto', 'movimiento_caja', 'inscripcion', 'recordatorio',
-  'categoria'] as const;
+  'categoria', 'sesion_curso', 'material_curso'] as const;
 
 const cliente = new pg.Client(CADENA ? { connectionString: CADENA } : {});
 
@@ -151,6 +151,14 @@ async function aplicarEsquema(): Promise<void> {
       await cliente.query(`alter table ${t} disable row level security`);
       await cliente.query(`grant select, insert, update, delete on ${t} to authenticated`);
     }
+    // El instalador vuelve a encender las reglas de sus tablas al aplicarse.
+    // Se vuelven a apagar DESPUES de el, o el control negativo no controla nada.
+    await cliente.query(readFileSync(join(RAIZ, 'INSTALAR-EN-TERAPIAS.sql'), 'utf8'));
+    for (const t of TABLAS) {
+      await cliente.query(`alter table ${t} disable row level security`);
+      await cliente.query(`grant select, insert, update, delete on ${t} to authenticated`);
+    }
+    return;
   }
 }
 
@@ -260,6 +268,8 @@ async function correr(): Promise<void> {
     ['inscripcion', 'las inscripciones'],
     ['recordatorio', 'los recordatorios'],
     ['categoria', 'las categorías del catálogo'],
+    ['sesion_curso', 'las sesiones de curso'],
+    ['material_curso', 'el material de los cursos'],
   ] as const) {
     await como(DUENO_OTRO, async () => {
       const n = await cuantos(`select * from ${tabla} where negocio_id = $1`, [CENTRO]);
@@ -395,6 +405,177 @@ async function correr(): Promise<void> {
       cliente.query(`select guardar_servicio($1, null, 'Infiltrado', null, null, 60, 1000)`,
         [CENTRO]));
     anotar('NO puede guardar un servicio en el centro ajeno', e !== null, e ?? 'lo logro');
+  });
+
+  grupo('El cupo de un curso no se pasa, ni por la puerta de atras');
+
+  await como(DUENA, async () => {
+    /**
+     * LO QUE MAS DUELE SI FALLA: LA SOBREVENTA.
+     *
+     * Un curso con dos lugares no puede terminar con tres inscritos. La forma
+     * obvia —contar y luego insertar— tiene una ventana entre las dos
+     * operaciones; el `for update` sobre el renglon del curso la cierra.
+     */
+    const c = await cliente.query(
+      `select (guardar_curso($1, null, 'Taller Del Ataque', null, null, null, null,
+         current_date + 10, current_date + 11, 100000, 2)).id as id`, [CENTRO]);
+    const curso = c.rows[0].id;
+
+    const a = await cliente.query(
+      `insert into cliente (negocio_id, nombre) values ($1,'Alumna A'),($1,'Alumna B'),($1,'Alumna C')
+       returning id, nombre`, [CENTRO]);
+    const [x, y, z] = a.rows.map((r: { id: string }) => r.id);
+
+    const e1 = await cliente.query(`select (inscribir_en_curso($1,$2,$3)).estado as e`,
+      [CENTRO, curso, x]);
+    const e2 = await cliente.query(`select (inscribir_en_curso($1,$2,$3)).estado as e`,
+      [CENTRO, curso, y]);
+    anotar('los dos primeros SI entran', e1.rows[0].e === 'inscrito' && e2.rows[0].e === 'inscrito',
+      `${e1.rows[0].e} y ${e2.rows[0].e}`);
+
+    // LLENO NO RECHAZA: apunta. Rechazar pierde al cliente; apuntarlo deja
+    // constancia de cuanta demanda hubo de verdad.
+    const e3 = await cliente.query(`select (inscribir_en_curso($1,$2,$3)).estado as e`,
+      [CENTRO, curso, z]);
+    anotar('el tercero va a LISTA DE ESPERA, no se rechaza',
+      e3.rows[0].e === 'lista_espera', `quedo ${e3.rows[0].e}`);
+
+    const o = await cliente.query(`select app.lugares_ocupados($1) n`, [curso]);
+    anotar('la lista de espera NO ocupa lugar', o.rows[0].n === 2, `ocupados ${o.rows[0].n}`);
+
+    // NADIE SE INSCRIBE DOS VECES. Dos inscripciones vivas de la misma persona
+    // hacen que el cupo cuente doble y que la asistencia no cuadre.
+    const dup = await rechazado(() =>
+      cliente.query(`select inscribir_en_curso($1,$2,$3)`, [CENTRO, curso, x]));
+    anotar('NO se puede inscribir dos veces a la misma persona', dup !== null, dup ?? 'lo logro');
+
+    // Subir a alguien de la espera vuelve a comprobar el cupo: si no, la lista
+    // de espera seria la puerta de atras del cupo.
+    const ins = await cliente.query(
+      `select id from inscripcion where curso_id=$1 and estado='lista_espera'`, [curso]);
+    const subir = await rechazado(() =>
+      cliente.query(`select cambiar_estado_inscripcion($1,'inscrito')`, [ins.rows[0].id]));
+    anotar('la lista de espera NO es la puerta de atras del cupo', subir !== null,
+      subir ?? 'lo logro');
+
+    // Bajar el cupo por debajo de los inscritos dejaria gente adentro de un
+    // curso que dice estar lleno de mas, y nadie sabria a quien sacar.
+    const baja = await rechazado(() =>
+      cliente.query(`select guardar_curso($1,$2,'Taller Del Ataque',null,null,null,null,
+        current_date + 10, current_date + 11, 100000, 1)`, [CENTRO, curso]));
+    anotar('NO se puede bajar el cupo por debajo de los ya inscritos', baja !== null,
+      baja ?? 'lo logro');
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select guardar_curso($1, null, 'Infiltrado', null,null,null,null,
+        current_date + 5, null, 1000, 5)`, [CENTRO]));
+    anotar('NO puede crear un curso en el centro ajeno', e !== null, e ?? 'lo logro');
+  });
+
+  grupo('Las sesiones de curso no enciman al instructor');
+
+  await como(DUENA, async () => {
+    const c = await cliente.query(
+      `select (guardar_curso($1, null, 'Taller Con Sesiones', null, null, null, $2,
+         current_date + 20, current_date + 21, 100000, 10)).id as id`, [CENTRO, membresiaDuena]);
+    const curso = c.rows[0].id;
+
+    const s1 = await cliente.query(
+      `select (guardar_sesion_curso($1, null, current_date + 20, '09:00','15:00')).id as id`,
+      [curso]);
+    anotar('una sesion normal SI entra', Boolean(s1.rows[0].id), 'no entro');
+
+    // EL CHOQUE SE COMPRUEBA CONTRA LAS DOS AGENDAS. Mirar solo una deja
+    // exactamente la otra mitad del problema sin resolver.
+    const e1 = await rechazado(() =>
+      cliente.query(`select guardar_sesion_curso($1, null, current_date + 20, '14:00','18:00')`,
+        [curso]));
+    anotar('el instructor NO puede tener dos sesiones encimadas', e1 !== null, e1 ?? 'lo logro');
+
+    const e2 = await cliente.query(
+      `select (guardar_sesion_curso($1, null, current_date + 20, '16:00','18:00')).id as id`,
+      [curso]);
+    anotar('pero una pegada a la anterior SI entra', Boolean(e2.rows[0].id), 'la rechazo');
+
+    // Y contra las CITAS: una terapeuta no puede estar dando un taller y
+    // atendiendo a una paciente a la misma hora.
+    await cliente.query(
+      `insert into cita (negocio_id, cliente_id, servicio_id, profesional_id, fecha,
+                         hora_inicio, hora_fin)
+       values ($1,$2,$3,$4, current_date + 21, '10:00','11:00')`,
+      [CENTRO, clienteId, servicioId, membresiaDuena]);
+    const e3 = await rechazado(() =>
+      cliente.query(`select guardar_sesion_curso($1, null, current_date + 21, '10:30','12:00')`,
+        [curso]));
+    anotar('ni una sesion encimada con una CITA suya', e3 !== null, e3 ?? 'lo logro');
+
+    // Una sesion que termina antes de empezar no existe.
+    const e4 = await rechazado(() =>
+      cliente.query(`select guardar_sesion_curso($1, null, current_date + 25, '15:00','09:00')`,
+        [curso]));
+    anotar('una sesion no puede terminar antes de empezar', e4 !== null, e4 ?? 'lo logro');
+  });
+
+  await como(RECEPCION, async () => {
+    const c = await cliente.query(`select id from curso where negocio_id=$1 limit 1`, [CENTRO]);
+    if (c.rows[0]) {
+      const e = await rechazado(() =>
+        cliente.query(`select guardar_sesion_curso($1, null, current_date + 30, '09:00','10:00')`,
+          [c.rows[0].id]));
+      anotar('Sin gestionarCatalogo NO se programan sesiones', e !== null, e ?? 'lo logro');
+    }
+  });
+
+  grupo('El curso se conecta sin apropiarse de nada');
+
+  await como(DUENA, async () => {
+    const c = await cliente.query(
+      `select (guardar_curso($1, null, 'Taller Conectado', null,null,null,null,
+         current_date + 40, null, 50000, 5)).id as id`, [CENTRO]);
+    const curso = c.rows[0].id;
+    await cliente.query(`select inscribir_en_curso($1,$2,$3)`, [CENTRO, curso, clienteId]);
+
+    // EL ALUMNO ES UN CLIENTE: el nombre se resuelve al leer, no se copia.
+    const f = await cliente.query(`select ficha_del_curso($1) as f`, [curso]);
+    const alumnos = f.rows[0].f?.alumnos ?? [];
+    anotar('la ficha resuelve el NOMBRE del alumno desde su ficha de cliente',
+      alumnos[0]?.nombre === 'Paciente Del Centro', `trajo ${alumnos[0]?.nombre}`);
+
+    await cliente.query(`update cliente set nombre='Paciente Corregida' where id=$1`, [clienteId]);
+    const f2 = await cliente.query(`select ficha_del_curso($1) as f`, [curso]);
+    anotar('corregir el nombre en Clientes lo corrige en el curso',
+      f2.rows[0].f?.alumnos?.[0]?.nombre === 'Paciente Corregida', 'se quedo viejo');
+
+    // Y AL REVES: el expediente del cliente enseña sus cursos, derivados de la
+    // inscripcion. Nadie guarda una copia.
+    const mios = await cliente.query(`select cursos_del_cliente($1) as c`, [clienteId]);
+    anotar('el expediente del cliente enseña sus cursos',
+      (mios.rows[0].c ?? []).length === 1, `trajo ${(mios.rows[0].c ?? []).length}`);
+
+    // LA SESION SALE EN LA AGENDA, consultada. No hay una cita espejo.
+    await cliente.query(
+      `select guardar_sesion_curso($1, null, current_date + 40, '09:00','13:00')`, [curso]);
+    const ses = await cliente.query(
+      `select sesiones_del_rango($1, current_date, current_date + 60) as s`, [CENTRO]);
+    const enAgenda = (ses.rows[0].s ?? []).filter(
+      (x: { cursoId: string }) => x.cursoId === curso);
+    anotar('la sesion sale en la agenda del centro', enAgenda.length === 1,
+      `trajo ${enAgenda.length}`);
+    anotar('y trae cuantos alumnos van, contados al leer',
+      enAgenda[0]?.alumnos === 1, `dijo ${enAgenda[0]?.alumnos}`);
+
+    const citas = await cliente.query(
+      `select count(*) n from cita where negocio_id=$1 and fecha = current_date + 40`, [CENTRO]);
+    anotar('y NO se creo una cita espejo que se pueda desincronizar',
+      Number(citas.rows[0].n) === 0, `creo ${citas.rows[0].n}`);
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const n = await cuantos(`select * from sesion_curso where negocio_id = $1`, [CENTRO]);
+    anotar('desde otro centro las sesiones ajenas vienen VACIAS', n === 0, `vio ${n}`);
   });
 
   grupo('Sin permiso de finanzas, la base no entrega el dinero');

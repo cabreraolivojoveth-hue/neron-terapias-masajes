@@ -35,6 +35,17 @@ export function etiquetaDeEstado(estado: string): string {
 }
 
 export interface CitaEnAgenda {
+  /**
+   * QUE TIPO DE EVENTO ES.
+   *
+   * La agenda del centro contiene DOS cosas: citas individuales y sesiones de
+   * curso. Fingir que una sesion es una cita mas obligaria a inventarle un
+   * cliente y un servicio, y a que cancelarla desde la agenda hiciera algo
+   * raro con el curso. Se pintan distinto y se abren distinto.
+   */
+  readonly tipo: 'cita' | 'sesion';
+  /** Solo en las sesiones: a que curso pertenece. */
+  readonly cursoId: string | null;
   readonly id: string;
   readonly fecha: Fecha;
   readonly horaInicio: string;
@@ -125,7 +136,84 @@ export async function traerCitas(
     p_estado: filtros.estado ?? null,
   });
   reventar(error, 'cargar la agenda');
-  return ((data ?? []) as CitaEnAgenda[]).map((c) => ({ ...c, fecha: deBase(c.fecha) }));
+  const citas = ((data ?? []) as CitaEnAgenda[]).map((c) => ({
+    ...c, tipo: 'cita' as const, cursoId: null, fecha: deBase(c.fecha),
+  }));
+
+  /**
+   * LAS SESIONES DE CURSO SALEN EN LA MISMA AGENDA.
+   *
+   * Se CONSULTAN, no se copian. Crear una cita espejo por cada sesion
+   * garantiza que el dia que alguien reprograme la sesion, la copia se quede
+   * con la fecha vieja y haya dos calendarios diciendo cosas distintas.
+   *
+   * El filtro por servicio o por estado de cita NO aplica a las sesiones: son
+   * otra cosa. Con uno de esos puesto, la agenda enseña citas y ya — que es lo
+   * que alguien pidio.
+   */
+  if (filtros.servicioId || filtros.estado) return citas;
+
+  const { data: crudas, error: fallo } = await supabase().rpc('sesiones_del_rango', {
+    p_negocio: negocio,
+    p_desde: aBase(desde),
+    p_hasta: aBase(hasta),
+    p_profesional: filtros.profesionalId ?? null,
+  });
+  reventar(fallo, 'cargar las sesiones de curso');
+
+  const sesiones = (Array.isArray(crudas) ? crudas : []).map((s) =>
+    comoCita(s as Record<string, unknown>),
+  );
+  return [...citas, ...sesiones];
+}
+
+/**
+ * Una sesion de curso, con la forma que la agenda sabe pintar.
+ *
+ * Los huecos que una sesion no tiene se llenan con lo que SI significa algo:
+ * en el renglon de "quien" van los alumnos, y en el de "que" va el curso. Se
+ * deja `tipo` para que la pantalla no la trate como cita.
+ */
+export function comoCita(s: Record<string, unknown>): CitaEnAgenda {
+  const t = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
+  const n = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const alumnos = n(s['alumnos']);
+  const inicio = t(s['horaInicio']).slice(0, 5);
+  const fin = t(s['horaFin']).slice(0, 5);
+  return {
+    tipo: 'sesion',
+    cursoId: t(s['cursoId']) || null,
+    id: t(s['id']),
+    fecha: deBase(s['fecha']),
+    horaInicio: inicio,
+    horaFin: fin,
+    // El estado de una sesion se traduce al de una cita SOLO para el color.
+    // La palabra que se lee sale de `tipo`, no de aqui.
+    estado: (t(s['estado']) === 'cancelada'
+      ? 'cancelada'
+      : t(s['estado']) === 'impartida'
+        ? 'completada'
+        : 'confirmada') as EstadoDeCita,
+    notas: null,
+    clienteId: '',
+    cliente: alumnos === 1 ? '1 alumno' : `${alumnos} alumnos`,
+    clienteTelefono: null,
+    clienteCorreo: null,
+    servicioId: '',
+    servicio: t(s['curso']),
+    servicioMinutos: minutosEntre(inicio, fin),
+    servicioPrecio: 0,
+    profesionalId: t(s['profesionalId']) || null,
+    profesional: t(s['profesional']) || null,
+  };
+}
+
+/** `09:00` y `15:00` → 360. Sirve para que la sesion ocupe su alto real. */
+export function minutosEntre(inicio: string, fin: string): number {
+  const a = /^(\d{2}):(\d{2})$/.exec(inicio);
+  const b = /^(\d{2}):(\d{2})$/.exec(fin);
+  if (!a || !b) return 0;
+  return Math.max(0, (Number(b[1]) * 60 + Number(b[2])) - (Number(a[1]) * 60 + Number(a[2])));
 }
 
 export async function traerClientes(negocio: string): Promise<ClienteBreve[]> {
