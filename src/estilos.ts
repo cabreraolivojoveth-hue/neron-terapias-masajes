@@ -1851,5 +1851,248 @@ body {
 @media (max-width: 700px) {
   .ini-buscador { flex: 1 1 100%; max-width: none; order: 3; }
 }
+
+/* ================================================================ */
+/* SERVICIOS — el catalogo                                          */
+/* ================================================================ */
+/*
+ * Reusa TODO el esqueleto de Clientes —tarjetas, tabla, menu, paginacion,
+ * vacios, errores— y solo agrega lo que el catalogo tiene y un directorio no:
+ * el precio con promocion, la disponibilidad por dias, y el detalle con
+ * pestañas. Duplicar la tabla para cambiarle dos columnas obliga a arreglar
+ * cada fallo dos veces, y siempre se arregla en una sola.
+ */
+.srv { min-width: 0; }
+.srv-encabezado__acciones {
+  display: flex; align-items: center; gap: ${v('espacio-2')}; flex-wrap: wrap; flex: none;
+}
+
+/* ---------------------------------------------------------------- */
+/* Los filtros que se despliegan                                     */
+/* ---------------------------------------------------------------- */
+.srv-filtros {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: ${v('espacio-3')}; align-items: end;
+  padding: ${v('espacio-3')};
+  background: ${v('superficie-tenue')};
+  border-radius: ${v('radio-sistema')};
+  min-width: 0;
+}
+/* El boton se marca cuando los filtros estan abiertos: una lista de tres de
+   veinte sin decir que hay un filtro puesto se lee como una lista vacia. */
+.srv-filtro--puesto { background: ${v('marca-tenue')}; border-color: ${v('marca')}; }
+
+/* ---------------------------------------------------------------- */
+/* El renglon de la tabla                                            */
+/* ---------------------------------------------------------------- */
+/* El color lo escoge quien captura el servicio y llega por atributo de estilo.
+   Aqui solo se reserva el hueco y se pone el color por omision. */
+.srv-marca {
+  width: 34px; height: 34px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: ${v('radio-sistema')};
+  background: ${v('superficie-tenue')};
+  color: ${v('marca')};
+}
+.srv-nombre { display: flex; flex-direction: column; min-width: 0; }
+.srv-descripcion {
+  color: ${v('texto-suave')}; font-size: ${v('texto-micro')};
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch;
+}
+.srv-categoria {
+  display: inline-block;
+  padding: 3px ${v('espacio-2')};
+  border: 1px solid ${v('borde')}; border-radius: ${v('radio-redondo')};
+  background: ${v('superficie')};
+  color: ${v('texto-suave')};
+  font-size: ${v('texto-micro')};
+  white-space: nowrap; max-width: 20ch;
+  overflow: hidden; text-overflow: ellipsis;
+}
+
+/* El precio de lista TACHADO al lado del de hoy: sin el, nadie sabe que hay
+   una promocion puesta y el numero parece el precio normal. */
+.srv-precio { display: inline-flex; flex-direction: column; align-items: flex-end; }
+.srv-precio__hoy { color: ${v('exito')}; font-weight: ${v('peso-fuerte')}; }
+.srv-precio__antes {
+  color: ${v('texto-tenue')}; font-size: ${v('texto-micro')};
+  text-decoration: line-through;
+}
+
+/* ---------------------------------------------------------------- */
+/* El detalle de la derecha                                          */
+/* ---------------------------------------------------------------- */
+.srv-detalle { min-width: 0; position: sticky; top: ${v('espacio-4')}; }
+.srv-detalle--vacio { color: ${v('texto-suave')}; text-align: center; }
+.srv-detalle__cerrar {
+  flex: none; min-width: 32px; min-height: 32px;
+  border: none; border-radius: ${v('radio-sistema')};
+  background: transparent; color: ${v('texto-suave')};
+  font-family: ${v('familia')}; font-size: ${v('texto-grande')};
+  line-height: 1; cursor: pointer;
+}
+.srv-detalle__cerrar:hover { background: ${v('superficie-tenue')}; }
+.srv-detalle__cerrar:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.srv-detalle__cabeza {
+  display: grid; grid-template-columns: auto minmax(0, 1fr);
+  gap: ${v('espacio-3')}; align-items: center;
+}
+.srv-detalle__marca {
+  width: 46px; height: 46px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: ${v('radio-tarjeta')};
+  background: ${v('superficie-tenue')};
+  color: ${v('marca')};
+}
+.srv-detalle__quien { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.srv-detalle__nombre {
+  display: flex; align-items: center; flex-wrap: wrap; gap: ${v('espacio-2')};
+  font-size: ${v('texto-grande')}; font-weight: ${v('peso-fuerte')};
+  overflow-wrap: anywhere;
+}
+.srv-detalle__lema {
+  color: ${v('texto-suave')}; font-size: ${v('texto-micro')};
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.srv-detalle__cuerpo { display: flex; flex-direction: column; gap: ${v('espacio-1')}; min-width: 0; }
+.srv-detalle__acciones {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: ${v('espacio-2')};
+  padding-top: ${v('espacio-3')};
+  border-top: 1px solid ${v('borde-suave')};
+}
+
+.srv-pestanas {
+  display: flex; gap: 2px; padding: 2px;
+  background: ${v('superficie-tenue')};
+  border-radius: ${v('radio-sistema')};
+  overflow-x: auto;
+}
+.srv-pestana {
+  flex: 1; min-height: 34px; padding: 0 ${v('espacio-2')};
+  border: none; border-radius: ${v('radio-chico')};
+  background: transparent; color: ${v('texto-suave')};
+  font-family: ${v('familia')}; font-size: ${v('texto-micro')};
+  cursor: pointer; white-space: nowrap;
+}
+.srv-pestana--puesta {
+  background: ${v('superficie-elevada')}; color: ${v('marca')};
+  font-weight: ${v('peso-fuerte')};
+  box-shadow: ${v('sombra-sutil')};
+}
+.srv-pestana:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
+
+/* Lo escrito por alguien conserva sus renglones y NO desborda: un parrafo sin
+   espacios estiraria la columna y sacaria scroll horizontal a toda la pagina. */
+.srv-texto {
+  margin: 0; font-size: ${v('texto-chico')}; color: ${v('texto')};
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+
+.srv-historial { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.srv-historial__renglon {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: ${v('espacio-2')} 0;
+  border-bottom: 1px solid ${v('borde-suave')};
+  min-width: 0;
+}
+.srv-historial__renglon:last-child { border-bottom: none; }
+.srv-historial__que { font-size: ${v('texto-chico')}; font-weight: ${v('peso-medio')}; }
+
+.srv-color { display: inline-flex; align-items: center; gap: ${v('espacio-2')}; }
+.srv-color__muestra {
+  width: 16px; height: 16px; flex: none;
+  border-radius: ${v('radio-chico')};
+  border: 1px solid ${v('borde')};
+}
+
+/* Apagar un servicio es lo unico peligroso de esta pantalla, y se ve. */
+.srv-boton-peligro {
+  display: inline-flex; align-items: center; justify-content: center; gap: ${v('espacio-1')};
+  min-height: 38px; padding: 0 ${v('espacio-3')};
+  border: 1px solid ${v('peligro')}; border-radius: ${v('radio-sistema')};
+  background: ${v('peligro-tenue')}; color: ${v('peligro')};
+  font-family: ${v('familia')}; font-size: ${v('texto-micro')};
+  cursor: pointer;
+}
+.srv-boton-peligro:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- */
+/* Los dias del formulario                                           */
+/* ---------------------------------------------------------------- */
+.srv-dias { border: none; margin: 0; padding: 0; min-width: 0; }
+.srv-dias__fila { display: flex; flex-wrap: wrap; gap: ${v('espacio-1')}; margin-top: ${v('espacio-1')}; }
+.srv-dia {
+  min-width: 46px; min-height: 38px;
+  border: 1px solid ${v('borde')}; border-radius: ${v('radio-sistema')};
+  background: ${v('superficie')}; color: ${v('texto-suave')};
+  font-family: ${v('familia')}; font-size: ${v('texto-micro')};
+  cursor: pointer;
+}
+/* Marcado lleva color Y peso: solo con color, quien no distingue verde de gris
+   no puede saber que dias escogio. */
+.srv-dia--puesto {
+  background: ${v('marca')}; color: ${v('sobre-marca')};
+  border-color: ${v('marca')}; font-weight: ${v('peso-fuerte')};
+}
+.srv-dia:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.srv-dias__nota { margin: ${v('espacio-1')} 0 0; font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
+
+.srv-casilla {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  font-size: ${v('texto-chico')}; cursor: pointer;
+}
+.srv-casilla input { width: 18px; height: 18px; flex: none; accent-color: ${v('marca')}; }
+
+/* ---------------------------------------------------------------- */
+/* Las categorias                                                    */
+/* ---------------------------------------------------------------- */
+.cat { display: flex; flex-direction: column; gap: ${v('espacio-3')}; min-width: 0; }
+.cat__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.cat__renglon {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center; gap: ${v('espacio-3')};
+  padding: ${v('espacio-2')} 0;
+  border-bottom: 1px solid ${v('borde-suave')};
+}
+.cat__renglon:last-child { border-bottom: none; }
+.cat__color {
+  width: 14px; height: 14px; flex: none;
+  border-radius: ${v('radio-redondo')};
+  border: 1px solid ${v('borde')};
+  background: ${v('superficie-tenue')};
+}
+.cat__texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cat__nombre {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  font-size: ${v('texto-chico')}; font-weight: ${v('peso-medio')};
+  overflow-wrap: anywhere;
+}
+/* El numero de uso SIEMPRE visible: es lo que hace que archivar sea una
+   decision informada y no una sorpresa. */
+.cat__uso { font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
+.cat__acciones { display: flex; gap: ${v('espacio-1')}; flex: none; flex-wrap: wrap; }
+.cat__forma {
+  display: flex; flex-direction: column; gap: ${v('espacio-3')};
+  padding: ${v('espacio-3')};
+  background: ${v('superficie-tenue')};
+  border-radius: ${v('radio-sistema')};
+}
+
+/*
+ * En celular la regla general de Clientes esconde la cuarta columna y las
+ * acciones. Aqui la cuarta es el PRECIO y las acciones son la unica forma de
+ * editar: esconderlos dejaria el catalogo de adorno. Se devuelven, y lo que se
+ * va es la categoria, que no decide nada.
+ */
+@media (max-width: 640px) {
+  .srv .cli-tabla__acciones,
+  .srv .cli-tabla th:nth-child(4),
+  .srv .cli-tabla td:nth-child(4) { display: table-cell; }
+  .srv .cli-tabla th:nth-child(2), .srv .cli-tabla td:nth-child(2) { display: none; }
+  .srv .cli-tabla__acciones { width: 48px; text-align: right; }
+  .srv-descripcion { display: none; }
+  .srv-detalle { position: static; }
+}
 `;
 }

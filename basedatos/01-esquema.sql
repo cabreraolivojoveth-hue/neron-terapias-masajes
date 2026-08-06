@@ -72,6 +72,44 @@ create index if not exists cliente_negocio_idx on cliente (negocio_id) where not
 create index if not exists cliente_nombre_idx on cliente (negocio_id, lower(nombre));
 
 -- ---------------------------------------------------------------------
+-- CATEGORIAS — una sola tabla para agrupar servicios y cursos
+-- ---------------------------------------------------------------------
+--
+-- POR QUE UNA Y NO DOS. Un centro llama "Terapias Energeticas" tanto a un
+-- servicio como a un curso, y con dos tablas ese nombre existiria dos veces:
+-- se renombra en una y la otra se queda vieja. La columna `ambito` separa los
+-- dos catalogos sin duplicar tabla, reglas de acceso ni pantalla.
+--
+-- Y ES UNA ENTIDAD, no un texto dentro del servicio. Guardar
+-- `categoria = 'Terapias Energeticas'` en cada renglon obliga a corregir
+-- doscientos renglones para cambiarle una letra al nombre — y siempre queda
+-- alguno sin corregir.
+--
+create table if not exists categoria (
+  id          uuid primary key default gen_random_uuid(),
+  negocio_id  text not null references negocio(id) on delete cascade,
+  ambito      text not null check (ambito in ('servicio', 'curso')),
+  nombre      text not null,
+  descripcion text,
+  -- El color de la pastilla. Nulo = el tono neutro del sistema.
+  color       text,
+  activo      boolean not null default true,
+  eliminado   boolean not null default false,
+  creado_en   timestamptz not null default now()
+);
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'categoria_negocio_id_unico') then
+    alter table categoria add constraint categoria_negocio_id_unico unique (negocio_id, id);
+  end if;
+end $$;
+
+-- Dos categorias del mismo ambito no se pueden llamar igual. Sin esto se
+-- crean "Masajes" y "masajes" y los servicios quedan repartidos entre las dos.
+create unique index if not exists categoria_nombre_unico
+  on categoria (negocio_id, ambito, lower(nombre)) where not eliminado;
+
+-- ---------------------------------------------------------------------
 -- SERVICIOS — el catalogo: Reiki, Biomagnetismo, Limpieza Energetica...
 -- ---------------------------------------------------------------------
 create table if not exists servicio (
@@ -101,6 +139,20 @@ do $$ begin
 end $$;
 
 create index if not exists servicio_negocio_idx on servicio (negocio_id) where not eliminado;
+
+alter table servicio add column if not exists categoria_id uuid;
+
+-- LA LLAVE VA COMPUESTA, contra `(negocio_id, id)`.
+--
+-- Con una llave simple contra `categoria(id)` se podria colgar un servicio de
+-- la categoria de OTRO centro: las llaves foraneas no obedecen las reglas de
+-- fila, y el nombre de esa categoria ajena acabaria impreso en la agenda.
+alter table servicio drop constraint if exists servicio_categoria_mismo_negocio;
+alter table servicio add constraint servicio_categoria_mismo_negocio
+  foreign key (negocio_id, categoria_id) references categoria (negocio_id, id)
+  -- Si alguien archiva la categoria, el servicio se queda SIN categoria, no
+  -- desaparece. Nadie deberia tener que reasignar treinta servicios a mano.
+  on delete set null;
 
 -- ---------------------------------------------------------------------
 -- CURSOS — los talleres con fecha, cupo y precio

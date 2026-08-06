@@ -244,6 +244,48 @@ año bisiesto tumbaría el panel entero tres de cada cuatro años.
 reescribe quién dio las sesiones del año pasado — si lo hiciera, los reportes por terapeuta
 dejarían de significar nada.
 
+**Bloque 3 — Servicios.** El catálogo de lo que ofrece el centro.
+
+**Es la fuente de verdad de lo que se ofrece.** Agenda toma de aquí la duración y el color de
+cada cita, Ventas el precio, Reportes el nombre para agrupar. Ninguno guarda una copia: todos
+preguntan por `servicio_id`.
+
+**El precio de hoy y el precio que se cobró son cosas distintas.** `servicio.precio_centavos` es
+el del catálogo ahora; lo que se cobró en enero vive en el renglón de esa venta, con su propio
+precio. Si un reporte de enero leyera el catálogo de hoy, subir un precio reescribiría la
+historia.
+
+**La duración de hoy y la que duró, también.** La cita guarda su hora de inicio y de fin: esa
+resta es lo que duró. Cambiar un servicio de 60 a 90 minutos ya no alarga las citas del año
+pasado — antes sí lo hacía, y la agenda de marzo dejaba de cuadrar con lo que de verdad pasó.
+
+**La promoción se resuelve en la base**, en `app.precio_efectivo`. Si cada pantalla la resolviera
+por su cuenta, el día que cambie la regla habría que corregirla en cuatro lugares y una se
+quedaría cobrando de más. Una promoción vencida se dice **vencida**, no vigente: sigue guardada,
+y verla sin fecha hace creer que se está cobrando.
+
+**La categoría es una entidad, no un texto dentro del servicio.** Guardar
+`categoria = 'Terapias Energéticas'` en cada renglón obliga a corregir doscientos renglones para
+cambiarle una letra al nombre, y siempre queda alguno sin corregir. Una sola tabla sirve para
+servicios y para cursos: un centro llama igual a los dos, y con dos tablas ese nombre se renombra
+en una y la otra se queda vieja.
+
+**Archivar dice a quién afecta antes de hacerlo.** Una categoría que usan siete servicios,
+archivada a ciegas, deja a los siete sin categoría sin que nadie se entere. El número va siempre
+visible. Y archivarla **no borra** los servicios: la llave foránea es `on delete set null`.
+
+**Apagar un servicio dice cuántas citas futuras tiene.** Apagar a ciegas uno con doce citas por
+delante deja doce personas esperando algo que ya no se ofrece. Las que ya existían se respetan;
+lo que cambia es que deja de ofrecerse para citas y ventas **nuevas**.
+
+**Un duplicado sale con otro nombre y apagado.** Con el mismo nombre, el catálogo queda con dos
+renglones idénticos, la mitad de las citas cuelga de uno y la mitad del otro, y ningún reporte
+por servicio vuelve a cuadrar.
+
+**Sin días marcados no se inventa "Lunes a Domingo".** El diseño muestra un rango porque es un
+diseño; el horario del centro lo administra Configuración, que todavía no llega. Mientras tanto
+dice **"Según el horario del centro"**, que es la verdad.
+
 ### La orden única
 
 ```bash
@@ -254,7 +296,7 @@ npm run consistencia
 Tipos → guardias → pruebas → compilación → ataques. **Termina en verde o no se publica.** Sin
 base de datos configurada te lo dice fuerte en vez de pasar en verde fingiendo que comprobó algo.
 
-**498 pruebas · 11 guardias · 77 ataques.**
+**618 pruebas · 11 guardias · 83 ataques.**
 
 ---
 
@@ -267,7 +309,7 @@ base de datos configurada te lo dice fuerte en vez de pasar en verde fingiendo q
 | **4** ✅ | **Agenda** — día, semana, mes, sin choques de horario |
 | **8** ✅ | **Inicio** — el tablero, el buscador global y los avisos |
 | **2** ✅ | **Clientes** — el expediente comercial de cada persona |
-| 3 | Servicios y Cursos |
+| **3** ◐ | **Servicios** ✅ — el catálogo · Cursos, pendiente |
 | 5 | Productos · 6 · Ventas, Pagos y Caja · 7 · Gastos y Recordatorios |
 | 9 | Reportes · 10 · Configuración · 11 · Mensajes · 12 · Publicación |
 

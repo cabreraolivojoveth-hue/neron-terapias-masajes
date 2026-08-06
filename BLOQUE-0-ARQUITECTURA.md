@@ -59,7 +59,8 @@ referencia por id y la resuelve al leer.
 | Entidad | Tabla | Es dueña de |
 |---|---|---|
 | Pacientes | `cliente` | nombre, teléfono, correo, notas clínicas |
-| Catálogo | `servicio` | nombre, duración, precio |
+| Catálogo | `servicio` | nombre, duración, precio, promoción, disponibilidad |
+| Agrupación del catálogo | `categoria` | nombre y color del grupo — **una sola tabla** para servicios y cursos, separados por `ambito` |
 | Cursos | `curso` | fechas, cupo, precio, estado |
 | Inventario | `producto` | precio, costo, existencias, umbral bajo |
 | Agenda | `cita` | fecha, hora, estado, a quién y con quién |

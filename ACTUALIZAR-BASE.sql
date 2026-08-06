@@ -2,13 +2,17 @@
 -- ACTUALIZAR LA BASE — pegar completo en Supabase → SQL Editor → Run
 -- =====================================================================
 --
--- QUE TRAE: lo que la base necesita para los bloques 2 (Clientes) y para la
--- conexion Agenda ↔ Recordatorios.
+-- QUE TRAE: lo que la base necesita para el bloque 3 (SERVICIOS) — la tabla
+-- de categorias, las columnas nuevas del servicio, y las cuatro funciones que
+-- hacen el trabajo pesado del lado del servidor.
 --
 -- ES SEGURO CORRERLO LAS VECES QUE HAGA FALTA. No borra nada, no reescribe
--- ningun dato y no toca una sola fila existente: solo agrega una columna
--- nueva (que puede estar vacia) y crea o reemplaza funciones. Si ya lo
--- corriste, correrlo otra vez no cambia nada.
+-- ningun dato y no toca una sola fila existente: solo crea una tabla nueva
+-- (que nace vacia), agrega columnas que pueden quedarse vacias, y crea o
+-- reemplaza funciones. Si ya lo corriste, correrlo otra vez no cambia nada.
+--
+-- SI NO CORRISTE EL ANTERIOR, corre este de todos modos: son bloques
+-- independientes. El de Clientes y Agenda sigue en el historial del chat.
 --
 -- EL ARCHIVO COMPLETO Y CON TODAS LAS EXPLICACIONES sigue siendo
 -- INSTALAR-EN-TERAPIAS.sql. Este es solo el pedazo nuevo, para no tener que
@@ -18,306 +22,141 @@
 
 
 -- =====================================================================
--- 1 · AGENDA ↔ RECORDATORIOS
---
--- Los recordatorios de una cita se mueven CON ella al reagendar, y se
--- descartan cuando la cita se cierra. Va dentro de la misma transaccion a
--- proposito: hacerlo desde el navegador deja una ventana en la que la cita
--- queda el martes y su recordatorio sigue avisando del lunes.
--- =====================================================================
-
-create or replace function public.reagendar_cita(
-  p_cita uuid, p_fecha date, p_hora_inicio time,
-  p_profesional uuid default null, p_motivo text default null
-)
-returns cita
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-declare
-  v_cita     cita;
-  v_antes    jsonb;
-  v_duracion int;
-  v_quien    membresia;
-begin
-  select * into v_cita from cita where id = p_cita and not eliminado;
-  if v_cita.id is null then
-    raise exception 'La cita no existe.' using errcode = 'no_data_found';
-  end if;
-
-  -- Los porteros van AQUI: un `security definer` se salta las reglas de fila,
-  -- asi que sin esto cualquiera con sesion movería citas de otro centro.
-  if not app.es_miembro(v_cita.negocio_id) then
-    raise exception 'Esa cita no es de tu centro.' using errcode = 'insufficient_privilege';
-  end if;
-  if not app.tiene_permiso(v_cita.negocio_id, 'gestionarAgenda') then
-    raise exception 'No tienes permiso para mover citas.' using errcode = 'insufficient_privilege';
-  end if;
-  if not app.licencia_permite(v_cita.negocio_id) then
-    raise exception 'La licencia no permite registrar operaciones.' using errcode = 'insufficient_privilege';
-  end if;
-  if v_cita.estado in ('cancelada', 'completada') then
-    raise exception 'Una cita % ya no se puede mover.', v_cita.estado
-      using errcode = 'invalid_parameter_value';
-  end if;
-
-  v_antes := jsonb_build_object(
-    'fecha', v_cita.fecha, 'horaInicio', v_cita.hora_inicio, 'profesionalId', v_cita.profesional_id);
-
-  select duracion_min into v_duracion from servicio where id = v_cita.servicio_id;
-
-  update cita
-     set fecha = p_fecha,
-         hora_inicio = p_hora_inicio,
-         -- La hora de fin se recalcula desde la duracion del servicio. Si se
-         -- arrastrara la anterior, mover una cita de 90 minutos a otra hora
-         -- podria dejarla de 30.
-         hora_fin = p_hora_inicio + make_interval(mins => coalesce(v_duracion, 60)),
-         profesional_id = coalesce(p_profesional, v_cita.profesional_id),
-         actualizado_en = now()
-   where id = p_cita
-  returning * into v_cita;
-
-  /**
-   * LOS RECORDATORIOS DE ESA CITA SE MUEVEN CON ELLA, y va DENTRO de la misma
-   * transaccion a proposito.
-   *
-   * Hacerlo desde el navegador —mover la cita, luego mover el recordatorio—
-   * tiene una ventana: si la red se cae en medio, la cita queda el martes y su
-   * recordatorio sigue avisando del lunes. Nadie se entera hasta que el aviso
-   * sale con la fecha vieja. Aqui pasa entero o no pasa.
-   *
-   * Se conserva el DESFASE: un recordatorio puesto para el dia anterior sigue
-   * quedando el dia anterior a la fecha nueva. Empujarlos todos a la fecha de
-   * la cita convertiria un "confirmar 24 horas antes" en un aviso el mismo dia.
-   *
-   * Solo los PENDIENTES. Uno ya hecho es historia y no se reescribe.
-   */
-  update recordatorio r
-     set fecha = p_fecha - ((v_antes->>'fecha')::date - r.fecha)
-   where r.negocio_id = v_cita.negocio_id
-     and r.entidad_tipo = 'cita'
-     and r.entidad_id = p_cita
-     and r.estado = 'pendiente'
-     and not r.eliminado;
-
-  select * into v_quien from membresia
-   where negocio_id = v_cita.negocio_id and usuario_id = auth.uid() limit 1;
-
-  insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
-                         entidad, antes, despues, motivo)
-  values (v_cita.negocio_id, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
-          coalesce(v_quien.rol, 'desconocido'), 'agenda', 'reagendar', p_cita::text, v_antes,
-          jsonb_build_object('fecha', v_cita.fecha, 'horaInicio', v_cita.hora_inicio,
-                             'profesionalId', v_cita.profesional_id),
-          p_motivo);
-
-  return v_cita;
-end;
-$$;
-
-create or replace function public.cambiar_estado_cita(
-  p_cita uuid, p_estado text, p_motivo text default null
-)
-returns cita
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-declare
-  v_cita  cita;
-  v_antes text;
-  v_quien membresia;
-begin
-  select * into v_cita from cita where id = p_cita and not eliminado;
-  if v_cita.id is null then
-    raise exception 'La cita no existe.' using errcode = 'no_data_found';
-  end if;
-  if not app.es_miembro(v_cita.negocio_id) then
-    raise exception 'Esa cita no es de tu centro.' using errcode = 'insufficient_privilege';
-  end if;
-  if not app.tiene_permiso(v_cita.negocio_id, 'gestionarAgenda') then
-    raise exception 'No tienes permiso para cambiar citas.' using errcode = 'insufficient_privilege';
-  end if;
-
-  if p_estado not in ('pendiente', 'confirmada', 'completada', 'cancelada', 'no_asistio') then
-    raise exception 'Estado desconocido: %', p_estado using errcode = 'invalid_parameter_value';
-  end if;
-
-  -- Una cita cancelada NO revive. Si la persona vuelve a agendar, es una
-  -- cita nueva: si se reviviera, el horario que ya se le dio a alguien mas
-  -- quedaria con dos citas y la restriccion de choque lo rechazaria en un
-  -- lugar donde el mensaje no ayuda a nadie.
-  if v_cita.estado = 'cancelada' and p_estado <> 'cancelada' then
-    raise exception 'Una cita cancelada no se reactiva: se agenda una nueva.'
-      using errcode = 'invalid_parameter_value';
-  end if;
-
-  v_antes := v_cita.estado;
-
-  update cita set estado = p_estado, actualizado_en = now(),
-                  notas = case when p_motivo is null then notas
-                               else coalesce(notas || E'\n', '') || p_motivo end
-   where id = p_cita
-  returning * into v_cita;
-
-  /**
-   * UNA CITA QUE SE CIERRA APAGA SUS RECORDATORIOS PENDIENTES.
-   *
-   * El caso concreto: se cancela la cita del jueves y al dia siguiente sale
-   * igual el recordatorio de confirmarla. La paciente recibe un aviso de una
-   * cita que ya no existe, y a partir de ahi deja de creerles a los avisos.
-   *
-   * Se marcan `descartado`, NO se borran: el recordatorio siguio existiendo y
-   * borrarlo dejaria un hueco en el rastro de por que nadie la confirmo.
-   *
-   * "Completada" tambien los apaga: recordar confirmar una cita que ya se dio
-   * no le sirve a nadie. "No asistio" igual — esa cita ya termino.
-   */
-  if p_estado in ('cancelada', 'completada', 'no_asistio') then
-    update recordatorio
-       set estado = 'descartado'
-     where negocio_id = v_cita.negocio_id
-       and entidad_tipo = 'cita'
-       and entidad_id = p_cita
-       and estado = 'pendiente'
-       and not eliminado;
-  end if;
-
-  select * into v_quien from membresia
-   where negocio_id = v_cita.negocio_id and usuario_id = auth.uid() limit 1;
-
-  insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
-                         entidad, antes, despues, motivo)
-  values (v_cita.negocio_id, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
-          coalesce(v_quien.rol, 'desconocido'), 'agenda', 'estado', p_cita::text,
-          jsonb_build_object('estado', v_antes), jsonb_build_object('estado', p_estado), p_motivo);
-
-  return v_cita;
-end;
-$$;
-
-
--- =====================================================================
--- CLIENTES — el expediente comercial de una persona
+-- 1 · EL CATALOGO — categorias, servicios y cursos
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- EL TERAPEUTA ASIGNADO — aditivo, y distinto del que atendio una cita
+-- CATEGORIAS — una sola tabla para servicios y para cursos
 -- ---------------------------------------------------------------------
 --
--- SON DOS CONCEPTOS DISTINTOS Y CONFUNDIRLOS BORRA HISTORIA.
+-- POR QUE UNA Y NO DOS. Un centro llama "Terapias Energeticas" tanto a un
+-- servicio como a un curso, y con dos tablas ese nombre existiria dos veces:
+-- se renombra en una y la otra se queda vieja. La columna `ambito` separa los
+-- dos catalogos sin duplicar tabla, reglas de acceso ni pantalla.
 --
--- `cliente.profesional_id` es con quien se atiende HABITUALMENTE hoy.
--- `cita.profesional_id` es quien atendio ESA cita, y no se toca nunca mas.
+-- Y ES UNA ENTIDAD, no un texto dentro del servicio. Guardar
+-- `categoria = 'Terapias Energeticas'` en cada renglon obliga a corregir
+-- doscientos renglones para cambiarle una letra al nombre — y siempre queda
+-- alguno sin corregir.
 --
--- Si fueran el mismo campo, cambiar de terapeuta reescribiria quien atendio
--- las sesiones del año pasado — y entonces los reportes por terapeuta dejan
--- de significar nada.
---
-alter table cliente add column if not exists profesional_id uuid;
+create table if not exists categoria (
+  id          uuid primary key default gen_random_uuid(),
+  negocio_id  text not null references negocio(id) on delete cascade,
+  ambito      text not null check (ambito in ('servicio', 'curso')),
+  nombre      text not null,
+  descripcion text,
+  -- El color de la pastilla. Nulo = el tono neutro del sistema.
+  color       text,
+  activo      boolean not null default true,
+  eliminado   boolean not null default false,
+  creado_en   timestamptz not null default now()
+);
 
-alter table cliente drop constraint if exists cliente_profesional_mismo_negocio;
-alter table cliente add constraint cliente_profesional_mismo_negocio
-  foreign key (negocio_id, profesional_id) references membresia (negocio_id, id)
-  -- Si esa persona deja el centro, sus clientes se quedan SIN asignar, no se
-  -- borran. `set null` y no `restrict`: nadie deberia tener que reasignar
-  -- doscientos expedientes a mano para poder dar de baja a alguien.
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'categoria_negocio_id_unico') then
+    alter table categoria add constraint categoria_negocio_id_unico unique (negocio_id, id);
+  end if;
+end $$;
+
+-- Dos categorias del mismo ambito no se pueden llamar igual. Sin esto se
+-- crean "Masajes" y "masajes" y los servicios quedan repartidos entre las dos.
+create unique index if not exists categoria_nombre_unico
+  on categoria (negocio_id, ambito, lower(nombre)) where not eliminado;
+
+alter table categoria enable row level security;
+alter table categoria force row level security;
+
+drop policy if exists categoria_leer on categoria;
+create policy categoria_leer on categoria
+  for select to authenticated using (app.es_miembro(negocio_id));
+
+drop policy if exists categoria_escribir on categoria;
+create policy categoria_escribir on categoria
+  for all to authenticated
+  using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarCatalogo'))
+  with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarCatalogo')
+              and app.licencia_permite(negocio_id));
+
+-- ---------------------------------------------------------------------
+-- SERVICIOS — lo que el catalogo necesita ademas de nombre y precio
+-- ---------------------------------------------------------------------
+--
+-- Todo aditivo y todo opcional: un servicio que ya existia sigue funcionando
+-- igual con estas columnas vacias.
+--
+alter table servicio add column if not exists categoria_id uuid;
+alter table servicio add column if not exists precio_promocional_centavos bigint;
+alter table servicio add column if not exists promocion_desde date;
+alter table servicio add column if not exists promocion_hasta date;
+alter table servicio add column if not exists color text;
+alter table servicio add column if not exists requiere_preparacion boolean not null default false;
+alter table servicio add column if not exists preparacion text;
+alter table servicio add column if not exists notas text;
+-- Los dias en que se ofrece, como digitos ISO: 1 es lunes y 7 domingo.
+-- '1234567' es toda la semana. Nulo = lo que diga el horario del centro.
+alter table servicio add column if not exists dias_disponibles text;
+alter table servicio add column if not exists hora_desde time;
+alter table servicio add column if not exists hora_hasta time;
+alter table servicio add column if not exists actualizado_en timestamptz not null default now();
+
+alter table servicio drop constraint if exists servicio_categoria_mismo_negocio;
+alter table servicio add constraint servicio_categoria_mismo_negocio
+  foreign key (negocio_id, categoria_id) references categoria (negocio_id, id)
+  -- Si alguien archiva la categoria, el servicio se queda SIN categoria, no
+  -- desaparece. Nadie deberia tener que reasignar treinta servicios a mano.
   on delete set null;
 
-create index if not exists cliente_profesional_idx on cliente (negocio_id, profesional_id)
+alter table servicio drop constraint if exists servicio_promocion_coherente;
+alter table servicio add constraint servicio_promocion_coherente check (
+  precio_promocional_centavos is null or precio_promocional_centavos >= 0
+);
+alter table servicio drop constraint if exists servicio_promocion_fechas;
+alter table servicio add constraint servicio_promocion_fechas check (
+  promocion_desde is null or promocion_hasta is null or promocion_hasta >= promocion_desde
+);
+
+create index if not exists servicio_categoria_idx on servicio (negocio_id, categoria_id)
   where not eliminado;
--- El buscador de la lista compara telefono y correo, no solo el nombre.
-create index if not exists cliente_contacto_idx on cliente (negocio_id, telefono, correo)
-  where not eliminado;
 
 -- ---------------------------------------------------------------------
--- LAS DOS REGLAS DEL DOMINIO, ESCRITAS UNA SOLA VEZ
+-- EL PRECIO EFECTIVO — una sola funcion, y todos preguntan aqui
 -- ---------------------------------------------------------------------
 --
--- "Activo" y "frecuente" no son opiniones de una pantalla: son reglas del
--- negocio. Si Clientes contara una cosa y Reportes otra, los dos numeros
--- serian verdad y nadie sabria cual usar.
+-- Agenda, Ventas, Clientes y Reportes necesitan saber cuanto cuesta un
+-- servicio HOY. Si cada uno resolviera la promocion por su cuenta, el dia que
+-- cambie la regla habria que corregirla en cuatro lugares y uno se quedaria
+-- con la vieja — y ese cobraria de mas.
 --
--- Viven aqui, en la base, para que cualquier modulo que las necesite las
--- pregunte en vez de reinventarlas.
+-- La promocion sin fechas vale SIEMPRE; con fechas, solo dentro del rango. Una
+-- promocion de cero es una promocion valida: hay servicios de cortesia.
 --
-create or replace function app.meses_de_actividad() returns int
-  language sql immutable as $$ select 6 $$;
-
-create or replace function app.visitas_para_ser_frecuente() returns int
-  language sql immutable as $$ select 5 $$;
-
-comment on function app.meses_de_actividad() is
-  'Un cliente esta ACTIVO si tuvo una cita completada en este plazo. Seis meses: en un centro de '
-  'terapias, alguien que vino en marzo y estamos en agosto sigue siendo cliente, no un desconocido.';
-comment on function app.visitas_para_ser_frecuente() is
-  'Cuantas sesiones completadas hacen a alguien FRECUENTE. Cuando exista Configuracion, sale de ahi.';
-
--- ---------------------------------------------------------------------
--- EL PROXIMO CUMPLEAÑOS, con el 29 de febrero resuelto
--- ---------------------------------------------------------------------
---
--- `make_date(2027, 2, 29)` REVIENTA: ese dia no existe. Sin esto, un solo
--- paciente nacido en año bisiesto tumba el panel de cumpleaños entero tres
--- de cada cuatro años — y el error aparece en una pantalla que no habla de
--- fechas.
---
--- Se corre al 28 y no al 1 de marzo: es lo que hace la gente.
---
-create or replace function app.cumple_en(p_nacimiento date, p_anio int)
-returns date
+create or replace function app.precio_efectivo(
+  p_base bigint, p_promo bigint, p_desde date, p_hasta date, p_dia date
+)
+returns bigint
 language sql
 immutable
 as $$
   select case
-    when extract(month from p_nacimiento) = 2 and extract(day from p_nacimiento) = 29
-         and not (p_anio % 4 = 0 and (p_anio % 100 <> 0 or p_anio % 400 = 0))
-      then make_date(p_anio, 2, 28)
-    else make_date(p_anio, extract(month from p_nacimiento)::int,
-                           extract(day from p_nacimiento)::int)
+    when p_promo is null then p_base
+    when p_desde is not null and p_dia < p_desde then p_base
+    when p_hasta is not null and p_dia > p_hasta then p_base
+    else p_promo
   end;
 $$;
 
-create or replace function app.proximo_cumpleanos(p_nacimiento date, p_hoy date)
-returns date
-language sql
-immutable
-as $$
-  -- El de este año si todavia no pasa; si ya paso, el del que viene. Asi el
-  -- 30 de diciembre se ven los cumpleaños de enero.
-  select case
-    when app.cumple_en(p_nacimiento, extract(year from p_hoy)::int) >= p_hoy
-      then app.cumple_en(p_nacimiento, extract(year from p_hoy)::int)
-    else app.cumple_en(p_nacimiento, extract(year from p_hoy)::int + 1)
-  end;
-$$;
+comment on function app.precio_efectivo is
+  'El precio que aplica hoy. Vive aqui para que Agenda, Ventas y Reportes no resuelvan la '
+  'promocion cada uno por su cuenta y acaben cobrando distinto.';
 
 -- ---------------------------------------------------------------------
--- LA LISTA DE CLIENTES — buscada, filtrada y paginada EN LA BASE
+-- EL CATALOGO DE SERVICIOS — buscado, filtrado y paginado en la base
 -- ---------------------------------------------------------------------
---
--- POR QUE NO SE BAJA LA TABLA Y SE FILTRA EN EL NAVEGADOR: porque funciona
--- perfecto con veinte clientes y se cae con dos mil. Y peor: para pintar
--- "ultima visita" y "visitas" habria que pedir el historial de cada uno —el
--- problema N+1 en su forma mas cara, una consulta por renglon.
---
--- Aqui las dos cifras salen en la MISMA consulta, ya calculadas.
---
--- NADA DE ESTO SE GUARDA EN `cliente`. `ultima_visita` y `visitas` se cuentan
--- cada vez: un contador a mano se desincroniza a la primera cita cancelada.
---
--- `security invoker` a proposito: las reglas de fila se aplican a quien llama.
--- Un centro no puede pedir los pacientes de otro ni equivocandose.
---
-create or replace function public.clientes_del_centro(
+create or replace function public.servicios_del_centro(
   p_negocio text,
   p_busqueda text default null,
   p_estado text default null,
-  p_profesional uuid default null,
-  p_visitas_min int default null,
-  p_visitas_max int default null,
+  p_categoria uuid default null,
   p_pagina int default 1,
   p_por_pagina int default 10,
   p_hoy date default current_date
@@ -329,69 +168,42 @@ security invoker
 set search_path = public, pg_temp
 as $$
   with base as (
-    select
-      c.id, c.nombre, c.telefono, c.correo, c.fecha_nacimiento,
-      c.profesional_id, c.eliminado, c.creado_en,
-      coalesce(x.visitas, 0) as visitas,
-      x.ultima_visita
-    from cliente c
-    left join lateral (
-      select count(*)::int as visitas, max(v.fecha) as ultima_visita
-      from cita v
-      where v.cliente_id = c.id and v.estado = 'completada' and not v.eliminado
-    ) x on true
-    where c.negocio_id = p_negocio
-  ),
-  conestado as (
-    select b.*,
-      case
-        -- ARCHIVADO gana sobre todo lo demas: un expediente guardado no es
-        -- "inactivo", es uno que alguien decidio sacar de la lista.
-        when b.eliminado then 'archivado'
-        when b.ultima_visita is not null
-             and b.ultima_visita >= p_hoy - (app.meses_de_actividad() * 30) then 'activo'
-        else 'inactivo'
-      end as estado
-    from base b
+    select s.*,
+      c.nombre as categoria_nombre,
+      c.color as categoria_color,
+      app.precio_efectivo(s.precio_centavos, s.precio_promocional_centavos,
+                          s.promocion_desde, s.promocion_hasta, p_hoy) as precio_hoy
+    from servicio s
+    left join categoria c on c.id = s.categoria_id
+    where s.negocio_id = p_negocio and not s.eliminado
   ),
   filtrado as (
-    select x.* from conestado x
-    where
-      -- Los archivados NO salen salvo que se pidan por su nombre. Si salieran
-      -- mezclados, la lista contaria gente que ya nadie atiende.
-      (x.estado <> 'archivado' or p_estado = 'archivado')
-      and (p_estado is null or p_estado = '' or x.estado = p_estado)
-      and (p_profesional is null or x.profesional_id = p_profesional)
-      and (p_visitas_min is null or x.visitas >= p_visitas_min)
-      and (p_visitas_max is null or x.visitas <= p_visitas_max)
-      and (
-        p_busqueda is null or p_busqueda = ''
-        or x.nombre ilike '%' || p_busqueda || '%'
-        or coalesce(x.telefono, '') ilike '%' || p_busqueda || '%'
-        or coalesce(x.correo, '') ilike '%' || p_busqueda || '%'
-      )
+    select b.* from base b
+    where (p_estado is null or p_estado = ''
+           or (p_estado = 'activo' and b.activo)
+           or (p_estado = 'inactivo' and not b.activo))
+      and (p_categoria is null or b.categoria_id = p_categoria)
+      and (p_busqueda is null or p_busqueda = ''
+           or b.nombre ilike '%' || p_busqueda || '%'
+           or coalesce(b.descripcion, '') ilike '%' || p_busqueda || '%'
+           or coalesce(b.categoria_nombre, '') ilike '%' || p_busqueda || '%')
   )
   select jsonb_build_object(
-    -- El total va SIN paginar: es lo que sostiene "Mostrando 10 de 340".
     'total', (select count(*) from filtrado),
     'filas', coalesce((
       select jsonb_agg(jsonb_build_object(
-        'id', f.id,
-        'nombre', f.nombre,
-        'telefono', f.telefono,
-        'correo', f.correo,
-        'fechaNacimiento', f.fecha_nacimiento,
-        'profesionalId', f.profesional_id,
-        -- El nombre del terapeuta se RESUELVE al leer, no se copia.
-        'profesional', (select m.nombre from membresia m where m.id = f.profesional_id),
-        'visitas', f.visitas,
-        'ultimaVisita', f.ultima_visita,
-        'estado', f.estado,
-        'creadoEn', f.creado_en
+        'id', f.id, 'nombre', f.nombre, 'descripcion', f.descripcion,
+        'categoriaId', f.categoria_id, 'categoria', f.categoria_nombre,
+        'categoriaColor', f.categoria_color,
+        'duracionMin', f.duracion_min,
+        'precioCentavos', f.precio_centavos,
+        'precioHoyCentavos', f.precio_hoy,
+        'enPromocion', f.precio_hoy <> f.precio_centavos,
+        'activo', f.activo,
+        'color', f.color
       ) order by f.nombre)
       from (
-        select * from filtrado
-        order by nombre
+        select * from filtrado order by nombre
         limit greatest(coalesce(p_por_pagina, 10), 1)
         offset greatest(coalesce(p_pagina, 1) - 1, 0) * greatest(coalesce(p_por_pagina, 10), 1)
       ) f
@@ -399,14 +211,10 @@ as $$
   );
 $$;
 
-comment on function public.clientes_del_centro is
-  'La lista con "ultima visita" y "visitas" YA CALCULADAS, en una sola consulta. Bajar la tabla y '
-  'contar en el navegador funciona con veinte clientes y se cae con dos mil.';
-
 -- ---------------------------------------------------------------------
--- EL RESUMEN DE CLIENTES — las cinco tarjetas y el pie, en un viaje
+-- EL RESUMEN DE SERVICIOS — las cuatro tarjetas en un viaje
 -- ---------------------------------------------------------------------
-create or replace function public.resumen_clientes(p_negocio text, p_hoy date default current_date)
+create or replace function public.resumen_servicios(p_negocio text)
 returns jsonb
 language sql
 stable
@@ -414,99 +222,30 @@ security invoker
 set search_path = public, pg_temp
 as $$
   with vivos as (
-    select c.* from cliente c where c.negocio_id = p_negocio and not c.eliminado
-  ),
-  visitas as (
-    select v.cliente_id, count(*)::int as n, max(v.fecha) as ultima
-    from cita v
-    where v.negocio_id = p_negocio and v.estado = 'completada' and not v.eliminado
-    group by v.cliente_id
-  ),
-  -- El adeudo de cada venta cobrada: lo que se cobro menos lo que se ha
-  -- pagado. La verdad financiera vive en venta y pago; aqui solo se suma.
-  saldos as (
-    select ve.id, ve.total_centavos - coalesce((
-      select sum(pg.monto_centavos) from pago pg where pg.venta_id = ve.id
-    ), 0) as saldo
-    from venta ve
-    where ve.negocio_id = p_negocio and ve.estado = 'cobrada' and not ve.eliminado
-      and ve.cliente_id is not null
+    select * from servicio where negocio_id = p_negocio and not eliminado
   )
   select jsonb_build_object(
     'total', (select count(*) from vivos),
-    'activos', (
-      select count(*) from vivos c join visitas v on v.cliente_id = c.id
-      where v.ultima >= p_hoy - (app.meses_de_actividad() * 30)
-    ),
-    -- NUEVOS ESTE MES se calcula, no se guarda un `es_nuevo` que despues
-    -- nadie apaga el dia primero del mes siguiente.
-    'nuevosEsteMes', (
-      select count(*) from vivos c
-      where c.creado_en >= date_trunc('month', p_hoy::timestamp)
-        and c.creado_en < date_trunc('month', p_hoy::timestamp) + interval '1 month'
-    ),
-    'frecuentes', (
-      select count(*) from vivos c join visitas v on v.cliente_id = c.id
-      where v.n >= app.visitas_para_ser_frecuente()
-    ),
-    -- SOLO LAS COMPLETADAS son una visita. Una cancelada no es una visita, y
-    -- una pendiente todavia no ha pasado.
-    'totalVisitas', coalesce((select sum(v.n) from visitas v), 0),
-    'citasProximas', (
-      select count(*) from cita
-      where negocio_id = p_negocio and not eliminado
-        and estado in ('pendiente', 'confirmada')
-        and fecha >= p_hoy and fecha <= p_hoy + 7
-    ),
-    'serviciosContratados', coalesce((
-      select sum(vi.cantidad)::int from venta_item vi
-      join venta ve on ve.id = vi.venta_id
-      where vi.negocio_id = p_negocio and vi.tipo = 'servicio'
-        and ve.estado = 'cobrada' and not ve.eliminado and ve.cliente_id is not null
-    ), 0),
-    'comprasRealizadas', (
-      select count(*) from venta
-      where negocio_id = p_negocio and estado = 'cobrada' and not eliminado
-        and cliente_id is not null
-    ),
-    'cursosInscritos', (
-      select count(*) from inscripcion
-      where negocio_id = p_negocio and estado <> 'cancelado'
-    ),
-    -- Un saldo NEGATIVO —pagaron de mas— no resta del adeudo total: se
-    -- ignora. Si restara, un anticipo de un cliente taparia la deuda de otro.
-    'totalAdeudos', coalesce((select sum(s.saldo) from saldos s where s.saldo > 0), 0),
-    'cumpleanos', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'id', k.id, 'nombre', k.nombre, 'fecha', k.proximo, 'enDias', k.en_dias
-      ) order by k.en_dias, k.nombre)
-      from (
-        select c.id, c.nombre,
-          app.proximo_cumpleanos(c.fecha_nacimiento, p_hoy) as proximo,
-          (app.proximo_cumpleanos(c.fecha_nacimiento, p_hoy) - p_hoy)::int as en_dias
-        from vivos c
-        where c.fecha_nacimiento is not null
-      ) k
-      where k.en_dias <= 30
-      limit 5
-    ), '[]'::jsonb)
+    'activos', (select count(*) from vivos where activo),
+    'inactivos', (select count(*) from vivos where not activo),
+    -- El promedio se saca SOLO de los activos: un servicio apagado hace dos
+    -- años no dice nada de cuanto dura hoy una sesion. `avg` devuelve null
+    -- cuando no hay ninguno, y null es "todavia no se", no cero.
+    'duracionPromedio', (
+      select round(avg(duracion_min))::int from vivos where activo
+    )
   );
 $$;
 
-comment on function public.resumen_clientes is
-  'Las cinco tarjetas y el pie del modulo Clientes en un solo viaje. Ninguna cifra esta guardada: '
-  'todas se cuentan desde su modulo dueño.';
+comment on function public.resumen_servicios is
+  'La duracion promedio se calcula SOLO con los servicios activos, y devuelve null cuando no hay '
+  'ninguno. Cero minutos seria una respuesta falsa.';
 
 -- ---------------------------------------------------------------------
--- EL EXPEDIENTE DE UNA PERSONA — lo que Clientes UNE, no lo que guarda
+-- LA FICHA DE UN SERVICIO — con su impacto antes de apagarlo
 -- ---------------------------------------------------------------------
---
--- Cada cifra viene de su modulo: las visitas de Agenda, las compras de
--- Ventas, el adeudo de Ventas menos Pagos, los cursos de Inscripciones.
--- Clientes no guarda ni una.
---
-create or replace function public.expediente_del_cliente(
-  p_cliente uuid, p_hoy date default current_date
+create or replace function public.ficha_del_servicio(
+  p_servicio uuid, p_hoy date default current_date
 )
 returns jsonb
 language sql
@@ -515,64 +254,257 @@ security invoker
 set search_path = public, pg_temp
 as $$
   select jsonb_build_object(
-    'id', c.id,
-    'nombre', c.nombre,
-    'telefono', c.telefono,
-    'correo', c.correo,
-    'fechaNacimiento', c.fecha_nacimiento,
-    'notas', c.notas,
-    'clienteDesde', c.creado_en,
-    'archivado', c.eliminado,
-    'profesionalId', c.profesional_id,
-    'profesional', (select m.nombre from membresia m where m.id = c.profesional_id),
-    'visitas', (select count(*) from cita v
-                 where v.cliente_id = c.id and v.estado = 'completada' and not v.eliminado),
-    'canceladas', (select count(*) from cita v
-                    where v.cliente_id = c.id and v.estado = 'cancelada' and not v.eliminado),
-    'noAsistio', (select count(*) from cita v
-                   where v.cliente_id = c.id and v.estado = 'no_asistio' and not v.eliminado),
-    'ultimaVisita', (select jsonb_build_object('fecha', v.fecha, 'servicio', s.nombre)
-                      from cita v join servicio s on s.id = v.servicio_id
-                      where v.cliente_id = c.id and v.estado = 'completada' and not v.eliminado
-                      order by v.fecha desc, v.hora_inicio desc limit 1),
-    'proximaCita', (select jsonb_build_object('id', v.id, 'fecha', v.fecha,
-                                              'hora', v.hora_inicio, 'servicio', s.nombre)
-                     from cita v join servicio s on s.id = v.servicio_id
-                     where v.cliente_id = c.id and not v.eliminado
-                       and v.estado in ('pendiente', 'confirmada') and v.fecha >= p_hoy
-                     order by v.fecha, v.hora_inicio limit 1),
-    'compras', (select count(*) from venta ve
-                 where ve.cliente_id = c.id and ve.estado = 'cobrada' and not ve.eliminado),
-    'totalGastado', coalesce((select sum(ve.total_centavos) from venta ve
-                               where ve.cliente_id = c.id and ve.estado = 'cobrada'
-                                 and not ve.eliminado), 0),
-    'adeudo', greatest(coalesce((
-      select sum(ve.total_centavos - coalesce((
-        select sum(pg.monto_centavos) from pago pg where pg.venta_id = ve.id
-      ), 0))
-      from venta ve
-      where ve.cliente_id = c.id and ve.estado = 'cobrada' and not ve.eliminado
-    ), 0), 0),
-    'cursos', (select count(*) from inscripcion i
-                where i.cliente_id = c.id and i.estado <> 'cancelado'),
-    -- Los servicios que ESTA persona ha recibido, contados desde sus citas
-    -- completadas. No hay ninguna lista de textos guardada en el cliente.
-    'servicios', coalesce((
-      select jsonb_agg(jsonb_build_object('nombre', y.nombre, 'veces', y.veces)
-                       order by y.veces desc, y.nombre)
+    'id', s.id, 'nombre', s.nombre, 'descripcion', s.descripcion, 'notas', s.notas,
+    'categoriaId', s.categoria_id,
+    'categoria', (select c.nombre from categoria c where c.id = s.categoria_id),
+    'categoriaColor', (select c.color from categoria c where c.id = s.categoria_id),
+    'duracionMin', s.duracion_min,
+    'precioCentavos', s.precio_centavos,
+    'precioPromocionalCentavos', s.precio_promocional_centavos,
+    'promocionDesde', s.promocion_desde,
+    'promocionHasta', s.promocion_hasta,
+    'precioHoyCentavos', app.precio_efectivo(s.precio_centavos, s.precio_promocional_centavos,
+                                             s.promocion_desde, s.promocion_hasta, p_hoy),
+    'color', s.color,
+    'requierePreparacion', s.requiere_preparacion,
+    'preparacion', s.preparacion,
+    'diasDisponibles', s.dias_disponibles,
+    'horaDesde', s.hora_desde,
+    'horaHasta', s.hora_hasta,
+    'activo', s.activo,
+    'creadoEn', s.creado_en,
+    -- CUANTAS CITAS FUTURAS TIENE. Es lo que se le enseña a quien va a
+    -- apagarlo: apagar un servicio con doce citas agendadas sin avisar es
+    -- como cancelarlas a ciegas.
+    'citasFuturas', (
+      select count(*) from cita v
+      where v.servicio_id = s.id and not v.eliminado
+        and v.estado in ('pendiente', 'confirmada') and v.fecha >= p_hoy
+    ),
+    'citasCompletadas', (
+      select count(*) from cita v
+      where v.servicio_id = s.id and not v.eliminado and v.estado = 'completada'
+    ),
+    -- El historial sale de la bitacora que ya existe. No hay una segunda.
+    'historial', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'accion', a.accion, 'quien', a.usuario_nombre, 'cuando', a.creado_en,
+        'antes', a.antes, 'despues', a.despues
+      ) order by a.creado_en desc)
       from (
-        select s.nombre, count(*)::int as veces
-        from cita v join servicio s on s.id = v.servicio_id
-        where v.cliente_id = c.id and v.estado = 'completada' and not v.eliminado
-        group by s.nombre
-        limit 5
-      ) y
+        select * from auditoria
+        where negocio_id = s.negocio_id and modulo = 'servicios' and entidad = s.id::text
+        order by creado_en desc limit 20
+      ) a
     ), '[]'::jsonb)
   )
-  from cliente c
-  where c.id = p_cliente;
+  from servicio s
+  where s.id = p_servicio;
 $$;
 
-comment on function public.expediente_del_cliente is
-  'El expediente UNE lo que ya vive en otros modulos. Ni una de estas cifras esta guardada en la '
-  'tabla cliente: se cuentan desde citas, ventas, pagos e inscripciones.';
+-- ---------------------------------------------------------------------
+-- GUARDAR UN SERVICIO — con su rastro en la bitacora
+-- ---------------------------------------------------------------------
+--
+-- Va por funcion y no por un `update` suelto porque hay que dejar rastro de QUE
+-- cambio: el precio y la duracion de un servicio mueven dinero y agenda, y
+-- "alguien lo cambio en algun momento" no le sirve a nadie tres meses despues.
+--
+create or replace function public.guardar_servicio(
+  p_negocio text,
+  p_id uuid,
+  p_nombre text,
+  p_descripcion text,
+  p_categoria uuid,
+  p_duracion int,
+  p_precio bigint,
+  p_promo bigint,
+  p_promo_desde date,
+  p_promo_hasta date,
+  p_color text,
+  p_requiere_preparacion boolean,
+  p_preparacion text,
+  p_notas text,
+  p_dias text,
+  p_hora_desde time,
+  p_hora_hasta time,
+  p_activo boolean
+)
+returns servicio
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_s     servicio;
+  v_antes jsonb;
+  v_quien membresia;
+begin
+  -- Los porteros van AQUI: un `security definer` se salta las reglas de fila.
+  if not app.es_miembro(p_negocio) then
+    raise exception 'Ese centro no es el tuyo.' using errcode = 'insufficient_privilege';
+  end if;
+  if not app.tiene_permiso(p_negocio, 'gestionarCatalogo') then
+    raise exception 'No tienes permiso para administrar el catalogo.'
+      using errcode = 'insufficient_privilege';
+  end if;
+  if not app.licencia_permite(p_negocio) then
+    raise exception 'La licencia no permite registrar operaciones.'
+      using errcode = 'insufficient_privilege';
+  end if;
+
+  if coalesce(btrim(p_nombre), '') = '' then
+    raise exception 'El servicio necesita un nombre.' using errcode = 'invalid_parameter_value';
+  end if;
+  if p_duracion is null or p_duracion <= 0 then
+    raise exception 'La duracion tiene que ser mayor que cero.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+  if p_precio is null or p_precio < 0 then
+    raise exception 'El precio no puede ser negativo.' using errcode = 'invalid_parameter_value';
+  end if;
+
+  select * into v_quien from membresia
+   where negocio_id = p_negocio and usuario_id = auth.uid() limit 1;
+
+  if p_id is null then
+    insert into servicio (negocio_id, nombre, descripcion, categoria_id, duracion_min,
+                          precio_centavos, precio_promocional_centavos, promocion_desde,
+                          promocion_hasta, color, requiere_preparacion, preparacion, notas,
+                          dias_disponibles, hora_desde, hora_hasta, activo)
+    values (p_negocio, btrim(p_nombre), p_descripcion, p_categoria, p_duracion,
+            p_precio, p_promo, p_promo_desde, p_promo_hasta, p_color,
+            coalesce(p_requiere_preparacion, false), p_preparacion, p_notas,
+            p_dias, p_hora_desde, p_hora_hasta, coalesce(p_activo, true))
+    returning * into v_s;
+
+    insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
+                           entidad, antes, despues)
+    values (p_negocio, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
+            coalesce(v_quien.rol, 'desconocido'), 'servicios', 'crear', v_s.id::text, null,
+            jsonb_build_object('nombre', v_s.nombre, 'precio', v_s.precio_centavos,
+                               'duracion', v_s.duracion_min));
+    return v_s;
+  end if;
+
+  select * into v_s from servicio where id = p_id and negocio_id = p_negocio and not eliminado;
+  if v_s.id is null then
+    raise exception 'Ese servicio no existe.' using errcode = 'no_data_found';
+  end if;
+
+  v_antes := jsonb_build_object('nombre', v_s.nombre, 'precio', v_s.precio_centavos,
+                                'duracion', v_s.duracion_min, 'activo', v_s.activo,
+                                'categoria', v_s.categoria_id, 'promo', v_s.precio_promocional_centavos);
+
+  update servicio
+     set nombre = btrim(p_nombre), descripcion = p_descripcion, categoria_id = p_categoria,
+         duracion_min = p_duracion, precio_centavos = p_precio,
+         precio_promocional_centavos = p_promo, promocion_desde = p_promo_desde,
+         promocion_hasta = p_promo_hasta, color = p_color,
+         requiere_preparacion = coalesce(p_requiere_preparacion, false),
+         preparacion = p_preparacion, notas = p_notas,
+         dias_disponibles = p_dias, hora_desde = p_hora_desde, hora_hasta = p_hora_hasta,
+         activo = coalesce(p_activo, v_s.activo), actualizado_en = now()
+   where id = p_id
+  returning * into v_s;
+
+  insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
+                         entidad, antes, despues)
+  values (p_negocio, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
+          coalesce(v_quien.rol, 'desconocido'), 'servicios', 'editar', v_s.id::text, v_antes,
+          jsonb_build_object('nombre', v_s.nombre, 'precio', v_s.precio_centavos,
+                             'duracion', v_s.duracion_min, 'activo', v_s.activo,
+                             'categoria', v_s.categoria_id, 'promo', v_s.precio_promocional_centavos));
+  return v_s;
+end;
+$$;
+
+comment on function public.guardar_servicio is
+  'Crea o edita y DEJA RASTRO. El precio y la duracion mueven dinero y agenda: "alguien lo cambio '
+  'en algun momento" no le sirve a nadie tres meses despues.';
+
+-- =====================================================================
+-- 2 · LA AGENDA — la duracion sale de la CITA, no del catalogo de hoy
+--
+-- Antes, cada cita reportaba `servicio.duracion_min`, o sea la duracion que
+-- el servicio tiene HOY. Cambiar un servicio de 60 a 90 minutos alargaba en
+-- pantalla todas las citas del año pasado, y la agenda de marzo dejaba de
+-- cuadrar con lo que de verdad paso.
+--
+-- Ahora la duracion es la resta de las horas que la propia cita guarda. La
+-- historia se queda quieta.
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- LAS CITAS DE UN RANGO — una sola consulta para cualquier vista
+-- ---------------------------------------------------------------------
+--
+-- Dia, semana y mes son el MISMO viaje al servidor con distinto rango. Sin
+-- esto, la vista de mes haria una consulta por dia —treinta y un viajes— y
+-- ademas una consulta por cita para resolver el nombre del paciente: el
+-- problema N+1 en su forma mas clasica.
+--
+-- Los nombres se RESUELVEN al leer, no se copian al guardar. Si mañana esa
+-- paciente se cambia el apellido, la agenda de hace tres meses tambien lo
+-- muestra bien, porque nunca guardo una copia.
+--
+-- `security invoker` a proposito: las reglas de fila se aplican a quien
+-- llama. Un centro no puede pedir la agenda de otro ni equivocandose.
+--
+create or replace function public.citas_del_rango(
+  p_negocio text,
+  p_desde date,
+  p_hasta date,
+  p_profesional uuid default null,
+  p_servicio uuid default null,
+  p_estado text default null
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select coalesce(jsonb_agg(x order by x->>'fecha', x->>'horaInicio'), '[]'::jsonb)
+  from (
+    select jsonb_build_object(
+      'id', c.id,
+      'fecha', c.fecha,
+      'horaInicio', to_char(c.hora_inicio, 'HH24:MI'),
+      'horaFin', to_char(c.hora_fin, 'HH24:MI'),
+      'estado', c.estado,
+      'notas', c.notas,
+      'clienteId', c.cliente_id,
+      'cliente', cl.nombre,
+      'clienteTelefono', cl.telefono,
+      'clienteCorreo', cl.correo,
+      'servicioId', c.servicio_id,
+      'servicio', s.nombre,
+      -- LA DURACION APLICADA, no la del catalogo de hoy.
+      --
+      -- Si un servicio pasa de 60 a 90 minutos, las citas del año pasado
+      -- duraron 60. Leer `s.duracion_min` las reescribiria en pantalla y el
+      -- reporte de ocupacion del año pasado cambiaria solo. La cita ya guarda
+      -- su hora de inicio y de fin: esa resta ES el dato historico.
+      'servicioMinutos', extract(epoch from (c.hora_fin - c.hora_inicio))::int / 60,
+      'servicioPrecio', s.precio_centavos,
+      'profesionalId', c.profesional_id,
+      'profesional', m.nombre
+    ) as x
+    from cita c
+    join cliente cl on cl.id = c.cliente_id
+    join servicio s on s.id = c.servicio_id
+    left join membresia m on m.id = c.profesional_id
+    where c.negocio_id = p_negocio
+      and not c.eliminado
+      and c.fecha between p_desde and p_hasta
+      and (p_profesional is null or c.profesional_id = p_profesional)
+      and (p_servicio is null or c.servicio_id = p_servicio)
+      and (p_estado is null or c.estado = p_estado)
+  ) t;
+$$;
+
+-- =====================================================================
+-- LISTO. Si no salio ningun error en rojo, la base ya tiene todo lo que
+-- necesitan las pantallas de Servicios.
+-- =====================================================================

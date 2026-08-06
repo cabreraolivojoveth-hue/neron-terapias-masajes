@@ -43,7 +43,8 @@ const anotar = (titulo: string, paso: boolean, detalle = ''): void => {
 
 /** Las doce tablas del producto. Una sola lista, para que no se desincronicen. */
 const TABLAS = ['cliente', 'servicio', 'curso', 'producto', 'cita', 'venta',
-  'venta_item', 'pago', 'gasto', 'movimiento_caja', 'inscripcion', 'recordatorio'] as const;
+  'venta_item', 'pago', 'gasto', 'movimiento_caja', 'inscripcion', 'recordatorio',
+  'categoria'] as const;
 
 const cliente = new pg.Client(CADENA ? { connectionString: CADENA } : {});
 
@@ -101,6 +102,8 @@ let servicioOtro = '';
 let clienteOtro = '';
 let membresiaDuena = '';
 let membresiaRecepcion = '';
+let categoriaId = '';
+let categoriaOtra = '';
 
 async function aplicarEsquema(): Promise<void> {
   for (const a of ['01-esquema.sql', '02-reglas.sql', '03-funciones.sql']) {
@@ -192,6 +195,15 @@ async function sembrar(): Promise<void> {
     `insert into cliente (negocio_id, nombre, notas) values ($1,'Paciente Ajeno','expediente ajeno') returning id`, [OTRO]);
   clienteOtro = co.rows[0].id;
 
+  const k = await cliente.query(
+    `insert into categoria (negocio_id, ambito, nombre) values ($1,'servicio','Terapias') returning id`,
+    [CENTRO]);
+  categoriaId = k.rows[0].id;
+  const ko = await cliente.query(
+    `insert into categoria (negocio_id, ambito, nombre) values ($1,'servicio','Ajena') returning id`,
+    [OTRO]);
+  categoriaOtra = ko.rows[0].id;
+
   await cliente.query('reset role');
 }
 
@@ -230,6 +242,7 @@ async function correr(): Promise<void> {
     ['movimiento_caja', 'la caja'],
     ['inscripcion', 'las inscripciones'],
     ['recordatorio', 'los recordatorios'],
+    ['categoria', 'las categorías del catálogo'],
   ] as const) {
     await como(DUENO_OTRO, async () => {
       const n = await cuantos(`select * from ${tabla} where negocio_id = $1`, [CENTRO]);
@@ -253,6 +266,55 @@ async function correr(): Promise<void> {
     const e = await rechazado(() =>
       cliente.query(`update cliente set negocio_id=$1 where id=$2`, [OTRO, clienteId]));
     anotar('NO puede MUDAR su paciente al centro de al lado', e !== null, e ?? 'lo logro');
+  });
+
+  grupo('El catalogo no se cuelga de la categoria de otro centro');
+
+  await como(DUENA, async () => {
+    /**
+     * EL ATAQUE QUE JUSTIFICA LA LLAVE COMPUESTA.
+     *
+     * Con una llave simple contra `categoria(id)` esto PASARIA: las llaves
+     * foraneas no obedecen las reglas de fila, asi que la base aceptaria el
+     * apuntador y el nombre de una categoria ajena acabaria impreso en la
+     * agenda del centro equivocado.
+     */
+    const e = await rechazado(() =>
+      cliente.query(`update servicio set categoria_id=$1 where id=$2`, [categoriaOtra, servicioId]));
+    anotar('NO puede colgar su servicio de una categoria ajena', e !== null, e ?? 'lo logro');
+  });
+
+  await como(DUENA, async () => {
+    const r = await cliente.query(
+      `update servicio set categoria_id=$1 where id=$2 returning id`, [categoriaId, servicioId]);
+    anotar('SI puede usar una categoria propia', r.rowCount === 1, `toco ${r.rowCount}`);
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`insert into categoria (negocio_id, ambito, nombre) values ($1,'servicio','Infiltrada')`,
+        [CENTRO]));
+    anotar('NO puede meter una categoria en el centro ajeno', e !== null, e ?? 'lo logro');
+  });
+
+  await como(RECEPCION, async () => {
+    // Quien no puede tocar un servicio tampoco puede renombrar el grupo al que
+    // pertenece: seria cambiarle la etiqueta a todo el catalogo de lado.
+    const e = await rechazado(() =>
+      cliente.query(`insert into categoria (negocio_id, ambito, nombre) values ($1,'servicio','Sin permiso')`,
+        [CENTRO]));
+    anotar('Sin gestionarCatalogo NO se crean categorias', e !== null, e ?? 'lo logro');
+  });
+
+  await como(DUENA, async () => {
+    // Archivar una categoria deja a sus servicios SIN categoria, no los borra.
+    // Perder treinta servicios por limpiar una etiqueta seria imperdonable.
+    await cliente.query(`update servicio set categoria_id=$1 where id=$2`, [categoriaId, servicioId]);
+    await cliente.query('set local role postgres');
+    await cliente.query(`delete from categoria where id=$1`, [categoriaId]);
+    await cliente.query('set local role authenticated');
+    const n = await cuantos(`select * from servicio where id=$1`, [servicioId]);
+    anotar('borrar la categoria NO borra sus servicios', n === 1, `quedaron ${n}`);
   });
 
   grupo('Sin permiso de finanzas, la base no entrega el dinero');

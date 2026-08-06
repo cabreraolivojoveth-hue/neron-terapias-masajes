@@ -45,14 +45,15 @@ alter table gasto            enable row level security;  alter table gasto      
 alter table movimiento_caja  enable row level security;  alter table movimiento_caja  force row level security;
 alter table inscripcion      enable row level security;  alter table inscripcion      force row level security;
 alter table recordatorio     enable row level security;  alter table recordatorio     force row level security;
+alter table categoria        enable row level security;  alter table categoria        force row level security;
 
 -- El visitante sin sesion no ve absolutamente nada del producto.
 revoke all on cliente, servicio, curso, producto, cita, venta, venta_item,
-              pago, gasto, movimiento_caja, inscripcion, recordatorio
+              pago, gasto, movimiento_caja, inscripcion, recordatorio, categoria
   from anon;
 
 grant select, insert, update, delete on cliente, servicio, curso, producto, cita,
-              venta, venta_item, pago, gasto, inscripcion, recordatorio
+              venta, venta_item, pago, gasto, inscripcion, recordatorio, categoria
   to authenticated;
 grant select, insert on movimiento_caja to authenticated;
 
@@ -87,6 +88,20 @@ create policy cliente_editar on cliente
 -- ---------------------------------------------------------------------
 -- SERVICIOS Y CURSOS — el catalogo
 -- ---------------------------------------------------------------------
+-- La categoria se LEE con ser miembro y se ESCRIBE con gestionarCatalogo: es
+-- parte del catalogo, y quien no puede tocar un servicio tampoco puede
+-- renombrar el grupo al que pertenece.
+drop policy if exists categoria_leer on categoria;
+create policy categoria_leer on categoria
+  for select to authenticated using (app.es_miembro(negocio_id));
+
+drop policy if exists categoria_escribir on categoria;
+create policy categoria_escribir on categoria
+  for all to authenticated
+  using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarCatalogo'))
+  with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarCatalogo')
+              and app.licencia_permite(negocio_id));
+
 drop policy if exists servicio_leer on servicio;
 create policy servicio_leer on servicio
   for select to authenticated using (app.es_miembro(negocio_id));

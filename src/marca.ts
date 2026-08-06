@@ -143,6 +143,16 @@ export function cssDeMarca(): string {
   ].join('\n');
 }
 
+/**
+ * El color con que arranca un selector de color.
+ *
+ * Un `<input type="color">` NO entiende `var(--neron-marca)`: necesita un hex
+ * literal o se queda en negro. Sale de aqui —el unico archivo donde un color
+ * escrito a mano esta permitido— para que quien escoge un color de servicio o
+ * de categoria empiece desde el verde del producto y no desde el negro.
+ */
+export const COLOR_POR_OMISION = MARCA_CLARO.marca;
+
 /** El nombre del centro. Vive aqui hasta que Configuracion lo administre. */
 export const NOMBRE_DEL_PRODUCTO = 'Centro Holístico';
 export const LEMA = 'Bienestar & Terapias';

@@ -20,6 +20,7 @@ import { CampanaDeAvisos } from './marco/notificaciones.js';
 import { Agenda } from './agenda/agenda.js';
 import { Inicio } from './inicio/inicio.js';
 import { Directorio } from './clientes/directorio.js';
+import { Catalogo } from './servicios/catalogo.js';
 import { Pendiente } from './modulos/pendiente.js';
 import { GRUPOS, MODULOS, MODULO_POR_OMISION, modulosVisibles } from './modulos/registro.js';
 import { LEMA, NOMBRE_DEL_PRODUCTO } from './marca.js';
@@ -161,6 +162,8 @@ function Interior() {
           <Agenda />
         ) : modulo === 'clientes' ? (
           <Directorio />
+        ) : modulo === 'servicios' ? (
+          <Catalogo />
         ) : (
           <Pendiente modulo={modulo} />
         )
