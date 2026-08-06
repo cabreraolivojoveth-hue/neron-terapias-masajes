@@ -17,7 +17,7 @@ afterEach(cleanup);
 
 const props = {
   estado: '', profesionalId: '', rango: '',
-  profesionales: [{ id: 'p1', nombre: 'Terapeuta A', rol: 'dueno' }],
+  profesionales: [{ id: 'p1', nombre: 'Terapeuta A', rol: 'dueno', usuarioId: 'u1' }],
   seguimientos: [], cargandoSeguimientos: false,
   cumpleanos: [], cargandoCumpleanos: false,
   onEstado: () => {}, onProfesional: () => {}, onRango: () => {}, onLimpiar: () => {},

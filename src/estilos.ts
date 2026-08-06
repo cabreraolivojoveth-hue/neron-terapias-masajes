@@ -2367,5 +2367,285 @@ body {
   font-variant-numeric: ${v('cifra-numeros')};
 }
 
+
+/* ================================================================ */
+/* VENTAS — el punto de venta                                       */
+/* ================================================================ */
+/*
+ * EN CELULAR EL PANEL DE LA DERECHA SE VA ABAJO, en el orden en que se cobra:
+ * cliente, buscar, carrito, resumen, pago, finalizar. Un panel lateral de
+ * trescientos veinte pixeles al lado de una tabla de siete columnas, en un
+ * telefono, deja las dos cosas ilegibles.
+ *
+ * Y EL BOTON DE FINALIZAR ES EL ULTIMO DE LA COLUMNA a proposito: en un
+ * mostrador se cobra de arriba hacia abajo, y tener el boton arriba hace que
+ * se apriete antes de terminar de capturar.
+ */
+.vta { min-width: 0; }
+.vta-columna, .vta-lateral {
+  display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0;
+}
+
+/* Dos tarjetas lado a lado que en pantalla chica se apilan solas. */
+.vta-dos {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: ${v('espacio-4')}; min-width: 0;
+}
+
+/* ---------------------------------------------------------------- */
+/* Cliente, fecha y vendedor                                         */
+/* ---------------------------------------------------------------- */
+.vta-quien {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: ${v('espacio-4')}; align-items: start;
+}
+.vta-quien__campo { display: flex; flex-direction: column; gap: ${v('espacio-1')}; min-width: 0; }
+.vta-buscar-cliente { display: flex; flex-direction: column; gap: ${v('espacio-2')}; min-width: 0; }
+.vta-escogido {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  min-height: 44px; padding: 0 ${v('espacio-2')};
+  border: 1px solid ${v('borde')}; border-radius: ${v('radio-sistema')};
+  background: ${v('superficie')};
+  min-width: 0;
+}
+.vta-escogido .cli-persona__nombre { flex: 1; min-width: 0; }
+
+.vta-fecha {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  min-height: 44px; padding: 0 ${v('espacio-2')};
+  border: 1px solid ${v('borde')}; border-radius: ${v('radio-sistema')};
+  background: ${v('superficie')};
+  min-width: 0;
+}
+.vta-fecha__campo {
+  flex: 1; min-width: 0;
+  border: none; background: transparent; color: ${v('texto')};
+  font-family: ${v('familia')}; font-size: ${v('texto-chico')};
+}
+.vta-fecha__campo:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+
+.vta-encontrados, .vta-catalogo {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 0;
+}
+.vta-concepto {
+  display: flex; align-items: center; gap: ${v('espacio-3')};
+  width: 100%; min-height: 44px; padding: ${v('espacio-2')};
+  border: 1px solid ${v('borde-suave')}; border-radius: ${v('radio-sistema')};
+  background: ${v('superficie')}; color: ${v('texto')};
+  font-family: ${v('familia')}; font-size: ${v('texto-chico')};
+  text-align: left; cursor: pointer;
+  min-width: 0;
+}
+.vta-concepto:hover:not(:disabled) { background: ${v('superficie-tenue')}; }
+/* Agotado NO se esconde: se enseña apagado, para que quien busca sepa que
+   existe y que se acabo, en vez de creer que nunca se dio de alta. */
+.vta-concepto:disabled { opacity: 0.5; cursor: default; }
+.vta-concepto:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.vta-concepto .srv-nombre { flex: 1; min-width: 0; }
+.vta-concepto__precio {
+  flex: none; font-variant-numeric: ${v('cifra-numeros')}; font-weight: ${v('peso-fuerte')};
+}
+
+/* ---------------------------------------------------------------- */
+/* El carrito                                                        */
+/* ---------------------------------------------------------------- */
+.vta-buscar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: ${v('espacio-3')}; min-width: 0;
+}
+.vta-tipos {
+  display: flex; gap: 2px; padding: 2px; flex: none;
+  background: ${v('superficie-tenue')}; border-radius: ${v('radio-sistema')};
+  overflow-x: auto;
+}
+.vta-tipo {
+  min-height: 34px; padding: 0 ${v('espacio-3')};
+  border: none; border-radius: ${v('radio-chico')};
+  background: transparent; color: ${v('texto-suave')};
+  font-family: ${v('familia')}; font-size: ${v('texto-micro')};
+  cursor: pointer; white-space: nowrap;
+}
+.vta-tipo--puesto {
+  background: ${v('superficie-elevada')}; color: ${v('marca')};
+  font-weight: ${v('peso-fuerte')}; box-shadow: ${v('sombra-sutil')};
+}
+.vta-tipo:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
+
+/* Cada tipo con su tono, el mismo que en las tarjetas del tablero: se
+   distinguen sin leer la palabra, y la palabra sigue estando. */
+.vta-tipo--servicio { color: ${v('cat-citas')};      border-color: ${v('cat-citas')}; }
+.vta-tipo--producto { color: ${v('cat-productos')};  border-color: ${v('cat-productos')}; }
+.vta-tipo--curso    { color: ${v('cat-cursos')};     border-color: ${v('cat-cursos')}; }
+
+.vta-cantidad { display: inline-flex; align-items: center; gap: ${v('espacio-1')}; }
+.vta-cantidad__valor {
+  min-width: 32px; text-align: center;
+  font-variant-numeric: ${v('cifra-numeros')}; font-weight: ${v('peso-medio')};
+}
+
+.vta-nota {
+  width: 100%; min-height: 60px; padding: ${v('espacio-2')};
+  border: 1px solid ${v('borde')}; border-radius: ${v('radio-sistema')};
+  background: ${v('superficie')}; color: ${v('texto')};
+  font-family: ${v('familia')}; font-size: ${v('texto-chico')};
+  resize: vertical;
+}
+.vta-nota:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.vta-nota__pie { display: flex; }
+
+/* ---------------------------------------------------------------- */
+/* Totales, metodos y cambio                                         */
+/* ---------------------------------------------------------------- */
+.vta-cobro { position: sticky; top: ${v('espacio-4')}; }
+
+.vta-totales { margin: 0; display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
+.vta-totales > div {
+  display: flex; justify-content: space-between; gap: ${v('espacio-3')};
+  font-size: ${v('texto-chico')};
+}
+.vta-totales dt { color: ${v('texto-suave')}; }
+.vta-totales dd { margin: 0; font-variant-numeric: ${v('cifra-numeros')}; }
+/* El descuento resta: se pinta como resta, y con el signo delante. Solo con
+   color, quien no distingue verde de gris lo lee como si sumara. */
+.vta-totales__resta { color: ${v('exito')}; }
+.vta-totales__total {
+  padding-top: ${v('espacio-2')};
+  border-top: 1px solid ${v('borde-suave')};
+  font-size: ${v('texto-normal')}; font-weight: ${v('peso-fuerte')};
+}
+.vta-totales__total dt { color: ${v('texto')}; }
+
+.vta-apagar {
+  display: flex; justify-content: space-between; align-items: center; gap: ${v('espacio-3')};
+  padding: ${v('espacio-3')};
+  border: 1px solid ${v('marca')}; border-radius: ${v('radio-sistema')};
+  background: ${v('marca-tenue')};
+  min-width: 0;
+}
+.vta-apagar__que { font-size: ${v('texto-chico')}; font-weight: ${v('peso-medio')}; }
+.vta-apagar__cuanto {
+  font-size: ${v('texto-grande')}; font-weight: ${v('peso-fuerte')};
+  font-variant-numeric: ${v('cifra-numeros')};
+  color: ${v('marca')};
+}
+
+.vta-metodos { display: flex; flex-direction: column; gap: ${v('espacio-2')}; min-width: 0; }
+.vta-metodos__botones { display: flex; flex-wrap: wrap; gap: ${v('espacio-2')}; min-width: 0; }
+.vta-metodos__rejilla {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: ${v('espacio-2')}; min-width: 0;
+}
+.vta-metodo {
+  display: inline-flex; align-items: center; justify-content: center; gap: ${v('espacio-2')};
+  min-height: 40px; padding: 0 ${v('espacio-3')};
+  border: 1px solid ${v('borde')}; border-radius: ${v('radio-sistema')};
+  background: ${v('superficie')}; color: ${v('texto')};
+  font-family: ${v('familia')}; font-size: ${v('texto-micro')};
+  cursor: pointer; white-space: nowrap; min-width: 0;
+}
+.vta-metodo:hover { background: ${v('superficie-tenue')}; }
+/* El escogido lleva borde Y fondo: solo el borde no se ve en una tableta con
+   sol encima, que es donde de verdad se cobra. */
+.vta-metodo--puesto {
+  border-color: ${v('marca')}; background: ${v('marca-tenue')}; color: ${v('marca')};
+  font-weight: ${v('peso-fuerte')};
+}
+.vta-metodo:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+
+.vta-reparto { display: flex; flex-direction: column; gap: ${v('espacio-2')}; min-width: 0; }
+.vta-pagos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
+.vta-pago {
+  display: flex; align-items: center; gap: ${v('espacio-2')}; min-width: 0;
+}
+.vta-pago__metodo { flex: 1; min-width: 0; font-size: ${v('texto-chico')}; }
+.vta-pago__monto {
+  flex: none; font-variant-numeric: ${v('cifra-numeros')}; font-weight: ${v('peso-medio')};
+}
+
+.vta-descuento-general {
+  display: flex; align-items: center; gap: ${v('espacio-2')}; flex-wrap: wrap; min-width: 0;
+}
+.vta-descuento__signo {
+  flex: none; min-width: 34px; min-height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid ${v('borde')}; border-radius: ${v('radio-sistema')};
+  background: ${v('superficie-tenue')}; color: ${v('texto-suave')};
+}
+.vta-descuento__campo {
+  flex: 1 1 90px; min-width: 0; min-height: 40px;
+  padding: 0 ${v('espacio-2')};
+  border: 1px solid ${v('borde')}; border-radius: ${v('radio-sistema')};
+  background: ${v('superficie')}; color: ${v('texto')};
+  font-family: ${v('familia')}; font-size: ${v('texto-chico')};
+  text-align: right; font-variant-numeric: ${v('cifra-numeros')};
+}
+.vta-descuento__campo:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+
+.vta-efectivo { display: flex; flex-direction: column; gap: ${v('espacio-2')}; min-width: 0; }
+.vta-cambio {
+  display: flex; justify-content: space-between; align-items: center; gap: ${v('espacio-3')};
+}
+.vta-cambio__valor {
+  font-weight: ${v('peso-fuerte')}; font-variant-numeric: ${v('cifra-numeros')};
+  color: ${v('marca')};
+}
+
+.vta-acciones { display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
+
+.vta-listo {
+  display: flex; flex-wrap: wrap; align-items: center; gap: ${v('espacio-3')};
+  padding: ${v('espacio-3')};
+  border: 1px solid ${v('exito')}; border-radius: ${v('radio-sistema')};
+  background: ${v('exito-tenue')};
+  min-width: 0;
+}
+.vta-listo .cli-exp__valor { flex: 1; min-width: 0; }
+
+/* ---------------------------------------------------------------- */
+/* Estados de la venta y de la cotizacion                            */
+/* ---------------------------------------------------------------- */
+.vta-estado--cobrada   { color: ${v('exito')};       border-color: ${v('exito')}; }
+.vta-estado--borrador  { color: ${v('texto-suave')}; border-color: ${v('borde')}; }
+.vta-estado--cancelada { color: ${v('peligro')};     border-color: ${v('peligro')}; }
+
+.vta-cot--abierta    { color: ${v('cat-cursos')};    border-color: ${v('cat-cursos')}; }
+.vta-cot--aceptada   { color: ${v('exito')};         border-color: ${v('exito')}; }
+.vta-cot--vencida    { color: ${v('advertencia')};   border-color: ${v('advertencia')}; }
+.vta-cot--cancelada  { color: ${v('peligro')};       border-color: ${v('peligro')}; }
+.vta-cot--convertida { color: ${v('marca')};         border-color: ${v('marca')}; }
+
+/* ---------------------------------------------------------------- */
+/* Las cifras y las ultimas ventas del dia                           */
+/* ---------------------------------------------------------------- */
+.vta-cifras {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: ${v('espacio-2')}; min-width: 0;
+}
+.vta-cifra { padding: ${v('espacio-3')}; }
+
+.vta-ultimas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.vta-ultima { border-bottom: 1px solid ${v('borde-suave')}; }
+.vta-ultima:last-child { border-bottom: none; }
+.vta-ultima__abrir {
+  display: flex; flex-wrap: wrap; align-items: center; gap: ${v('espacio-2')};
+  width: 100%; padding: ${v('espacio-2')} 0;
+  border: none; background: transparent; color: ${v('texto')};
+  font-family: ${v('familia')}; font-size: ${v('texto-chico')};
+  text-align: left; cursor: pointer; min-width: 0;
+}
+.vta-ultima__abrir:hover { background: ${v('superficie-tenue')}; }
+.vta-ultima__abrir:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
+.vta-ultima__hora {
+  flex: none; color: ${v('texto-suave')}; font-variant-numeric: ${v('cifra-numeros')};
+}
+.vta-ultima__quien { flex: 1 1 100px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.vta-ultima__folio { flex: none; color: ${v('texto-suave')}; font-size: ${v('texto-micro')}; }
+.vta-ultima__total {
+  flex: none; font-variant-numeric: ${v('cifra-numeros')}; font-weight: ${v('peso-medio')};
+}
+
+.vta-detalle { min-width: 0; }
+
 `;
 }

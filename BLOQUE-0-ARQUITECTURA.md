@@ -68,10 +68,12 @@ referencia por id y la resuelve al leer.
 | Movimientos de inventario | `movimiento_inventario` | **por qué** cambió el stock. Solo se agrega: ni editar ni borrar |
 | Proveedores | `proveedor` + `producto_proveedor` | de dónde llega, y a qué precio de cada quien |
 | Agenda | `cita` | fecha, hora, estado, a quién y con quién |
-| Transacciones | `venta` + `venta_item` | qué se vendió y en cuánto |
-| Pagos | `pago` | con qué se pagó |
+| Transacciones | `venta` + `venta_item` | qué se vendió y en cuánto — **`venta_item` es la FOTO del día: nombre, precio y costo con que se cobró** |
+| Propuestas | `cotizacion` + `cotizacion_item` | lo mismo, pero **sin efecto**. Entidad aparte, no una venta en estado raro |
+| Series de folio | `contador_de_folio` | el siguiente número de cada serie, con candado |
+| Pagos | `pago` | con qué se pagó. **Varios renglones son el pago mixto** — nunca un método llamado "mixto" |
 | Egresos | `gasto` | lo que sale |
-| Caja | `movimiento_caja` | **derivada** — nace de una venta, un gasto o un ajuste |
+| Caja | `movimiento_caja` | **derivada** — nace de un **pago**, un gasto o un ajuste. Del pago y no de la venta: si no, un pago mixto no cabría, y el corte no sabría cuánto entró en efectivo |
 | Inscripciones | `inscripcion` | quién va a qué curso, y en qué estado — **el alumno es un `cliente`**, no otra tabla de personas |
 | Pendientes | `recordatorio` | qué falta hacer, y **de qué entidad salió** |
 | Personas del sistema | `membresia` *(de la base)* | quién entra y con qué rol |
@@ -113,7 +115,7 @@ foreign key (negocio_id, cliente_id) references cliente (negocio_id, id)
 Así la base garantiza por construcción que el paciente es del mismo centro que
 la cita. No hay forma de escribir la fila mala — ni desde el servidor.
 
-Hay **doce** de estas llaves, una por cada relación entre tablas. Lo encontraron
+Hay una de estas llaves por cada relación entre tablas. Lo encontraron
 dos ataques que estaban escritos antes que el código.
 
 ---
@@ -137,9 +139,11 @@ Aquí es una transacción de la base de datos: **pasa entera o no pasa.**
 
 | Operación | Qué garantiza |
 |---|---|
+| `registrar_venta(...)` | **la operación completa en un acto**: precio del servidor, stock, cupo, totales, pagos, inventario, inscripción y caja — y una llave de idempotencia que impide que el doble clic cobre dos veces |
 | `cobrar_venta(id)` | total calculado, stock bajado con bloqueo de renglón, ingreso en caja, todo o nada |
-| `cancelar_venta(id)` | stock devuelto, egreso contrario en caja |
-| `siguiente_folio()` | la serie no recicla un folio aunque se cancele la venta |
+| `cancelar_venta(id)` | stock devuelto con movimiento contrario, inscripción dada de baja, egreso contrario en caja |
+| `guardar_cotizacion(...)` | una propuesta que **no mueve nada**: ni stock, ni caja, ni cupo |
+| `siguiente_folio()` | un contador con candado por centro: dos cajas simultáneas salen con folios distintos |
 | `resumen_inicio()` | todo el tablero en **un** viaje al servidor |
 
 Y dos disparadores que no hay que acordarse de llamar: **un gasto crea su egreso
@@ -199,13 +203,13 @@ historial.
 
 | Bloque | Qué trae |
 |---|---|
-| **0** ✅ | Arquitectura, esquema completo, reglas de acceso, operaciones, 55 ataques |
-| 1 | El armazón de la aplicación: sesión, marco, menú, rutas |
+| **0** ✅ | Arquitectura, esquema completo, reglas de acceso, operaciones, 157 ataques |
+| **1** ✅ | El armazón de la aplicación: sesión, marco, menú, rutas |
 | **2** ✅ | **Clientes** — el expediente comercial |
-| 3 | Servicios y Cursos |
-| 4 | Agenda |
-| 5 | Productos |
-| 6 | Ventas, Pagos y Caja |
+| **3** ✅ | **Servicios y Cursos** |
+| **4** ✅ | **Agenda** |
+| **5** ✅ | **Productos** |
+| **6** ✅ | **Ventas, Pagos y Caja** |
 | 7 | Gastos y Recordatorios |
 | **8** ✅ | **Inicio** — el tablero, el buscador global y los avisos |
 | 9 | Reportes · 10 · Configuración · 11 · Mensajes · 12 · Publicación |

@@ -16,7 +16,7 @@ const SERVICIOS = [
   { id: 's1', nombre: 'Sesión larga', duracionMin: 90, precioCentavos: 120000, activo: true },
   { id: 's2', nombre: 'Servicio apagado', duracionMin: 60, precioCentavos: 0, activo: false },
 ];
-const PROFESIONALES = [{ id: 'p1', nombre: 'Terapeuta A', rol: 'dueno' }];
+const PROFESIONALES = [{ id: 'p1', nombre: 'Terapeuta A', rol: 'dueno', usuarioId: 'u1' }];
 
 const VACIO: ValoresDeCita = {
   clienteId: '', servicioId: '', profesionalId: '', fecha: '10/07/2026',

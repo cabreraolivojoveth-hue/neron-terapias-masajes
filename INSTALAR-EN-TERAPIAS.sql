@@ -431,7 +431,14 @@ create table if not exists movimiento_caja (
   tipo           text not null check (tipo in ('ingreso', 'egreso')),
   -- DE DONDE VIENE. Esto es lo que hace auditable la caja: cada movimiento
   -- sabe que operacion lo produjo.
-  origen         text not null check (origen in ('venta', 'gasto', 'ajuste')),
+  -- DE DONDE VIENE. Esto es lo que hace auditable la caja: cada movimiento
+  -- sabe que operacion lo produjo.
+  --
+  -- `pago` se agrego con Ventas: un PAGO MIXTO son dos pagos de la misma
+  -- venta, y con el movimiento colgado de la venta el indice unico solo dejaba
+  -- entrar el primero. Colgado del pago, cada uno tiene el suyo y el indice
+  -- sigue impidiendo meter el mismo dinero dos veces.
+  origen         text not null check (origen in ('venta', 'gasto', 'ajuste', 'pago')),
   referencia_id  uuid,
   monto_centavos bigint not null check (monto_centavos > 0),
   descripcion    text not null,
@@ -456,6 +463,15 @@ comment on table movimiento_caja is
  * (al cobrar) y su egreso (al cancelar), pero jamas dos ingresos. Es lo que
  * hace que dos clics en "Cobrar" no metan el dinero dos veces.
  */
+-- En una base que ya existia, la restriccion se amplia sin tocar una sola fila.
+do $$ begin
+  if exists (select 1 from pg_constraint where conname = 'movimiento_caja_origen_check') then
+    alter table movimiento_caja drop constraint movimiento_caja_origen_check;
+  end if;
+  alter table movimiento_caja add constraint movimiento_caja_origen_check
+    check (origen in ('venta', 'gasto', 'ajuste', 'pago'));
+end $$;
+
 create unique index if not exists movimiento_caja_unico_por_origen
   on movimiento_caja (negocio_id, origen, referencia_id, tipo)
   where referencia_id is not null;
@@ -3848,6 +3864,985 @@ $$;
 comment on function public.cobrar_venta is
   'Todo o nada: total calculado en el servidor, inventario bajado POR SU PUERTA —con movimiento y '
   'sin dejarlo negativo—, costo congelado e ingreso en caja.';
+
+-- =====================================================================
+-- VENTAS — la operacion comercial, en un solo acto
+-- =====================================================================
+--
+-- VENTAS ORQUESTA; NO ES DUEÑA DE CASI NADA. El cliente es de Clientes, el
+-- servicio de Servicios, el producto y su stock de Productos, el cupo de
+-- Cursos, el dinero de Caja. Aqui se JUNTAN, y lo unico propio es:
+--
+--   venta        la operacion: quien, cuando, cuanto.
+--   venta_item   la FOTO de cada concepto vendido: nombre, precio y costo
+--                del dia, para que la historia no se reescriba.
+--   pago         COMO se pago. Varios renglones = pago mixto.
+--   cotizacion   lo mismo, pero sin efecto: ni stock, ni caja, ni cupo.
+--
+-- LA REGLA QUE LO SOSTIENE TODO: `registrar_venta` es UNA transaccion. Valida
+-- el stock, valida el cupo, calcula los totales EN EL SERVIDOR, guarda la
+-- venta, mueve el inventario, inscribe en el curso, registra los pagos y mete
+-- el dinero a la caja. Pasa entero o no pasa nada.
+--
+-- La forma obvia —varias llamadas desde el navegador— deja el sistema partido
+-- en cuanto una falle: venta cobrada sin bajar stock, o stock bajado sin
+-- ingreso en caja. Y nadie se entera hasta que el inventario no cuadra tres
+-- meses despues.
+
+-- ---------------------------------------------------------------------
+-- LAS COLUMNAS QUE LE FALTABAN A LA VENTA
+-- ---------------------------------------------------------------------
+alter table venta add column if not exists vendedor_id uuid;
+alter table venta add column if not exists subtotal_centavos bigint not null default 0;
+alter table venta add column if not exists descuento_centavos bigint not null default 0;
+alter table venta add column if not exists impuesto_centavos bigint not null default 0;
+-- Lo que se recibio en efectivo. NO es el ingreso: si el cliente da mil por
+-- una venta de novecientos, el ingreso son novecientos y cien son su cambio.
+alter table venta add column if not exists efectivo_recibido_centavos bigint;
+alter table venta add column if not exists notas text;
+alter table venta add column if not exists cancelada_motivo text;
+
+-- LA LLAVE DE IDEMPOTENCIA — contra el doble clic.
+--
+-- Sin esto, dos clics rapidos en "Finalizar venta" crean DOS ventas, bajan el
+-- stock DOS veces y meten el dinero DOS veces a la caja. El boton deshabilitado
+-- ayuda, pero no es la defensa: una red lenta reintenta sola, y la pestaña de
+-- al lado no sabe nada del boton de esta.
+--
+-- El indice unico es la defensa de verdad: la segunda peticion con la misma
+-- llave no crea nada, devuelve la venta que ya existe.
+alter table venta add column if not exists llave_idempotencia text;
+create unique index if not exists venta_llave_unica
+  on venta (negocio_id, llave_idempotencia) where llave_idempotencia is not null;
+
+alter table venta drop constraint if exists venta_vendedor_mismo_negocio;
+alter table venta add constraint venta_vendedor_mismo_negocio
+  foreign key (negocio_id, vendedor_id) references membresia (negocio_id, id)
+  on delete set null (vendedor_id);
+
+create index if not exists venta_fecha_idx on venta (negocio_id, fecha desc) where not eliminado;
+
+-- EL METODO SE GUARDA EN LA CAJA. Tarjeta y efectivo son los dos ingresos,
+-- pero solo uno esta fisicamente en el cajon: sin esta columna, un corte de
+-- caja fisico tendria que adivinar cual fue cual.
+alter table movimiento_caja add column if not exists metodo text;
+
+-- ---------------------------------------------------------------------
+-- LAS COTIZACIONES — lo mismo, pero SIN efecto
+-- ---------------------------------------------------------------------
+--
+-- ENTIDAD APARTE, no una venta en estado raro. Una cotizacion guardada como
+-- "venta borrador" acabaria contada en algun reporte de ingresos el dia que
+-- alguien olvide filtrar el estado — y no es dinero, es una propuesta.
+--
+create table if not exists cotizacion (
+  id                 uuid primary key default gen_random_uuid(),
+  negocio_id         text not null references negocio(id) on delete cascade,
+  folio              text not null,
+  cliente_id         uuid,
+  vendedor_id        uuid,
+  fecha              date not null default current_date,
+  vence              date,
+  subtotal_centavos  bigint not null default 0,
+  descuento_centavos bigint not null default 0,
+  impuesto_centavos  bigint not null default 0,
+  total_centavos     bigint not null default 0,
+  estado             text not null default 'abierta'
+                     check (estado in ('abierta', 'aceptada', 'vencida', 'cancelada', 'convertida')),
+  notas              text,
+  venta_id           uuid,
+  eliminado          boolean not null default false,
+  creado_en          timestamptz not null default now(),
+  unique (negocio_id, folio)
+);
+
+comment on table cotizacion is
+  'Entidad APARTE, no una venta en estado raro: una cotizacion guardada como venta borrador acaba '
+  'contada en algun reporte de ingresos el dia que alguien olvide filtrar el estado.';
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'cotizacion_negocio_id_unico') then
+    alter table cotizacion add constraint cotizacion_negocio_id_unico unique (negocio_id, id);
+  end if;
+end $$;
+
+alter table cotizacion drop constraint if exists cotizacion_cliente_mismo_negocio;
+alter table cotizacion add constraint cotizacion_cliente_mismo_negocio
+  foreign key (negocio_id, cliente_id) references cliente (negocio_id, id)
+  on delete set null (cliente_id);
+
+create index if not exists cotizacion_idx on cotizacion (negocio_id, fecha desc) where not eliminado;
+
+create table if not exists cotizacion_item (
+  id                       uuid primary key default gen_random_uuid(),
+  negocio_id               text not null references negocio(id) on delete cascade,
+  cotizacion_id            uuid not null,
+  tipo                     text not null check (tipo in ('producto', 'servicio', 'curso')),
+  producto_id              uuid,
+  servicio_id              uuid,
+  curso_id                 uuid,
+  descripcion              text not null,
+  cantidad                 numeric(12, 3) not null check (cantidad > 0),
+  precio_unitario_centavos bigint not null check (precio_unitario_centavos >= 0),
+  descuento_centavos       bigint not null default 0,
+  subtotal_centavos        bigint not null check (subtotal_centavos >= 0)
+);
+
+alter table cotizacion_item drop constraint if exists ci_cotizacion_mismo_negocio;
+alter table cotizacion_item add constraint ci_cotizacion_mismo_negocio
+  foreign key (negocio_id, cotizacion_id) references cotizacion (negocio_id, id) on delete cascade;
+
+create index if not exists cotizacion_item_idx on cotizacion_item (negocio_id, cotizacion_id);
+
+alter table cotizacion      enable row level security;
+alter table cotizacion      force row level security;
+alter table cotizacion_item enable row level security;
+alter table cotizacion_item force row level security;
+revoke all on cotizacion, cotizacion_item from anon;
+grant select, insert, update, delete on cotizacion, cotizacion_item to authenticated;
+
+drop policy if exists cotizacion_leer on cotizacion;
+create policy cotizacion_leer on cotizacion
+  for select to authenticated using (app.es_miembro(negocio_id));
+drop policy if exists cotizacion_escribir on cotizacion;
+create policy cotizacion_escribir on cotizacion
+  for all to authenticated
+  using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'cobrar'))
+  with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'cobrar')
+              and app.licencia_permite(negocio_id));
+
+drop policy if exists cotizacion_item_leer on cotizacion_item;
+create policy cotizacion_item_leer on cotizacion_item
+  for select to authenticated using (app.es_miembro(negocio_id));
+drop policy if exists cotizacion_item_escribir on cotizacion_item;
+create policy cotizacion_item_escribir on cotizacion_item
+  for all to authenticated
+  using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'cobrar'))
+  with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'cobrar')
+              and app.licencia_permite(negocio_id));
+
+-- ---------------------------------------------------------------------
+-- EL FOLIO DE COTIZACION — el mismo contador con candado
+-- ---------------------------------------------------------------------
+create or replace function public.siguiente_folio_cotizacion(p_negocio text)
+returns text
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare v_n int;
+begin
+  if not app.es_miembro(p_negocio) then
+    raise exception 'No perteneces a este negocio.' using errcode = 'insufficient_privilege';
+  end if;
+  insert into contador_de_folio (negocio_id, ambito, ultimo)
+  values (p_negocio, 'cotizacion',
+          coalesce((select max(nullif(regexp_replace(folio, '\D', '', 'g'), '')::int)
+                    from cotizacion where negocio_id = p_negocio), 0) + 1)
+  on conflict (negocio_id, ambito) do update
+     set ultimo = contador_de_folio.ultimo + 1
+  returning ultimo into v_n;
+  return 'C-' || lpad(v_n::text, 5, '0');
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- EL PRECIO DE UN CONCEPTO — resuelto en el SERVIDOR
+-- ---------------------------------------------------------------------
+--
+-- El navegador manda QUE se vende y CUANTO, nunca a que precio. Aceptar el
+-- precio del navegador es dejar que el cliente decida cuanto paga.
+--
+create or replace function app.precio_del_concepto(
+  p_negocio text, p_tipo text, p_id uuid, p_hoy date
+)
+returns table (precio bigint, costo bigint, nombre text)
+language plpgsql
+stable
+as $$
+begin
+  if p_tipo = 'producto' then
+    return query
+      select pr.precio_centavos, pr.costo_centavos, pr.nombre
+      from producto pr
+      where pr.id = p_id and pr.negocio_id = p_negocio and not pr.eliminado and pr.activo;
+  elsif p_tipo = 'servicio' then
+    return query
+      -- La promocion la resuelve la base, no la pantalla: si cada una la
+      -- resolviera, el dia que cambie la regla una cobraria de mas.
+      select app.precio_efectivo(s.precio_centavos, s.precio_promocional_centavos,
+                                 s.promocion_desde, s.promocion_hasta, p_hoy),
+             null::bigint, s.nombre
+      from servicio s
+      where s.id = p_id and s.negocio_id = p_negocio and not s.eliminado and s.activo;
+  elsif p_tipo = 'curso' then
+    return query
+      select c.precio_centavos, null::bigint, c.nombre
+      from curso c
+      where c.id = p_id and c.negocio_id = p_negocio and not c.eliminado and c.activo
+        and c.estado <> 'cancelado';
+  end if;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- REGISTRAR UNA VENTA — TODO EN UN SOLO ACTO
+-- ---------------------------------------------------------------------
+--
+-- Esta funcion es el corazon del sistema. Hace, en una sola transaccion:
+--
+--   1. los porteros y el aislamiento entre centros
+--   2. la IDEMPOTENCIA: la misma llave no crea dos ventas
+--   3. resuelve el precio de cada concepto EN EL SERVIDOR
+--   4. valida el stock de cada producto
+--   5. valida el cupo de cada curso
+--   6. calcula subtotal, descuento y total — el navegador no decide
+--   7. comprueba que los pagos cuadren
+--   8. guarda la venta con la FOTO de cada renglon (nombre, precio, costo)
+--   9. mueve el inventario, con su movimiento
+--  10. inscribe en el curso, si lo hay
+--  11. registra los pagos y mete el dinero a la caja
+--  12. deja el rastro en la bitacora
+--
+-- Si algo de eso falla, no queda nada a medias.
+--
+create or replace function public.registrar_venta(
+  p_negocio text,
+  p_items jsonb,
+  p_pagos jsonb default '[]'::jsonb,
+  p_cliente uuid default null,
+  p_vendedor uuid default null,
+  p_descuento bigint default 0,
+  p_efectivo_recibido bigint default null,
+  p_notas text default null,
+  p_llave text default null,
+  p_fecha date default current_date
+)
+returns venta
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_venta     venta;
+  v_item      jsonb;
+  v_pago      jsonb;
+  v_precio    bigint;
+  v_costo     bigint;
+  v_nombre    text;
+  v_cantidad  numeric(12,3);
+  v_desc      bigint;
+  v_sub       bigint;
+  v_subtotal  bigint := 0;
+  v_total     bigint;
+  v_pagado    bigint := 0;
+  v_folio     text;
+  v_quien     membresia;
+  v_stock     int;
+  v_curso     curso;
+  v_ocupados  int;
+  v_tipo      text;
+  v_id        uuid;
+  v_aplicado  bigint;
+  v_falta     bigint;
+  v_pago_id   uuid;
+begin
+  /* --- 1. Los porteros ------------------------------------------- */
+  if not app.es_miembro(p_negocio) then
+    raise exception 'Ese centro no es el tuyo.' using errcode = 'insufficient_privilege';
+  end if;
+  if not app.tiene_permiso(p_negocio, 'cobrar') then
+    raise exception 'No tienes permiso para cobrar.' using errcode = 'insufficient_privilege';
+  end if;
+  if not app.licencia_permite(p_negocio) then
+    raise exception 'La licencia no permite registrar operaciones.'
+      using errcode = 'insufficient_privilege';
+  end if;
+
+  /* --- 2. LA IDEMPOTENCIA ---------------------------------------- */
+  -- El doble clic no crea dos ventas: la segunda encuentra la primera y la
+  -- devuelve tal cual. El boton deshabilitado ayuda, pero una red lenta
+  -- reintenta sola y la pestaña de al lado no sabe del boton de esta.
+  if p_llave is not null then
+    select * into v_venta from venta
+     where negocio_id = p_negocio and llave_idempotencia = p_llave;
+    if v_venta.id is not null then
+      return v_venta;
+    end if;
+  end if;
+
+  if p_items is null or jsonb_array_length(p_items) = 0 then
+    raise exception 'No se puede cobrar una venta sin renglones.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  -- El cliente tiene que ser de ESTE centro. Sin esta comprobacion se podria
+  -- cargarle una venta al paciente de otro consultorio.
+  if p_cliente is not null and not exists (
+        select 1 from cliente where id = p_cliente and negocio_id = p_negocio and not eliminado) then
+    raise exception 'Ese cliente no existe en este centro.' using errcode = 'no_data_found';
+  end if;
+
+  v_folio := siguiente_folio(p_negocio);
+
+  insert into venta (negocio_id, folio, cliente_id, vendedor_id, fecha, estado,
+                     notas, llave_idempotencia, creada_por)
+  values (p_negocio, v_folio, p_cliente, p_vendedor, p_fecha, 'borrador',
+          p_notas, p_llave, auth.uid())
+  returning * into v_venta;
+
+  /* --- 3 a 8. Los renglones, con el precio del SERVIDOR ----------- */
+  for v_item in select * from jsonb_array_elements(p_items) loop
+    v_tipo := v_item ->> 'tipo';
+    v_id := (v_item ->> 'id')::uuid;
+    v_cantidad := coalesce((v_item ->> 'cantidad')::numeric, 1);
+    v_desc := coalesce((v_item ->> 'descuento')::bigint, 0);
+
+    if v_cantidad <= 0 then
+      raise exception 'La cantidad tiene que ser mayor que cero.'
+        using errcode = 'invalid_parameter_value';
+    end if;
+
+    select precio, costo, nombre into v_precio, v_costo, v_nombre
+    from app.precio_del_concepto(p_negocio, v_tipo, v_id, p_fecha);
+
+    if v_nombre is null then
+      raise exception 'Uno de los conceptos no existe, no esta activo, o no es de este centro.'
+        using errcode = 'no_data_found';
+    end if;
+
+    -- EL DESCUENTO NO PUEDE PASARSE DEL RENGLON. Un descuento mayor que el
+    -- subtotal daria un renglon negativo, y a partir de ahi el total miente.
+    if v_desc < 0 or v_desc > (v_precio * v_cantidad)::bigint then
+      raise exception 'El descuento de "%" no puede pasar de su importe.', v_nombre
+        using errcode = 'invalid_parameter_value';
+    end if;
+
+    v_sub := (v_precio * v_cantidad)::bigint - v_desc;
+    v_subtotal := v_subtotal + v_sub;
+
+    insert into venta_item (negocio_id, venta_id, tipo,
+                            producto_id, servicio_id, curso_id,
+                            descripcion, cantidad, precio_unitario_centavos,
+                            costo_unitario_centavos, descuento_centavos, subtotal_centavos)
+    values (p_negocio, v_venta.id, v_tipo,
+            case when v_tipo = 'producto' then v_id end,
+            case when v_tipo = 'servicio' then v_id end,
+            case when v_tipo = 'curso'    then v_id end,
+            -- LA FOTO DEL NOMBRE Y DEL PRECIO. No contradice la regla de no
+            -- copiar nombres: es un dato historico distinto del actual. Si el
+            -- precio sube el año que viene, el ticket del año pasado tiene que
+            -- seguir diciendo lo que se cobro ese dia.
+            v_nombre, v_cantidad, v_precio, v_costo, v_desc, v_sub);
+
+    /* --- 9. El inventario, por su unica puerta -------------------- */
+    if v_tipo = 'producto' then
+      perform app.mover_inventario(v_id, 'venta', -v_cantidad::int,
+                                   'Venta ' || v_folio, 'venta', v_venta.id);
+    end if;
+
+    /* --- 10. El cupo del curso, con el renglon bloqueado ---------- */
+    if v_tipo = 'curso' then
+      select * into v_curso from curso where id = v_id for update;
+      v_ocupados := app.lugares_ocupados(v_id);
+      if v_curso.cupo is not null and v_ocupados + v_cantidad > v_curso.cupo then
+        raise exception 'El curso "%" solo tiene % lugares y ya hay % ocupados.',
+          v_curso.nombre, v_curso.cupo, v_ocupados
+          using errcode = 'check_violation';
+      end if;
+      -- UNA INSCRIPCION NECESITA PERSONA. Vender un curso "al mostrador" deja
+      -- un lugar ocupado por nadie, y el sabado sobra una silla.
+      if p_cliente is null then
+        raise exception 'Para vender el curso "%" hace falta decir quien lo toma.', v_curso.nombre
+          using errcode = 'invalid_parameter_value';
+      end if;
+      -- Si ya estaba inscrito no se duplica: se le cobra y ya.
+      if not exists (select 1 from inscripcion
+                      where curso_id = v_id and cliente_id = p_cliente and estado <> 'cancelado') then
+        insert into inscripcion (negocio_id, curso_id, cliente_id, estado, origen, venta_id)
+        values (p_negocio, v_id, p_cliente, 'inscrito', 'venta', v_venta.id);
+      else
+        update inscripcion set venta_id = v_venta.id
+         where curso_id = v_id and cliente_id = p_cliente and estado <> 'cancelado';
+      end if;
+    end if;
+  end loop;
+
+  /* --- 6. Los totales, calculados AQUI ---------------------------- */
+  if p_descuento is null or p_descuento < 0 then
+    raise exception 'El descuento no puede ser negativo.' using errcode = 'invalid_parameter_value';
+  end if;
+  if p_descuento > v_subtotal then
+    raise exception 'El descuento no puede pasar del subtotal.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  -- SIN IMPUESTOS CONFIGURADOS, CERO. No se inventan: si el centro los cobra,
+  -- se declaran en Configuracion y la cifra sale de ahi.
+  v_total := v_subtotal - p_descuento;
+
+  update venta
+     set subtotal_centavos = v_subtotal,
+         descuento_centavos = p_descuento,
+         impuesto_centavos = 0,
+         total_centavos = v_total,
+         efectivo_recibido_centavos = p_efectivo_recibido,
+         estado = 'cobrada',
+         cobrada_en = now()
+   where id = v_venta.id
+  returning * into v_venta;
+
+  /* --- 7 y 11. Los pagos, y de ahi la caja ------------------------ */
+  --
+  -- VARIOS RENGLONES = PAGO MIXTO. Guardar `metodo = 'mixto'` en la venta
+  -- perderia el detalle, y entonces el corte de caja no puede saber cuanto
+  -- entro en efectivo.
+  for v_pago in select * from jsonb_array_elements(coalesce(p_pagos, '[]'::jsonb)) loop
+    v_aplicado := (v_pago ->> 'monto')::bigint;
+    if v_aplicado <= 0 then
+      raise exception 'Un pago tiene que ser mayor que cero.'
+        using errcode = 'invalid_parameter_value';
+    end if;
+    v_pagado := v_pagado + v_aplicado;
+
+    insert into pago (negocio_id, venta_id, metodo, monto_centavos, fecha)
+    values (p_negocio, v_venta.id, v_pago ->> 'metodo', v_aplicado, p_fecha)
+    returning id into v_pago_id;
+
+    -- LA CAJA NACE DEL PAGO, no de la venta.
+    --
+    -- Con el movimiento colgado de la VENTA, un pago mixto reventaba: el
+    -- indice unico de la caja solo dejaba entrar el primero de los dos. Y
+    -- colgarlo de la venta ademas impide saber cuanto entro en efectivo, que
+    -- es justo lo que un corte de caja necesita.
+    insert into movimiento_caja (negocio_id, tipo, origen, referencia_id, monto_centavos,
+                                 descripcion, fecha, metodo, creado_por)
+    values (p_negocio, 'ingreso', 'pago', v_pago_id, v_aplicado,
+            'Venta ' || v_folio, p_fecha, v_pago ->> 'metodo', auth.uid());
+  end loop;
+
+  -- EL CAMBIO NO ES INGRESO. Si el cliente da mil por una venta de
+  -- novecientos, entraron novecientos: los cien son suyos. Por eso lo que se
+  -- registra es lo APLICADO, y `efectivo_recibido` se guarda aparte solo para
+  -- poder imprimir el ticket.
+  v_falta := v_total - v_pagado;
+  if v_falta <> 0 then
+    -- El mensaje va en pesos y con dos decimales: "suman 1.0000000000" no le
+    -- dice nada a quien esta cobrando en un mostrador.
+    raise exception 'Los pagos suman $% y el total es $%.',
+      to_char(v_pagado::numeric / 100, 'FM999999990.00'),
+      to_char(v_total::numeric / 100, 'FM999999990.00')
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  /* --- 12. La bitacora -------------------------------------------- */
+  select * into v_quien from membresia
+   where negocio_id = p_negocio and usuario_id = auth.uid() limit 1;
+
+  insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
+                         entidad, antes, despues)
+  values (p_negocio, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
+          coalesce((select r.etiqueta from rol r
+                     where r.negocio_id = v_quien.negocio_id and r.id = v_quien.rol),
+                    v_quien.rol, 'desconocido'),
+          'ventas', 'cobrar', v_venta.id::text, null,
+          jsonb_build_object('folio', v_folio, 'total', v_total,
+                             'descuento', p_descuento, 'clienteId', p_cliente));
+
+  return v_venta;
+end;
+$$;
+
+comment on function public.registrar_venta is
+  'UNA transaccion: valida stock y cupo, calcula los totales EN EL SERVIDOR, guarda la foto de '
+  'cada renglon, mueve el inventario, inscribe en el curso, registra los pagos y mete el dinero a '
+  'la caja. Pasa entero o no pasa nada. La llave de idempotencia impide que el doble clic cobre '
+  'dos veces.';
+
+-- ---------------------------------------------------------------------
+-- LAS VENTAS DE UN RANGO
+-- ---------------------------------------------------------------------
+create or replace function public.ventas_del_rango(
+  p_negocio text,
+  p_desde date,
+  p_hasta date,
+  p_busqueda text default null,
+  p_estado text default null,
+  p_vendedor uuid default null,
+  p_cliente uuid default null,
+  p_metodo text default null,
+  p_pagina int default 1,
+  p_por_pagina int default 25
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  with base as (
+    select v.*,
+      (select c.nombre from cliente c where c.id = v.cliente_id) as cliente,
+      (select m.nombre from membresia m where m.id = v.vendedor_id) as vendedor,
+      -- Los metodos se juntan al leer. Guardar "mixto" en la venta perderia el
+      -- detalle que el corte de caja necesita.
+      (select string_agg(distinct p.metodo, ', ') from pago p where p.venta_id = v.id) as metodos,
+      (select count(*) from venta_item i where i.venta_id = v.id) as renglones
+    from venta v
+    where v.negocio_id = p_negocio
+      and not v.eliminado
+      and v.fecha between p_desde and p_hasta
+      and (p_estado is null or v.estado = p_estado)
+      and (p_vendedor is null or v.vendedor_id = p_vendedor)
+      and (p_cliente is null or v.cliente_id = p_cliente)
+      and (p_metodo is null or exists (
+            select 1 from pago p where p.venta_id = v.id and p.metodo = p_metodo))
+      and (p_busqueda is null or (
+            v.folio ilike '%' || p_busqueda || '%'
+         or exists (select 1 from cliente c where c.id = v.cliente_id
+                     and c.nombre ilike '%' || p_busqueda || '%')
+         or exists (select 1 from venta_item i where i.venta_id = v.id
+                     and i.descripcion ilike '%' || p_busqueda || '%')))
+  )
+  select jsonb_build_object(
+    'total', (select count(*) from base),
+    'filas', coalesce((
+      select jsonb_agg(t.x order by t.orden desc)
+      from (
+        select jsonb_build_object(
+          'id', b.id, 'folio', b.folio, 'fecha', b.fecha,
+          'clienteId', b.cliente_id, 'cliente', b.cliente,
+          'vendedor', b.vendedor,
+          'renglones', b.renglones,
+          'subtotalCentavos', b.subtotal_centavos,
+          'descuentoCentavos', b.descuento_centavos,
+          'totalCentavos', b.total_centavos,
+          'metodos', b.metodos,
+          'estado', b.estado,
+          'creadoEn', b.creado_en
+        ) as x, b.creado_en as orden
+        from base b
+        order by b.creado_en desc
+        limit greatest(p_por_pagina, 1)
+        offset greatest(p_pagina - 1, 0) * greatest(p_por_pagina, 1)
+      ) t
+    ), '[]'::jsonb)
+  );
+$$;
+
+-- ---------------------------------------------------------------------
+-- LAS CIFRAS DEL DIA
+-- ---------------------------------------------------------------------
+--
+-- CADA CIFRA DICE QUE CUENTA. "Ventas: 5" es transacciones; "Servicios: 3" son
+-- unidades de servicio vendidas. Mezclarlas hace que dos personas lean el
+-- mismo tablero y entiendan cosas distintas.
+--
+-- Y SOLO LAS COBRADAS. Una cancelada no es un ingreso; contarla infla el dia y
+-- el mes.
+--
+create or replace function public.resumen_de_ventas(
+  p_negocio text, p_dia date default current_date
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  with v as (
+    select * from venta
+    where negocio_id = p_negocio and fecha = p_dia and estado = 'cobrada' and not eliminado
+  ),
+  i as (
+    select vi.* from venta_item vi join v on v.id = vi.venta_id
+  )
+  select jsonb_build_object(
+    'ventas', (select count(*) from v),
+    'totalCentavos', (select coalesce(sum(total_centavos), 0) from v),
+    'servicios', (select coalesce(sum(cantidad), 0)::int from i where tipo = 'servicio'),
+    'serviciosCentavos', (select coalesce(sum(subtotal_centavos), 0) from i where tipo = 'servicio'),
+    'productos', (select coalesce(sum(cantidad), 0)::int from i where tipo = 'producto'),
+    'productosCentavos', (select coalesce(sum(subtotal_centavos), 0) from i where tipo = 'producto'),
+    'cursos', (select coalesce(sum(cantidad), 0)::int from i where tipo = 'curso'),
+    'cursosCentavos', (select coalesce(sum(subtotal_centavos), 0) from i where tipo = 'curso'),
+    -- El ticket promedio necesita ventas: sin ellas es `null`, no cero.
+    'ticketPromedio', (
+      select case when count(*) = 0 then null
+                  else round(sum(total_centavos)::numeric / count(*)) end from v
+    )
+  );
+$$;
+
+-- ---------------------------------------------------------------------
+-- LA FICHA DE UNA VENTA
+-- ---------------------------------------------------------------------
+create or replace function public.ficha_de_venta(p_venta uuid)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select jsonb_build_object(
+    'id', v.id, 'folio', v.folio, 'fecha', v.fecha, 'estado', v.estado,
+    'clienteId', v.cliente_id,
+    'cliente', (select c.nombre from cliente c where c.id = v.cliente_id),
+    'clienteTelefono', (select c.telefono from cliente c where c.id = v.cliente_id),
+    'vendedorId', v.vendedor_id,
+    'vendedor', (select m.nombre from membresia m where m.id = v.vendedor_id),
+    'subtotalCentavos', v.subtotal_centavos,
+    'descuentoCentavos', v.descuento_centavos,
+    'impuestoCentavos', v.impuesto_centavos,
+    'totalCentavos', v.total_centavos,
+    'efectivoRecibidoCentavos', v.efectivo_recibido_centavos,
+    'notas', v.notas,
+    'canceladaMotivo', v.cancelada_motivo,
+    'creadoEn', v.creado_en,
+    'canceladaEn', v.cancelada_en,
+    -- Los renglones con su precio HISTORICO, el que se cobro ese dia.
+    'items', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', i.id, 'tipo', i.tipo, 'descripcion', i.descripcion,
+        'cantidad', i.cantidad,
+        'precioUnitario', i.precio_unitario_centavos,
+        'descuento', i.descuento_centavos,
+        'subtotal', i.subtotal_centavos,
+        -- El costo solo a quien puede verlo: con el se calcula la utilidad.
+        'costoUnitario', case when app.puede_ver_costos(v.negocio_id)
+                              then i.costo_unitario_centavos else null end
+      ) order by i.id)
+      from venta_item i where i.venta_id = v.id
+    ), '[]'::jsonb),
+    'pagos', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', p.id, 'metodo', p.metodo, 'montoCentavos', p.monto_centavos
+      ) order by p.creado_en)
+      from pago p where p.venta_id = v.id
+    ), '[]'::jsonb)
+  )
+  from venta v
+  where v.id = p_venta and not v.eliminado;
+$$;
+
+-- ---------------------------------------------------------------------
+-- CANCELAR UNA VENTA REGISTRADA
+-- ---------------------------------------------------------------------
+--
+-- `cancelar_venta` ya devuelve el stock con un movimiento contrario y agrega
+-- el egreso a caja. Le falta lo de Cursos: una inscripcion pagada con una
+-- venta cancelada no puede seguir ocupando lugar.
+--
+create or replace function public.cancelar_venta(p_venta uuid, p_motivo text default null)
+returns venta
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_venta venta;
+  v_item  record;
+begin
+  select * into v_venta from venta where id = p_venta and not eliminado;
+  if v_venta.id is null then
+    raise exception 'La venta no existe.' using errcode = 'no_data_found';
+  end if;
+  if not app.es_miembro(v_venta.negocio_id) then
+    raise exception 'Esta venta no es de tu negocio.' using errcode = 'insufficient_privilege';
+  end if;
+  if not app.tiene_permiso(v_venta.negocio_id, 'cobrar') then
+    raise exception 'No tienes permiso para cancelar ventas.'
+      using errcode = 'insufficient_privilege';
+  end if;
+  if v_venta.estado <> 'cobrada' then
+    raise exception 'Solo se cancela una venta cobrada; esta esta %.', v_venta.estado
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  -- EL INVENTARIO REGRESA CON UN MOVIMIENTO CONTRARIO, no borrando el de la
+  -- venta: el de la venta ocurrio de verdad.
+  for v_item in
+    select producto_id, sum(cantidad)::int as cantidad
+    from venta_item
+    where venta_id = p_venta and tipo = 'producto' and producto_id is not null
+    group by producto_id
+  loop
+    perform app.mover_inventario(v_item.producto_id, 'devolucion', v_item.cantidad,
+                                 'Cancelacion de venta ' || v_venta.folio, 'venta', v_venta.id);
+  end loop;
+
+  -- LA INSCRIPCION QUE PAGO ESTA VENTA SE DA DE BAJA: si no, el lugar sigue
+  -- ocupado por alguien que ya no pago y el sabado falta una silla. NO se
+  -- borra: se cancela, y el rastro de que estuvo inscrita se conserva.
+  update inscripcion set estado = 'cancelado'
+   where venta_id = p_venta and estado <> 'cancelado';
+
+  -- Y la caja NO se corrige: se le agrega el movimiento contrario.
+  insert into movimiento_caja (negocio_id, tipo, origen, referencia_id, monto_centavos,
+                               descripcion, fecha, creado_por)
+  values (v_venta.negocio_id, 'egreso', 'venta', v_venta.id, v_venta.total_centavos,
+          'Cancelacion de venta ' || v_venta.folio || coalesce(' — ' || p_motivo, ''),
+          current_date, auth.uid());
+
+  update venta set estado = 'cancelada', cancelada_en = now(), cancelada_motivo = p_motivo
+   where id = p_venta
+  returning * into v_venta;
+
+  return v_venta;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- LAS COTIZACIONES — guardar, listar y convertir
+-- ---------------------------------------------------------------------
+create or replace function public.guardar_cotizacion(
+  p_negocio text,
+  p_items jsonb,
+  p_cliente uuid default null,
+  p_vendedor uuid default null,
+  p_descuento bigint default 0,
+  p_notas text default null,
+  p_vence date default null,
+  p_fecha date default current_date
+)
+returns cotizacion
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_c        cotizacion;
+  v_item     jsonb;
+  v_precio   bigint;
+  v_costo    bigint;
+  v_nombre   text;
+  v_cantidad numeric(12,3);
+  v_desc     bigint;
+  v_sub      bigint;
+  v_subtotal bigint := 0;
+  v_tipo     text;
+  v_id       uuid;
+begin
+  if not app.tiene_permiso(p_negocio, 'cobrar') then
+    raise exception 'No tienes permiso para cotizar.' using errcode = 'insufficient_privilege';
+  end if;
+  if p_items is null or jsonb_array_length(p_items) = 0 then
+    raise exception 'Una cotizacion necesita al menos un renglon.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  insert into cotizacion (negocio_id, folio, cliente_id, vendedor_id, fecha, vence, notas)
+  values (p_negocio, siguiente_folio_cotizacion(p_negocio), p_cliente, p_vendedor,
+          p_fecha, p_vence, p_notas)
+  returning * into v_c;
+
+  for v_item in select * from jsonb_array_elements(p_items) loop
+    v_tipo := v_item ->> 'tipo';
+    v_id := (v_item ->> 'id')::uuid;
+    v_cantidad := coalesce((v_item ->> 'cantidad')::numeric, 1);
+    v_desc := coalesce((v_item ->> 'descuento')::bigint, 0);
+
+    select precio, costo, nombre into v_precio, v_costo, v_nombre
+    from app.precio_del_concepto(p_negocio, v_tipo, v_id, p_fecha);
+    if v_nombre is null then
+      raise exception 'Uno de los conceptos no existe o no es de este centro.'
+        using errcode = 'no_data_found';
+    end if;
+
+    v_sub := (v_precio * v_cantidad)::bigint - v_desc;
+    v_subtotal := v_subtotal + v_sub;
+
+    insert into cotizacion_item (negocio_id, cotizacion_id, tipo,
+                                 producto_id, servicio_id, curso_id,
+                                 descripcion, cantidad, precio_unitario_centavos,
+                                 descuento_centavos, subtotal_centavos)
+    values (p_negocio, v_c.id, v_tipo,
+            case when v_tipo = 'producto' then v_id end,
+            case when v_tipo = 'servicio' then v_id end,
+            case when v_tipo = 'curso'    then v_id end,
+            v_nombre, v_cantidad, v_precio, v_desc, v_sub);
+  end loop;
+
+  update cotizacion
+     set subtotal_centavos = v_subtotal,
+         descuento_centavos = coalesce(p_descuento, 0),
+         total_centavos = v_subtotal - coalesce(p_descuento, 0)
+   where id = v_c.id
+  returning * into v_c;
+
+  -- UNA COTIZACION NO MUEVE NADA: ni stock, ni caja, ni cupo. Es una
+  -- propuesta, no una operacion.
+  return v_c;
+end;
+$$;
+
+comment on function public.guardar_cotizacion is
+  'Una cotizacion NO mueve nada: ni stock, ni caja, ni cupo. Es una propuesta. Al convertirla se '
+  'vuelve a validar todo, porque entre la propuesta y el si pudo cambiar el precio o acabarse el '
+  'producto.';
+
+create or replace function public.cotizaciones_del_centro(
+  p_negocio text, p_estado text default null, p_hoy date default current_date
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', c.id, 'folio', c.folio, 'fecha', c.fecha, 'vence', c.vence,
+    'clienteId', c.cliente_id,
+    'cliente', (select cl.nombre from cliente cl where cl.id = c.cliente_id),
+    'vendedor', (select m.nombre from membresia m where m.id = c.vendedor_id),
+    'totalCentavos', c.total_centavos,
+    -- VENCIDA SE DERIVA de la fecha, no se guarda: un estado guardado a mano
+    -- se queda viejo el primer lunes que nadie entra al sistema.
+    'estado', case when c.estado = 'abierta' and c.vence is not null and c.vence < p_hoy
+                   then 'vencida' else c.estado end,
+    'ventaId', c.venta_id,
+    'renglones', (select count(*) from cotizacion_item i where i.cotizacion_id = c.id)
+  ) order by c.creado_en desc), '[]'::jsonb)
+  from cotizacion c
+  where c.negocio_id = p_negocio and not c.eliminado
+    and (p_estado is null or c.estado = p_estado);
+$$;
+
+create or replace function public.items_de_cotizacion(p_cotizacion uuid)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'tipo', i.tipo,
+    'id', coalesce(i.producto_id, i.servicio_id, i.curso_id),
+    'descripcion', i.descripcion,
+    'cantidad', i.cantidad,
+    'precioUnitario', i.precio_unitario_centavos,
+    'descuento', i.descuento_centavos,
+    'subtotal', i.subtotal_centavos
+  ) order by i.id), '[]'::jsonb)
+  from cotizacion_item i where i.cotizacion_id = p_cotizacion;
+$$;
+
+create or replace function public.marcar_cotizacion(p_cotizacion uuid, p_estado text)
+returns cotizacion
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare v_c cotizacion;
+begin
+  select * into v_c from cotizacion where id = p_cotizacion and not eliminado;
+  if v_c.id is null then
+    raise exception 'Esa cotizacion no existe.' using errcode = 'no_data_found';
+  end if;
+  if not app.tiene_permiso(v_c.negocio_id, 'cobrar') then
+    raise exception 'No tienes permiso para administrar cotizaciones.'
+      using errcode = 'insufficient_privilege';
+  end if;
+  if p_estado not in ('abierta', 'aceptada', 'cancelada') then
+    raise exception 'Ese estado de cotizacion no existe.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+  -- Una cotizacion CONVERTIDA no vuelve atras: ya hay una venta detras.
+  if v_c.estado = 'convertida' then
+    raise exception 'Esa cotizacion ya se convirtio en la venta.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+  update cotizacion set estado = p_estado where id = p_cotizacion returning * into v_c;
+  return v_c;
+end;
+$$;
+
+create or replace function public.marcar_cotizacion_convertida(p_cotizacion uuid, p_venta uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare v_c cotizacion;
+begin
+  select * into v_c from cotizacion where id = p_cotizacion;
+  if v_c.id is null then return; end if;
+  if not app.tiene_permiso(v_c.negocio_id, 'cobrar') then
+    raise exception 'No tienes permiso.' using errcode = 'insufficient_privilege';
+  end if;
+  update cotizacion set estado = 'convertida', venta_id = p_venta where id = p_cotizacion;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- EL CATALOGO VENDIBLE — lo unico que Ventas necesita de los tres modulos
+-- ---------------------------------------------------------------------
+--
+-- UNA SOLA CONSULTA para servicios, productos y cursos. Ventas NO mantiene sus
+-- propios catalogos: los pide. Y solo lo VENDIBLE — un producto agotado o un
+-- curso lleno no se ofrece, para que el rechazo no llegue al final.
+--
+create or replace function public.catalogo_vendible(
+  p_negocio text, p_busqueda text default null, p_tipo text default null,
+  p_hoy date default current_date
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select coalesce(jsonb_agg(x order by x ->> 'nombre'), '[]'::jsonb) from (
+    select jsonb_build_object(
+      'tipo', 'servicio', 'id', s.id, 'nombre', s.nombre,
+      'detalle', s.descripcion,
+      'precioCentavos', app.precio_efectivo(s.precio_centavos, s.precio_promocional_centavos,
+                                            s.promocion_desde, s.promocion_hasta, p_hoy),
+      'disponible', null::int, 'codigo', null::text
+    ) as x
+    from servicio s
+    where s.negocio_id = p_negocio and not s.eliminado and s.activo
+      and (p_tipo is null or p_tipo = 'servicio')
+      and (p_busqueda is null or s.nombre ilike '%' || p_busqueda || '%')
+
+    union all
+    select jsonb_build_object(
+      'tipo', 'producto', 'id', pr.id, 'nombre', pr.nombre,
+      'detalle', pr.descripcion,
+      'precioCentavos', pr.precio_centavos,
+      -- CUANTO QUEDA, para que la pantalla no ofrezca de mas y el rechazo no
+      -- llegue hasta el final.
+      'disponible', pr.stock_actual, 'codigo', pr.sku
+    )
+    from producto pr
+    where pr.negocio_id = p_negocio and not pr.eliminado and pr.activo
+      and (p_tipo is null or p_tipo = 'producto')
+      and (p_busqueda is null or pr.nombre ilike '%' || p_busqueda || '%'
+                              or pr.sku ilike '%' || p_busqueda || '%'
+                              or pr.codigo_barras ilike '%' || p_busqueda || '%')
+
+    union all
+    select jsonb_build_object(
+      'tipo', 'curso', 'id', c.id, 'nombre', c.nombre,
+      'detalle', c.subtitulo,
+      'precioCentavos', c.precio_centavos,
+      'disponible', case when c.cupo is null then null
+                         else greatest(c.cupo - app.lugares_ocupados(c.id), 0) end,
+      'codigo', null::text
+    )
+    from curso c
+    where c.negocio_id = p_negocio and not c.eliminado and c.activo
+      and c.estado <> 'cancelado'
+      -- Un curso que ya termino no se vende.
+      and coalesce(c.fecha_fin, c.fecha_inicio) >= p_hoy
+      and (p_tipo is null or p_tipo = 'curso')
+      and (p_busqueda is null or c.nombre ilike '%' || p_busqueda || '%')
+  ) t;
+$$;
+
+comment on function public.catalogo_vendible is
+  'Ventas NO mantiene sus propios catalogos: los pide. Y solo lo vendible —un producto agotado o '
+  'un curso lleno no se ofrece— para que el rechazo no llegue al final de la captura.';
 
 -- =====================================================================
 -- CLIENTES — el expediente comercial de una persona

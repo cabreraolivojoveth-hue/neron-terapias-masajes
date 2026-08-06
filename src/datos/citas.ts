@@ -83,6 +83,15 @@ export interface ProfesionalBreve {
   readonly id: string;
   readonly nombre: string;
   readonly rol: string;
+  /**
+   * La CUENTA detras de esa membresia.
+   *
+   * Existe porque Ventas necesita saber cual de estas personas es la que esta
+   * cobrando: la sesion sabe el `usuarioId`, pero la venta guarda el id de la
+   * MEMBRESIA. Sin este puente, el vendedor arrancaria vacio y cada ticket
+   * saldria sin decir quien lo hizo.
+   */
+  readonly usuarioId: string;
 }
 
 export interface Historial {
@@ -255,13 +264,18 @@ export async function traerServicios(negocio: string): Promise<ServicioBreve[]> 
 export async function traerProfesionales(negocio: string): Promise<ProfesionalBreve[]> {
   const { data, error } = await supabase()
     .from('membresia')
-    .select('id, nombre, rol')
+    .select('id, nombre, rol, usuario_id')
     .eq('negocio_id', negocio)
     .eq('activo', true)
     .eq('eliminado', false)
     .order('nombre');
   reventar(error, 'cargar a las terapeutas');
-  return (data ?? []) as ProfesionalBreve[];
+  return ((data ?? []) as Record<string, unknown>[]).map((m) => ({
+    id: String(m['id']),
+    nombre: String(m['nombre']),
+    rol: String(m['rol']),
+    usuarioId: String(m['usuario_id']),
+  }));
 }
 
 export async function traerHistorial(clienteId: string): Promise<Historial> {

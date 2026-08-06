@@ -79,7 +79,7 @@ const props = {
   abierta: true,
   titulo: 'Nuevo cliente',
   inicial: FICHA_VACIA,
-  profesionales: [{ id: 'p1', nombre: 'Terapeuta A', rol: 'dueno' }],
+  profesionales: [{ id: 'p1', nombre: 'Terapeuta A', rol: 'dueno', usuarioId: 'u1' }],
   trabajando: false,
   error: null as string | null,
   onGuardar: () => {},

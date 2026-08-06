@@ -31,7 +31,7 @@ const props = {
   busqueda: '',
   estado: '',
   profesionalId: '',
-  profesionales: [{ id: 'p1', nombre: 'Terapeuta A', rol: 'dueno' }],
+  profesionales: [{ id: 'p1', nombre: 'Terapeuta A', rol: 'dueno', usuarioId: 'u1' }],
   permisos: TODO,
   cargando: false,
   error: null as string | null,

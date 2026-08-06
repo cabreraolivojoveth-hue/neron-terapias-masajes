@@ -25,8 +25,8 @@ reescribe aquí.
 
 ## Qué hay hasta ahora
 
-**Bloque 0 — Los cimientos del producto.** Doce tablas con sus reglas de acceso
-por fila, las operaciones que la base de datos hace sola, y 55 ataques que las
+**Bloque 0 — Los cimientos del producto.** Veinte tablas con sus reglas de acceso
+por fila, las operaciones que la base de datos hace sola, y 157 ataques que las
 comprueban.
 
 | Tabla | Es dueña de |
@@ -36,10 +36,11 @@ comprueban.
 | `curso` | talleres: fechas, cupo, precio |
 | `producto` | inventario: precio, costo, existencias, umbral bajo |
 | `cita` | la agenda: fecha, hora, estado, a quién y con quién |
-| `venta` + `venta_item` | qué se vendió y en cuánto |
-| `pago` | con qué se pagó |
+| `venta` + `venta_item` | qué se vendió y en cuánto — con la **foto** del precio y el costo del día |
+| `cotizacion` + `cotizacion_item` | lo mismo, pero **sin efecto**: ni stock, ni caja, ni cupo |
+| `pago` | con qué se pagó. Varios renglones son el pago mixto |
 | `gasto` | lo que sale |
-| `movimiento_caja` | **derivada** — nace de una venta, un gasto o un ajuste |
+| `movimiento_caja` | **derivada** — nace de un **pago**, un gasto o un ajuste |
 | `inscripcion` | quién va a qué curso |
 | `recordatorio` | qué falta hacer, y de qué entidad salió |
 
@@ -49,10 +50,11 @@ ventas y reportes sin tocar nada más.
 
 ### Lo que la base de datos hace sola
 
-Cobrar una venta no es cambiar un campo. Es sumar el total desde los renglones,
-bajar el inventario con bloqueo de renglón, meter el ingreso a la caja y marcar
-la venta — **todo en una transacción**. Si eso viviera en el navegador,
-cualquier interrupción dejaría el sistema partido.
+Cobrar una venta no es cambiar un campo. Es resolver el precio de cada concepto,
+validar el stock y el cupo, sumar el total, bajar el inventario con bloqueo de
+renglón, inscribir en el curso, registrar los pagos y meter el dinero a la caja
+— **todo en una transacción**. Si eso viviera en el navegador, cualquier
+interrupción dejaría el sistema partido.
 
 Y dos disparadores que no hay que acordarse de llamar: un gasto crea su egreso
 en caja solo, y la hora de fin de una cita se calcula desde la duración del
@@ -82,13 +84,13 @@ código.
 npm run ataques
 ```
 
-77 ataques contra las tablas del producto: leer el expediente de otro centro,
+157 ataques contra las tablas del producto: leer el expediente de otro centro,
 cobrarse una venta ajena, meter dinero a la caja sin operación detrás, marcar
 una venta como cobrada sin bajar inventario. **Están bien cuando fallan el
 intento.**
 
 Y hay control negativo: `NERON_SIN_REGLAS=1 npm run ataques` corre el mismo
-ensayo sin las reglas de fila. Ahí **17 de los 77 tienen éxito**. Eso es lo que
+ensayo sin las reglas de fila. Ahí **22 de los 157 tienen éxito**. Eso es lo que
 prueba que las pruebas sirven — un juego que también pasa con la seguridad
 quitada no vale nada.
 
@@ -369,6 +371,56 @@ utilidad de todos los meses anteriores.
 **"Desactivado" y "agotado" son cosas distintas.** Un producto activo con cero piezas está
 agotado, no inactivo: apagarlo solo porque se acabó lo escondería justo cuando hay que resurtirlo.
 
+**Bloque 6 — Ventas.** El punto de venta: servicios, productos y cursos en una sola operación.
+
+**Ventas orquesta; no es dueña de casi nada.** El cliente es de Clientes, el servicio de
+Servicios, el producto y su stock de Productos, el cupo de Cursos, el dinero de Caja. Por eso no
+hay ni un catálogo propio: `catalogo_vendible` pide los tres a la vez. Mantener copias obligaría a
+sincronizarlas, y el día que fallara se vendería algo que ya no existe.
+
+**Cobrar es UNA transacción, no diez llamadas.** `registrar_venta` valida el stock, valida el
+cupo, calcula los totales **en el servidor**, guarda la foto de cada renglón, mueve el inventario,
+inscribe en el curso, registra los pagos y mete el dinero a la caja. Pasa entero o no pasa nada.
+Diez llamadas desde el navegador dejan el sistema partido en cuanto una falle —venta cobrada sin
+bajar stock, o stock bajado sin ingreso en caja— y nadie se entera hasta que el inventario no
+cuadra tres meses después.
+
+**El precio no viaja desde el navegador.** Se manda *qué* se vende y *cómo* se paga. Aceptar el
+precio del navegador es dejar que el cliente decida cuánto paga. **Probado: mandando precio 1,
+cobra 800.**
+
+**Un doble clic no cobra dos veces.** El botón deshabilitado ayuda, pero no es la defensa: una red
+lenta reintenta sola y la pestaña de al lado no sabe de ese botón. La defensa es una llave de
+idempotencia con índice único — la segunda petición no crea nada, devuelve la venta que ya existe.
+**Probado con la misma llave dos veces: una venta, un descuento de stock.**
+
+**Un pago mixto son DOS pagos, no un método "mixto".** Guardar `metodo = 'mixto'` pierde el
+detalle, y entonces el corte de caja no puede saber cuánto entró en efectivo — que es justo lo que
+hay que contar en el cajón al cerrar. Cada pago deja su propio movimiento de caja, con su método.
+
+**El cambio no es un egreso.** Si el cliente da mil por una venta de novecientos, entraron
+novecientos: los cien eran suyos desde el principio. Se registra lo **aplicado**; lo recibido se
+guarda aparte, solo para el ticket.
+
+**Los precios históricos no se reescriben.** `venta_item` guarda la foto del nombre, del precio y
+del costo del día. Si Reiki sube a $900 el mes que viene, el ticket del mes pasado sigue diciendo
+$800 — y la utilidad de ese mes no cambia sola.
+
+**Cancelar no borra.** La venta se queda en el historial, marcada. El stock vuelve con un
+movimiento **contrario** —el de la venta ocurrió de verdad—, la inscripción que pagó esa venta se
+da de baja, y la caja recibe el egreso contrario. Un registro financiero que se puede tachar no
+sirve para auditar nada.
+
+**Una cotización no mueve nada:** ni stock, ni caja, ni cupo. Es una propuesta, y es una entidad
+aparte — guardada como "venta borrador" acabaría contada en algún reporte de ingresos el día que
+alguien olvide filtrar el estado.
+
+**El folio no se recicla ni se repite.** Con `max(folio) + 1`, dos cajas cobrando a la vez leen el
+mismo máximo y la segunda revienta. Hay un contador con candado por centro.
+
+**Los impuestos salen en cero porque no hay ninguno configurado**, y la pantalla lo dice: "IVA
+(0%)". El día que Configuración los declare, la cifra sale de ahí.
+
 ### La orden única
 
 ```bash
@@ -381,10 +433,10 @@ base de datos configurada te lo dice fuerte en vez de pasar en verde fingiendo q
 
 **Los ataques aplican `INSTALAR-EN-TERAPIAS.sql` de verdad**, no una copia. Postgres no revisa el
 cuerpo de una función `plpgsql` al crearla, así que un nombre de columna equivocado sobrevive a
-los tipos, a las guardias y a las 620 pruebas — y revienta en el SQL Editor. Aplicando el
+los tipos, a las guardias y a las mil pruebas — y revienta en el SQL Editor. Aplicando el
 instalador real, cada función se parsea contra un Postgres de carne y hueso y el error sale aquí.
 
-**862 pruebas · 11 guardias · 135 ataques.**
+**1015 pruebas · 11 guardias · 157 ataques.**
 
 ---
 
@@ -399,7 +451,8 @@ instalador real, cada función se parsea contra un Postgres de carne y hueso y e
 | **2** ✅ | **Clientes** — el expediente comercial de cada persona |
 | **3** ✅ | **Servicios** — el catálogo · **Cursos** — talleres, sesiones e inscripciones |
 | **5** ✅ | **Productos** — el catálogo físico y el inventario trazable |
-| 6 | Ventas, Pagos y Caja · 7 · Gastos y Recordatorios |
+| **6** ✅ | **Ventas** — el cobro en una transacción, con pagos, caja y cotizaciones |
+| 7 | Gastos y Recordatorios |
 | 9 | Reportes · 10 · Configuración · 11 · Mensajes · 12 · Publicación |
 
 Inicio es el bloque 8, no el 1: es un resumen, y un resumen necesita que exista

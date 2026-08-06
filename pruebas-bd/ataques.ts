@@ -41,11 +41,12 @@ const anotar = (titulo: string, paso: boolean, detalle = ''): void => {
   resultados.push({ grupo: grupoActual, titulo, paso, detalle });
 };
 
-/** Las doce tablas del producto. Una sola lista, para que no se desincronicen. */
+/** Las tablas del producto. Una sola lista, para que no se desincronicen. */
 const TABLAS = ['cliente', 'servicio', 'curso', 'producto', 'cita', 'venta',
   'venta_item', 'pago', 'gasto', 'movimiento_caja', 'inscripcion', 'recordatorio',
   'categoria', 'sesion_curso', 'material_curso',
-  'proveedor', 'producto_proveedor', 'movimiento_inventario'] as const;
+  'proveedor', 'producto_proveedor', 'movimiento_inventario',
+  'cotizacion', 'cotizacion_item'] as const;
 
 const cliente = new pg.Client(CADENA ? { connectionString: CADENA } : {});
 
@@ -131,7 +132,7 @@ async function aplicarEsquema(): Promise<void> {
     /**
      * EL CANDADO DEL CONTROL NEGATIVO.
      *
-     * Lo que sigue APAGA las reglas de fila de las doce tablas y le abre los
+     * Lo que sigue APAGA las reglas de fila de TODAS las tablas y le abre los
      * permisos a cualquiera con sesion. Es lo que hay que hacer para probar
      * que sin reglas los ataques SI tienen exito — y es, literalmente, dejar
      * el sistema como estaba Neron POS.
@@ -1247,6 +1248,189 @@ async function correr(): Promise<void> {
     const r = await cliente.query(`select historial_del_cliente($1,'2099-01-01'::timestamptz) as x`, [clienteId]);
     anotar('sin citas futuras, la proxima viene NULA — no se inventa una',
       r.rows[0].x.proxima === null, JSON.stringify(r.rows[0].x.proxima));
+  });
+
+  grupo('Ventas — el cobro no se puede torcer desde el navegador');
+
+  await como(DUENA, async () => {
+    // EL PRECIO LO PONE EL SERVIDOR. Se manda uno de un peso a proposito.
+    const r = await cliente.query(
+      `select (registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','servicio','id',$2::text,'cantidad',1,'precio',1)),
+         jsonb_build_array(jsonb_build_object('metodo','efectivo','monto',80000)),
+         $3::uuid)).total_centavos as t`,
+      [CENTRO, servicioId, clienteId]);
+    anotar('el precio que manda el navegador se IGNORA: cobra el del catalogo',
+      Number(r.rows[0].t) === 80000, `cobro ${r.rows[0].t}`);
+  });
+
+  await como(DUENA, async () => {
+    // LA IDEMPOTENCIA: la misma llave dos veces es UNA venta.
+    const llave = 'llave-de-prueba';
+    const a = await cliente.query(
+      `select (registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','producto','id',$2::text,'cantidad',2)),
+         jsonb_build_array(jsonb_build_object('metodo','efectivo','monto',50000)),
+         $3::uuid, null, 0, null, null, $4)).id as id`,
+      [CENTRO, productoId, clienteId, llave]);
+    const b = await cliente.query(
+      `select (registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','producto','id',$2::text,'cantidad',2)),
+         jsonb_build_array(jsonb_build_object('metodo','efectivo','monto',50000)),
+         $3::uuid, null, 0, null, null, $4)).id as id`,
+      [CENTRO, productoId, clienteId, llave]);
+    anotar('el doble clic con la MISMA llave devuelve la misma venta',
+      a.rows[0].id === b.rows[0].id, `${a.rows[0].id} vs ${b.rows[0].id}`);
+    const n = await cuantos(`select * from venta where negocio_id=$1 and llave_idempotencia=$2`,
+      [CENTRO, llave]);
+    anotar('y en la base hay UNA sola venta, no dos', n === 1, `hay ${n}`);
+    const s = await cliente.query(`select stock_actual from producto where id=$1`, [productoId]);
+    anotar('el stock bajo UNA vez: 10 → 8', Number(s.rows[0].stock_actual) === 8,
+      `quedo en ${s.rows[0].stock_actual}`);
+  });
+
+  await como(DUENA, async () => {
+    const e = await rechazado(() => cliente.query(
+      `select registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','servicio','id',$2::text,'cantidad',1)),
+         jsonb_build_array(jsonb_build_object('metodo','efectivo','monto',100)))`,
+      [CENTRO, servicioId]));
+    anotar('unos pagos que NO cuadran con el total se rechazan', e !== null, e ?? 'los acepto');
+  });
+
+  await como(DUENA, async () => {
+    const e = await rechazado(() => cliente.query(
+      `select registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','producto','id',$2::text,'cantidad',99)),
+         jsonb_build_array(jsonb_build_object('metodo','efectivo','monto',2475000)))`,
+      [CENTRO, productoId]));
+    anotar('NO se vende mas de lo que hay: el stock nunca queda negativo',
+      e !== null, e ?? 'lo vendio');
+  });
+
+  await como(DUENA, async () => {
+    // IDOR: un producto del OTRO centro, mandado desde este.
+    const po = await cliente.query(
+      `select id from producto where negocio_id=$1 limit 1`, [OTRO]);
+    const ajeno = po.rows[0]?.id ?? clienteOtro;
+    const e = await rechazado(() => cliente.query(
+      `select registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','producto','id',$2::text,'cantidad',1)),
+         '[]'::jsonb)`,
+      [CENTRO, ajeno]));
+    anotar('un concepto de OTRO centro no se puede vender aqui', e !== null, e ?? 'lo vendio');
+  });
+
+  await como(DUENA, async () => {
+    const e = await rechazado(() => cliente.query(
+      `select registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','servicio','id',$2::text,'cantidad',1)),
+         '[]'::jsonb, $3::uuid)`,
+      [CENTRO, servicioId, clienteOtro]));
+    anotar('un cliente de OTRO centro no se le puede cargar a esta venta',
+      e !== null, e ?? 'se la cargo');
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const e = await rechazado(() => cliente.query(
+      `select registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','servicio','id',$2::text,'cantidad',1)),
+         '[]'::jsonb)`,
+      [CENTRO, servicioId]));
+    anotar('el dueño de otro centro NO puede cobrar aqui', e !== null, e ?? 'cobro');
+  });
+
+  await como(DUENA, async () => {
+    // EL PAGO MIXTO SON DOS PAGOS Y DOS MOVIMIENTOS DE CAJA, no uno "mixto".
+    const r = await cliente.query(
+      `select (registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','servicio','id',$2::text,'cantidad',1)),
+         jsonb_build_array(
+           jsonb_build_object('metodo','efectivo','monto',30000),
+           jsonb_build_object('metodo','tarjeta','monto',50000)),
+         $3::uuid, null, 0, 50000)).id as id`,
+      [CENTRO, servicioId, clienteId]);
+    const id = r.rows[0].id;
+    const p = await cuantos(`select * from pago where venta_id=$1`, [id]);
+    anotar('un pago mixto guarda DOS pagos, no un metodo "mixto"', p === 2, `guardo ${p}`);
+    const m = await cliente.query(
+      `select tipo, metodo, monto_centavos from movimiento_caja
+        where origen='pago' and referencia_id in (select id from pago where venta_id=$1)
+        order by monto_centavos`, [id]);
+    anotar('y la caja recibe UN movimiento por pago, con su metodo',
+      m.rowCount === 2 && m.rows.every((x: { tipo: string }) => x.tipo === 'ingreso'),
+      JSON.stringify(m.rows));
+    const v = await cliente.query(`select total_centavos from venta where id=$1`, [id]);
+    anotar('EL CAMBIO NO ES INGRESO: entro lo aplicado, no lo recibido',
+      Number(v.rows[0].total_centavos) === 80000, `entro ${v.rows[0].total_centavos}`);
+  });
+
+  await como(DUENA, async () => {
+    // CANCELAR NO BORRA: devuelve el stock con un movimiento CONTRARIO.
+    const r = await cliente.query(
+      `select (registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','producto','id',$2::text,'cantidad',2)),
+         jsonb_build_array(jsonb_build_object('metodo','efectivo','monto',50000)),
+         $3::uuid)).id as id`,
+      [CENTRO, productoId, clienteId]);
+    const id = r.rows[0].id;
+    await cliente.query(`select cancelar_venta($1,'prueba')`, [id]);
+    const s = await cliente.query(`select stock_actual from producto where id=$1`, [productoId]);
+    anotar('cancelar DEVUELVE el stock: vuelve a 10', Number(s.rows[0].stock_actual) === 10,
+      `quedo en ${s.rows[0].stock_actual}`);
+    const mov = await cuantos(
+      `select * from movimiento_inventario where referencia_id=$1 and tipo='devolucion'`, [id]);
+    anotar('con un movimiento CONTRARIO, sin borrar el de la venta', mov === 1, `hubo ${mov}`);
+    const eg = await cuantos(
+      `select * from movimiento_caja where referencia_id=$1 and tipo='egreso'`, [id]);
+    anotar('y la caja recibe el egreso contrario, no se corrige el ingreso', eg === 1, `hubo ${eg}`);
+    const v = await cliente.query(`select estado from venta where id=$1`, [id]);
+    anotar('la venta SIGUE en el historial, marcada como cancelada',
+      v.rows[0].estado === 'cancelada', v.rows[0].estado);
+  });
+
+  await como(DUENA, async () => {
+    // UNA COTIZACION NO MUEVE NADA.
+    const antes = await cliente.query(`select stock_actual from producto where id=$1`, [productoId]);
+    const r = await cliente.query(
+      `select (guardar_cotizacion($1,
+         jsonb_build_array(jsonb_build_object('tipo','producto','id',$2::text,'cantidad',5)))).id as id`,
+      [CENTRO, productoId]);
+    const despues = await cliente.query(`select stock_actual from producto where id=$1`, [productoId]);
+    anotar('una cotizacion NO descuenta inventario',
+      antes.rows[0].stock_actual === despues.rows[0].stock_actual,
+      `${antes.rows[0].stock_actual} → ${despues.rows[0].stock_actual}`);
+    const caja = await cuantos(`select * from movimiento_caja where referencia_id=$1`, [r.rows[0].id]);
+    anotar('ni crea ingreso en caja', caja === 0, `creo ${caja}`);
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const n = await cuantos(`select * from cotizacion where negocio_id=$1`, [CENTRO]);
+    anotar('las cotizaciones de un centro no se ven desde otro', n === 0, `vio ${n}`);
+  });
+
+  await como(DUENA, async () => {
+    const e = await rechazado(() => cliente.query(
+      `select registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','servicio','id',$2::text,'cantidad',1,'descuento',99999999)),
+         '[]'::jsonb)`,
+      [CENTRO, servicioId]));
+    anotar('un descuento mayor que el renglon se rechaza: el total mentiria',
+      e !== null, e ?? 'lo acepto');
+  });
+
+  await como(DUENA, async () => {
+    const e = await rechazado(() => cliente.query(
+      `select registrar_venta($1, '[]'::jsonb, '[]'::jsonb)`, [CENTRO]));
+    anotar('no se cobra una venta sin renglones', e !== null, e ?? 'la cobro');
+  });
+
+  await como(DUENA, async () => {
+    // EL FOLIO NO SE RECICLA aunque la venta se cancele.
+    const a = await cliente.query(`select siguiente_folio($1) as f`, [CENTRO]);
+    const b = await cliente.query(`select siguiente_folio($1) as f`, [CENTRO]);
+    anotar('dos folios seguidos NUNCA son el mismo', a.rows[0].f !== b.rows[0].f,
+      `${a.rows[0].f} y ${b.rows[0].f}`);
   });
 
   grupo('Controles positivos — que el centro pueda trabajar');
