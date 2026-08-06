@@ -27,7 +27,24 @@ Tipos → fronteras → pruebas → compilación → ataques. Si algo se cae, se
 causa raíz, se corrige y se corre **toda** la batería otra vez — nunca solo el
 paso que falló. Un paso que pasa solo no dice nada de los que van después.
 
-## 2. La foto es la ley del diseño
+## 2. Si la base cambia, el SQL llega por el chat
+
+Cuando un bloque necesita algo nuevo de la base de datos —una columna, una
+función, un índice— no basta con empujar el código: Vercel publica el
+navegador, no la base.
+
+Así que **cada vez que cambie el esquema se regenera `ACTUALIZAR-BASE.sql` y se
+manda por el chat**, listo para pegar en Supabase → SQL Editor → Run. Sin ese
+paso el sitio se publica y las pantallas nuevas salen con un error que no dice
+nada útil.
+
+Ese archivo es **solo lo nuevo**, y es seguro correrlo las veces que haga
+falta: no borra datos, no reescribe filas y todo va con `if not exists` o
+`create or replace`. El archivo completo con todas las explicaciones sigue
+siendo `INSTALAR-EN-TERAPIAS.sql` — pegar dos mil líneas cada vez no es
+razonable.
+
+## 3. La foto es la ley del diseño
 
 Cada módulo llega como **foto + descripción detallada**. La foto no es
 inspiración: es la especificación. Se replica **exacta** — la misma distribución,
@@ -35,7 +52,7 @@ las mismas columnas, los mismos botones, los mismos textos, el mismo orden, los
 mismos estados. Si algo de la foto no se puede reproducir tal cual, se dice
 claramente en el resumen en lugar de aproximarlo en silencio.
 
-## 3. Los datos de la foto NUNCA se copian al código
+## 4. Los datos de la foto NUNCA se copian al código
 
 La foto viene llena para que se vea **cómo debe lucir cuando alguien ya la usó**:
 qué tan anchas quedan las columnas, dónde cae cada dato, cómo se ve una fila
@@ -49,7 +66,7 @@ no porque falte código.
 Esto no es preferencia: `guardias/fronteras.ts` revienta la publicación si se cuela
 un dato de ejemplo. La guardia y esta regla dicen lo mismo.
 
-## 4. Las conexiones entre módulos son parte del encargo
+## 5. Las conexiones entre módulos son parte del encargo
 
 Un módulo suelto no sirve. Agenda necesita Clientes, Ventas necesita Productos y
 Servicios, Caja nace de Ventas y Gastos. Con cada módulo viene **con qué se
@@ -74,7 +91,7 @@ Si al leer el encargo falta una conexión, o hay una mejor forma de amarrar dos
 módulos, **se dice en el resumen** — pero después de haber entregado lo pedido, no
 en lugar de entregarlo.
 
-## 5. Reglas del código que no se discuten
+## 6. Reglas del código que no se discuten
 
 - Todo en español: nombres, archivos, comentarios.
 - Los comentarios dicen **por qué** existe algo y qué se rompió antes. No repiten
@@ -85,7 +102,7 @@ en lugar de entregarlo.
 - Nada de llaves ni secretos en el repositorio. Van en `.env`, que `.gitignore`
   excluye, y en las variables de entorno de Vercel.
 
-## 6. Trampas ya pagadas — no volver a caer
+## 7. Trampas ya pagadas — no volver a caer
 
 - **Redeploy en Vercel recompila el MISMO commit** que estás viendo. Para publicar
   código nuevo hay que empujar un commit y buscar ese despliegue en la lista.
