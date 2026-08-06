@@ -6,13 +6,14 @@
  * de las tres se olvidaria de filtrar por centro.
  *
  * LAS FECHAS VAN COMO TEXTO `dd/mm/aaaa` en toda la aplicacion y como `date`
- * en la base. La conversion ocurre SOLO aqui, en dos funciones. Es la leccion
- * mas cara de las fechas: en cuanto la conversion se reparte, alguien usa un
- * `new Date(texto)` y la cita se mueve un dia segun la zona horaria de quien
- * abrio la pantalla.
+ * en la base. La conversion vive en `fechas-de-la-base.ts` y en ningun otro
+ * lado — se saco de aqui cuando Inicio empezo a leer ventas y cursos, porque
+ * la alternativa era copiarla, y copiarla es como empieza el problema que esa
+ * conversion existe para evitar.
  */
 
-import { aISO, desdeISO, type Fecha } from '@neron/base/utils';
+import type { Fecha } from '@neron/base/utils';
+import { aBase, deBase, reventar } from './fechas-de-la-base.js';
 import { clienteParaLaBase, supabase } from '../supabase.js';
 
 /* ------------------------------------------------------------------ */
@@ -84,34 +85,6 @@ export interface Historial {
     readonly hora: string;
     readonly servicio: string;
   } | null;
-}
-
-/* ------------------------------------------------------------------ */
-/* Fechas: la conversion vive en DOS funciones y en ningun lado mas    */
-/* ------------------------------------------------------------------ */
-
-/** `dd/mm/aaaa` → `aaaa-mm-dd`, que es lo que entiende la base. */
-const aBase = (f: Fecha): string => aISO(f);
-
-/**
- * Lo que devuelve la base → `dd/mm/aaaa`.
- *
- * El controlador de Postgres puede devolver una columna `date` como texto o
- * como objeto Date segun la version. Se aceptan las dos: convertir un Date a
- * texto con `toISOString()` lo pasa por UTC y en México le resta un dia.
- */
-function deBase(valor: unknown): Fecha {
-  if (valor instanceof Date) {
-    const a = valor.getFullYear();
-    const m = String(valor.getMonth() + 1).padStart(2, '0');
-    const d = String(valor.getDate()).padStart(2, '0');
-    return desdeISO(`${a}-${m}-${d}`);
-  }
-  return desdeISO(String(valor).slice(0, 10));
-}
-
-function reventar(error: { message: string } | null, donde: string): void {
-  if (error) throw new Error(`${donde}: ${error.message}`);
 }
 
 /* ------------------------------------------------------------------ */

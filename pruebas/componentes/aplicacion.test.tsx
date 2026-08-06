@@ -6,6 +6,7 @@
  * portero, que ya esta probado en la base sin navegador.
  */
 import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // El modulo de Supabase se reemplaza ANTES de importar nada que lo use: si no,
@@ -163,10 +164,23 @@ describe('ya dentro', () => {
     expect(screen.getAllByText('Centro Holístico').length).toBeGreaterThan(0);
   });
 
-  it('los modulos que no llegan lo DICEN, no inventan datos', () => {
+  it('los modulos que no llegan lo DICEN, no inventan datos', async () => {
+    // Al entrar se cae en Inicio, que ya esta construido. El que todavia no
+    // llega —Clientes— se abre desde el menu y tiene que decir la verdad en
+    // vez de enseñar una tabla de mentiras.
     const { container } = conEstado('listo', ACCESO_DUENA);
+    await userEvent.click(screen.getByRole('button', { name: 'Clientes' }));
     expect(screen.getByText(/vacía a propósito/i)).toBeDefined();
     expect(container.textContent).not.toContain('$4,850');
+  });
+
+  it('Inicio arranca en ceros, sin una sola cifra del diseño', () => {
+    // La captura de referencia trae "$4,850", "6 citas" y "28 sesiones". Ni
+    // una de esas cifras puede aparecer en un centro recien creado.
+    const { container } = conEstado('listo', ACCESO_DUENA);
+    for (const delDiseño of ['$4,850', '28 sesiones', '23 unidades']) {
+      expect(container.textContent).not.toContain(delDiseño);
+    }
   });
 
   it('se puede salir desde la barra superior', () => {

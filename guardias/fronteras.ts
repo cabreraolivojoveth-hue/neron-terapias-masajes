@@ -378,6 +378,66 @@ function guardiaCapacidadesLleganAlPortero(): void {
 }
 
 /* ------------------------------------------------------------------ */
+/* 11 — Toda operacion refresca el tablero de Inicio                   */
+/* ------------------------------------------------------------------ */
+/**
+ * EL FALLO QUE ESTA GUARDIA IMPIDE NO REVIENTA NADA, Y ESO ES LO PEOR.
+ *
+ * Inicio y el buscador global LEEN de todos los modulos: citas, ventas,
+ * productos, cursos, gastos, recordatorios, pacientes. Sus llaves de cache
+ * empiezan todas con `inicio:`, asi que un solo `invalidar('inicio')` los
+ * refresca.
+ *
+ * Si una operacion nueva se olvida de declararlo, no falla la compilacion, no
+ * falla ninguna prueba y no queda nada en la consola: simplemente, quien
+ * agenda una cita y vuelve a Inicio ve el numero de antes. La pantalla se ve
+ * perfectamente normal — y esa es justo la clase de error que se descubre
+ * cuando alguien ya tomo una decision con el numero viejo.
+ *
+ * Se exige la lista SIEMPRE, aunque quien la escriba crea que su operacion no
+ * toca el tablero. Dar de alta un paciente no cambia ninguna cifra, pero si
+ * tiene que aparecer en el buscador; y adivinar de antemano que consulta
+ * depende de que es exactamente lo que sale mal. Refrescar de mas cuesta una
+ * consulta que ni siquiera se hace si nadie esta viendo Inicio.
+ */
+function guardiaTodaOperacionRefrescaInicio(): void {
+  for (const archivo of FUENTE) {
+    const limpio = sinComentarios(readFileSync(archivo, 'utf8'));
+    let desde = 0;
+
+    for (;;) {
+      const inicio = limpio.indexOf('useOperacion(', desde);
+      if (inicio < 0) break;
+
+      // Se avanza contando parentesis hasta cerrar la llamada. Buscar el
+      // primer ')' fallaria con `useOperacion((a) => ...)`, que es la forma
+      // mas comun de escribirla.
+      let nivel = 0;
+      let fin = inicio + 'useOperacion('.length - 1;
+      for (; fin < limpio.length; fin += 1) {
+        const c = limpio[fin];
+        if (c === '(') nivel += 1;
+        else if (c === ')') {
+          nivel -= 1;
+          if (nivel === 0) break;
+        }
+      }
+
+      const llamada = limpio.slice(inicio, fin + 1);
+      desde = fin + 1;
+
+      if (!/PREFIJO_DE_INICIO|'inicio'|"inicio"/.test(llamada)) {
+        fallar(archivo, 'una operacion no refresca el tablero de Inicio',
+          'Inicio y el buscador leen de todos los modulos y su cache cuelga del prefijo "inicio". ' +
+          'Sin declararlo, guardar algo aqui deja el tablero mostrando el numero de antes — sin ' +
+          'error, sin aviso y con cara de estar al dia. Agrega PREFIJO_DE_INICIO (de ' +
+          'src/datos/tablero.ts) a la lista de invalidacion de esa useOperacion.');
+      }
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
 
 const GUARDIAS = [
   { nombre: 'ni un dato de ejemplo', correr: guardiaSinDatosDeEjemplo },
@@ -390,6 +450,7 @@ const GUARDIAS = [
   { nombre: 'el segundo factor apagado es deuda con fecha', correr: guardiaSegundoFactorEsDeudaConFecha },
   { nombre: 'el candado apunta a la misma base que el package.json', correr: guardiaCandadoAlDiaConLaBase },
   { nombre: 'las capacidades del producto llegan al portero', correr: guardiaCapacidadesLleganAlPortero },
+  { nombre: 'toda operacion refresca el tablero de Inicio', correr: guardiaTodaOperacionRefrescaInicio },
 ];
 
 for (const g of GUARDIAS) g.correr();

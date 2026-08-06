@@ -8,6 +8,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ProveedorDeNavegacion, olvidarIntencion } from '@neron/base/marco';
 import { olvidarTodo } from '../../src/datos/consulta.js';
 
 const sesion = vi.hoisted(() => ({
@@ -65,7 +66,22 @@ vi.mock('../../src/supabase.js', () => ({
 
 const { Agenda } = await import('../../src/agenda/agenda.js');
 
-afterEach(() => { cleanup(); olvidarTodo(); });
+/**
+ * La Agenda vive DENTRO del proveedor de navegacion, y aqui tambien.
+ *
+ * Desde que Inicio puede abrirla ya filtrada —"2 pendientes" lleva a la
+ * agenda de hoy en pendientes—, la pantalla lee la direccion. Montarla sin el
+ * proveedor revienta con un mensaje claro a proposito: es un recordatorio de
+ * que los filtros viven en la direccion y no en la memoria.
+ */
+const montar = (direccion = 'agenda') =>
+  render(
+    <ProveedorDeNavegacion direccionInicial={direccion}>
+      <Agenda />
+    </ProveedorDeNavegacion>,
+  );
+
+afterEach(() => { cleanup(); olvidarTodo(); olvidarIntencion(); });
 beforeEach(() => { datos.citas = []; datos.pedidos = []; datos.creadas = []; });
 
 const CITA = {
@@ -82,14 +98,14 @@ const hoy = (): string => {
 
 describe('lo primero que se ve', () => {
   it('el encabezado del modulo', async () => {
-    render(<Agenda />);
+    montar();
     expect(screen.getByRole('heading', { name: 'Agenda' })).toBeDefined();
     expect(screen.getByText('Gestiona tus citas y terapias')).toBeDefined();
     await waitFor(() => expect(datos.pedidos.length).toBeGreaterThan(0));
   });
 
   it('con la base vacia la agenda sale VACIA, no con citas de ejemplo', async () => {
-    const { container } = render(<Agenda />);
+    const { container } = montar();
     await waitFor(() => expect(screen.getByText('No hay citas para este día.')).toBeDefined());
     for (const inventado of ['Ana López', 'José Pérez', 'Reiki', 'Biomagnetismo', 'Sala 1']) {
       expect(container.textContent, inventado).not.toContain(inventado);
@@ -97,7 +113,7 @@ describe('lo primero que se ve', () => {
   });
 
   it('arranca en el dia de HOY', async () => {
-    render(<Agenda />);
+    montar();
     await waitFor(() => expect(datos.pedidos[0]).toEqual({ desde: hoy(), hasta: hoy() }));
   });
 });
@@ -105,7 +121,7 @@ describe('lo primero que se ve', () => {
 describe('navegar', () => {
   it('cambiar a semana pide SIETE dias, no uno', async () => {
     // Es lo que evita treinta y un viajes al servidor en la vista de mes.
-    render(<Agenda />);
+    montar();
     await waitFor(() => expect(datos.pedidos).toHaveLength(1));
     await userEvent.setup().click(screen.getByRole('button', { name: 'Semana' }));
     await waitFor(() => expect(datos.pedidos.length).toBe(2));
@@ -114,7 +130,7 @@ describe('navegar', () => {
   });
 
   it('el boton siguiente cambia el rango que se pide', async () => {
-    render(<Agenda />);
+    montar();
     await waitFor(() => expect(datos.pedidos).toHaveLength(1));
     await userEvent.setup().click(screen.getByRole('button', { name: 'Siguiente' }));
     await waitFor(() => expect(datos.pedidos.length).toBe(2));
@@ -131,7 +147,7 @@ describe('navegar', () => {
      *    entre dias no debe costar una peticion cada vez.
      */
     const u = userEvent.setup();
-    render(<Agenda />);
+    montar();
     await waitFor(() => expect(datos.pedidos).toHaveLength(1));
     const titulo = screen.getByText(/de \w+ de \d{4}/);
     const deHoy = titulo.textContent;
@@ -146,7 +162,7 @@ describe('navegar', () => {
   });
 
   it('las tres vistas existen y se marcan para el lector de pantalla', async () => {
-    render(<Agenda />);
+    montar();
     expect(screen.getByRole('button', { name: 'Día' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: 'Mes' }).getAttribute('aria-pressed')).toBe('false');
     await waitFor(() => expect(datos.pedidos.length).toBeGreaterThan(0));
@@ -156,7 +172,7 @@ describe('navegar', () => {
 describe('seleccionar una cita', () => {
   it('abre el panel con los datos del paciente, sin navegar a otra pantalla', async () => {
     datos.citas = [{ ...CITA, fecha: hoy() }];
-    render(<Agenda />);
+    montar();
     await waitFor(() => expect(screen.getByText('Paciente Uno')).toBeDefined());
     await userEvent.setup().click(screen.getByRole('button', { name: /Paciente Uno/ }));
     await waitFor(() => expect(screen.getByLabelText('Cita seleccionada')).toBeDefined());
@@ -168,7 +184,7 @@ describe('seleccionar una cita', () => {
   it('el historial se pide al abrir el panel', async () => {
     datos.citas = [{ ...CITA, fecha: hoy() }];
     const { traerHistorial } = await import('../../src/datos/citas.js');
-    render(<Agenda />);
+    montar();
     await waitFor(() => expect(screen.getByText('Paciente Uno')).toBeDefined());
     await userEvent.setup().click(screen.getByRole('button', { name: /Paciente Uno/ }));
     await waitFor(() => expect(traerHistorial).toHaveBeenCalledWith('c1'));
@@ -177,7 +193,7 @@ describe('seleccionar una cita', () => {
 
 describe('crear una cita', () => {
   it('el boton solo aparece con permiso de agenda', async () => {
-    render(<Agenda />);
+    montar();
     expect(screen.getByRole('button', { name: '+ Nueva cita' })).toBeDefined();
     await waitFor(() => expect(datos.pedidos.length).toBeGreaterThan(0));
   });
@@ -187,7 +203,7 @@ describe('crear una cita', () => {
       ...sesion.valor,
       acceso: { ...sesion.valor.acceso, permisos: { gestionarClientes: true } },
     };
-    render(<Agenda />);
+    montar();
     expect(screen.queryByRole('button', { name: '+ Nueva cita' })).toBeNull();
     await waitFor(() => expect(datos.pedidos.length).toBeGreaterThan(0));
     sesion.valor = {
@@ -198,7 +214,7 @@ describe('crear una cita', () => {
 
   it('guarda con el centro, el paciente y el servicio reales', async () => {
     const u = userEvent.setup();
-    render(<Agenda />);
+    montar();
     await waitFor(() => expect(datos.pedidos.length).toBeGreaterThan(0));
     await u.click(screen.getByRole('button', { name: '+ Nueva cita' }));
     await u.click(await screen.findByRole('button', { name: /Paciente Uno/ }));
@@ -214,7 +230,7 @@ describe('crear una cita', () => {
   it('despues de guardar, la agenda se refresca SOLA', async () => {
     // Sin esto hay que apretar F5 y el sistema se siente muerto.
     const u = userEvent.setup();
-    render(<Agenda />);
+    montar();
     await waitFor(() => expect(datos.pedidos).toHaveLength(1));
     await u.click(screen.getByRole('button', { name: '+ Nueva cita' }));
     await u.click(await screen.findByRole('button', { name: /Paciente Uno/ }));
@@ -228,7 +244,7 @@ describe('filtros', () => {
   it('filtrar por terapeuta vuelve a pedir al servidor', async () => {
     // Si no cambiara la llave, la pantalla mostraria lo guardado sin filtrar.
     const u = userEvent.setup();
-    render(<Agenda />);
+    montar();
     await waitFor(() => expect(datos.pedidos).toHaveLength(1));
     await u.click(screen.getByRole('button', { name: 'Filtros' }));
     await u.selectOptions(await screen.findByLabelText('Terapeuta'), 'p1');

@@ -10,10 +10,12 @@
  * horario, permisos, aislamiento entre centros— en la base de datos.
  */
 
+import { tomarIntencion, useNavegacion } from '@neron/base/marco';
 import { Boton } from '@neron/base/ui';
-import { desdeDate, type Fecha } from '@neron/base/utils';
-import { useMemo, useState } from 'react';
+import { desdeDate, esFecha, type Fecha } from '@neron/base/utils';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConsulta, useOperacion } from '../datos/consulta.js';
+import { PREFIJO_DE_INICIO } from '../datos/tablero.js';
 import {
   cambiarEstado,
   crearCita,
@@ -59,6 +61,7 @@ const VISTAS: readonly { clave: Vista; etiqueta: string }[] = [
 
 export function Agenda() {
   const { acceso } = useSesion();
+  const { ruta } = useNavegacion();
   const negocio = acceso?.negocioId ?? '';
   const puedeGestionar = acceso?.permisos['gestionarAgenda'] === true;
 
@@ -106,12 +109,21 @@ export function Agenda() {
 
   /* --- Lo que cambia datos ----------------------------------------- */
 
-  // Al terminar bien, se invalida 'citas' entero: dia, semana, mes y todas
-  // las combinaciones de filtros se refrescan solas. Nadie aprieta F5.
-  const guardar = useOperacion(crearCita, ['citas', 'historial']);
-  const mover_ = useOperacion(reagendar, ['citas', 'historial']);
-  const estado = useOperacion(cambiarEstado, ['citas', 'historial']);
-  const altaCliente = useOperacion(crearCliente, ['clientes']);
+  /**
+   * Al terminar bien, se invalida 'citas' entero: dia, semana, mes y todas las
+   * combinaciones de filtros se refrescan solas. Nadie aprieta F5.
+   *
+   * Y TAMBIEN INICIO. El tablero cuenta estas mismas citas: sin esta linea,
+   * agendar una y volver a Inicio mostraria el numero de antes, con toda la
+   * cara de estar al dia. Hay una guardia que exige que toda operacion lo
+   * declare, justo porque es lo primero que se olvida.
+   */
+  const guardar = useOperacion(crearCita, ['citas', 'historial', PREFIJO_DE_INICIO]);
+  const mover_ = useOperacion(reagendar, ['citas', 'historial', PREFIJO_DE_INICIO]);
+  const estado = useOperacion(cambiarEstado, ['citas', 'historial', PREFIJO_DE_INICIO]);
+  // Un paciente nuevo no cambia ninguna cifra del tablero, pero SI tiene que
+  // aparecer en el buscador global, que cuelga de la misma llave.
+  const altaCliente = useOperacion(crearCliente, ['clientes', PREFIJO_DE_INICIO]);
 
   const vacio: ValoresDeCita = {
     clienteId: '', servicioId: '', profesionalId: '', fecha, horaInicio: '09:00', notas: '',
@@ -121,6 +133,60 @@ export function Agenda() {
     if (!puedeGestionar) return;
     setFormulario({ modo: 'nueva', inicial: { ...vacio, fecha: f, horaInicio: hora } });
   }
+
+  /* --- Lo que se pide desde fuera de la Agenda ---------------------- */
+
+  /**
+   * LOS FILTROS LLEGAN EN LA DIRECCION, no en la memoria.
+   *
+   * Es lo que hace que "2 pendientes" del tablero abra la Agenda de HOY ya
+   * filtrada en pendientes, que ese enlace se pueda mandar por WhatsApp, y que
+   * recargar no pierda el filtro.
+   *
+   * Se depende de los VALORES, no del objeto de parametros: ese objeto es uno
+   * nuevo en cada render, y usarlo de dependencia dispararia el efecto sin
+   * parar hasta trabar la pestaña.
+   */
+  const fechaPedida = ruta.parametros['fecha'] ?? '';
+  const estadoPedido = ruta.parametros['estado'] ?? '';
+
+  useEffect(() => {
+    if (fechaPedida && esFecha(fechaPedida)) {
+      setFecha(fechaPedida);
+      setVista('dia');
+    }
+    if (estadoPedido) {
+      setFiltros((f) => ({ ...f, estado: estadoPedido }));
+      // Se ABREN los filtros. Una agenda que muestra tres citas de veinte sin
+      // decir que hay un filtro puesto se lee como una agenda vacia.
+      setFiltrosAbiertos(true);
+    }
+  }, [fechaPedida, estadoPedido]);
+
+  /**
+   * EL RECADO DE QUIEN NOS MANDO, que se consume UNA sola vez.
+   *
+   * "Nueva cita" desde Inicio abre la Agenda Y el formulario. Va aparte de la
+   * direccion a proposito: como parametro se quedaria pegado y el formulario
+   * volveria a abrirse en cada recarga, y tambien a quien reciba el enlace.
+   *
+   * El candado del `useRef` es por el modo estricto de React, que monta,
+   * desmonta y vuelve a montar en desarrollo: sin el, la intencion se
+   * consumiria en el primer montaje y el segundo no encontraria nada.
+   */
+  const recadoLeido = useRef(false);
+  useEffect(() => {
+    if (recadoLeido.current) return;
+    recadoLeido.current = true;
+
+    const recado = tomarIntencion('agenda');
+    if (!recado) return;
+    if (recado.accion === 'nueva') abrirNueva(fechaPedida && esFecha(fechaPedida) ? fechaPedida : fecha);
+    else if (recado.accion === 'abrir' && recado.detalle) setSeleccionada(recado.detalle);
+    // Las dependencias se dejan fuera a proposito: esto corre UNA vez al
+    // llegar. Volver a correrlo al cambiar de dia reabriria el formulario.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function alGuardar(v: ValoresDeCita): Promise<void> {
     if (formulario?.modo === 'reagendar' && formulario.citaId) {

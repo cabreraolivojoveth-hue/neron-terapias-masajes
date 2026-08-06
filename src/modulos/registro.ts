@@ -116,6 +116,28 @@ export const MODULOS: readonly ModuloDelProducto[] = [
     bloque: 7,
     promesa: 'Lo pendiente, ligado a la cita, el paciente o la venta de donde salio.',
   },
+  /**
+   * MENSAJES ESTA EN EL MENU Y TODAVIA NO TIENE NI TABLA.
+   *
+   * Aparece porque el diseño lo pide, y aparecer diciendo la verdad es mejor
+   * que faltar sin explicacion: quien abre el sistema ve el mismo menu del
+   * diseño, y al entrar lee en que bloque llega.
+   *
+   * LO QUE NO LLEVA ES INSIGNIA. El diseño muestra un "3" al lado; ese tres es
+   * del diseño, no de nadie. No hay conversaciones que contar, y un contador
+   * inventado en el menu es de las mentiras que mas caro salen: se ve en TODAS
+   * las pantallas, todo el tiempo, y quien lo cree entra a buscar tres
+   * mensajes que no existen. El dia que Mensajes tenga su tabla, el numero
+   * sale de contar los no leidos y no de aqui.
+   */
+  {
+    id: 'mensajes',
+    etiqueta: 'Mensajes',
+    capacidad: null,
+    bloque: 11,
+    promesa:
+      'Las conversaciones con los pacientes: recordatorios de cita, confirmaciones y avisos.',
+  },
   {
     id: 'reportes',
     etiqueta: 'Reportes',
@@ -142,7 +164,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
 export const GRUPOS = [
   { id: 'atencion', etiqueta: 'Atención', modulos: ['agenda', 'clientes', 'servicios', 'cursos'] },
   { id: 'dinero', etiqueta: 'Dinero', modulos: ['productos', 'ventas', 'caja', 'gastos'] },
-  { id: 'centro', etiqueta: 'El centro', modulos: ['recordatorios', 'reportes', 'configuracion'] },
+  { id: 'centro', etiqueta: 'El centro', modulos: ['reportes', 'mensajes', 'recordatorios', 'configuracion'] },
 ] as const;
 
 /** Los modulos que esta persona puede ver, segun sus permisos reales. */

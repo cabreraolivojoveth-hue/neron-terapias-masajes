@@ -15,7 +15,10 @@ import { useEffect, type ReactNode } from 'react';
 import { ProveedorDeSesion, useSesion, useTardaDemasiado } from './identidad/sesion.js';
 import { Hoja } from './marco/hoja.js';
 import { MarcaVisible } from './marco/marca-visible.js';
+import { Buscador } from './marco/buscador.js';
+import { CampanaDeAvisos } from './marco/notificaciones.js';
 import { Agenda } from './agenda/agenda.js';
+import { Inicio } from './inicio/inicio.js';
 import { Pendiente } from './modulos/pendiente.js';
 import { GRUPOS, MODULOS, MODULO_POR_OMISION, modulosVisibles } from './modulos/registro.js';
 import { LEMA, NOMBRE_DEL_PRODUCTO } from './marca.js';
@@ -151,12 +154,31 @@ function Interior() {
       pintarModulo={(modulo) =>
         // Cada modulo que llega se engancha aqui. Los que faltan siguen
         // diciendo la verdad en vez de fingir con datos inventados.
-        modulo === 'agenda' ? <Agenda /> : <Pendiente modulo={modulo} />
+        modulo === 'inicio' ? (
+          <Inicio />
+        ) : modulo === 'agenda' ? (
+          <Agenda />
+        ) : (
+          <Pendiente modulo={modulo} />
+        )
       }
       enLaBarraSuperior={
-        <Boton tono="contorno" onClick={() => void cerrarSesion()}>
-          Salir
-        </Boton>
+        <>
+          {/*
+            El buscador y la campana van en la barra SUPERIOR, no dentro de
+            Inicio: sirven igual desde Agenda o desde Ventas, y tenerlos en un
+            solo modulo obligaria a volver a Inicio para buscar a alguien.
+          */}
+          <Buscador negocio={acceso.negocioId} onAbrir={(c) =>
+            ir(c.modulo, { intencion: `${c.modulo}:abrir:${c.id}` })
+          } />
+          <CampanaDeAvisos onIr={(modulo, parametros) =>
+            ir(modulo, parametros ? { parametros: { ...parametros } } : {})
+          } />
+          <Boton tono="contorno" onClick={() => void cerrarSesion()}>
+            Salir
+          </Boton>
+        </>
       }
       alFallar={(error, donde) => {
         // Se registra donde revento, no solo que revento. "Se cayo la

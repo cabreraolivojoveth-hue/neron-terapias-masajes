@@ -434,5 +434,702 @@ body {
   border-left: 3px solid ${v('borde-suave')};
   padding-left: ${v('espacio-3')};
 }
+/* El recado que dejo el acceso rapido: el boton SI hizo algo. */
+.terapias-pendiente__recado {
+  margin: 0;
+  color: ${v('texto')};
+  font-size: ${v('texto-chico')};
+  background: ${v('marca-tenue')};
+  border-radius: ${v('radio-sistema')};
+  padding: ${v('espacio-2')} ${v('espacio-3')};
+}
+
+/* ================================================================ */
+/* INICIO — el tablero                                              */
+/* ================================================================ */
+/*
+ * NI UN ANCHO FIJO EN PIXELES para las columnas. Todo va en rejillas que se
+ * reacomodan solas, y cada hijo lleva su "min-width: 0" — sin eso, un nombre
+ * de paciente largo estira su columna, la rejilla crece, y aparece scroll
+ * horizontal en TODA la aplicacion. Es el defecto que mas veces vuelve.
+ */
+.ini { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
+
+.ini-icono { flex: none; }
+
+/* ---------------------------------------------------------------- */
+/* El encabezado: saludo y fecha                                     */
+/* ---------------------------------------------------------------- */
+.ini-encabezado { min-width: 0; }
+.ini-encabezado__saludo {
+  margin: 0;
+  font-size: ${v('texto-titulo-grande')};
+  font-weight: ${v('peso-fuerte')};
+  /* Un nombre largo parte en dos lineas en vez de salirse de la pantalla. */
+  overflow-wrap: anywhere;
+}
+.ini-encabezado__fecha {
+  margin: ${v('espacio-1')} 0 0;
+  color: ${v('texto-suave')};
+  font-size: ${v('texto-chico')};
+}
+
+/* ---------------------------------------------------------------- */
+/* Las cuatro tarjetas                                               */
+/* ---------------------------------------------------------------- */
+/*
+ * "auto-fit" con un minimo: cuatro en una laptop, dos en tableta, una en
+ * celular. Sin escribir un solo punto de corte, y sin que ninguna se
+ * comprima hasta que el numero no quepa.
+ */
+.ini-tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: ${v('espacio-3')};
+  min-width: 0;
+}
+.ini-tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: ${v('espacio-1')};
+  padding: ${v('espacio-4')};
+  border: 1px solid ${v('borde-suave')};
+  border-radius: ${v('radio-tarjeta')};
+  background: ${v('superficie-elevada')};
+  box-shadow: ${v('sombra-sutil')};
+  min-width: 0;
+}
+.ini-tarjeta__abrir {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: ${v('espacio-3')};
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: ${v('familia')};
+  color: ${v('texto')};
+  min-width: 0;
+}
+.ini-tarjeta__abrir:focus-visible { outline: ${v('foco')}; outline-offset: 3px; border-radius: ${v('radio-sistema')}; }
+.ini-tarjeta__icono {
+  width: 44px; height: 44px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: ${v('radio-sistema')};
+}
+.ini-tarjeta__texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ini-tarjeta__etiqueta {
+  color: ${v('texto-suave')};
+  font-size: ${v('texto-chico')};
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ini-tarjeta__valor {
+  font-size: ${v('texto-titulo')};
+  font-weight: ${v('peso-fuerte')};
+  font-variant-numeric: ${v('cifra-numeros')};
+  /* Un total de seis cifras no debe estirar la tarjeta. */
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ini-tarjeta__pie {
+  margin: 0;
+  font-size: ${v('texto-micro')};
+  color: ${v('texto-suave')};
+  /* El hueco se reserva aunque no haya pie: sin esto las tarjetas cambian de
+     alto al terminar de cargar y la fila entera da un brinco. */
+  min-height: 20px;
+  display: flex; align-items: center;
+  background: transparent; border: none; padding: 0;
+  font-family: ${v('familia')};
+  text-align: left;
+}
+.ini-tarjeta__pie--accion {
+  color: ${v('marca')};
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ini-tarjeta__pie--accion:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.ini-tarjeta--bien .ini-tarjeta__pie--cambio { color: ${v('exito')}; }
+.ini-tarjeta--mal .ini-tarjeta__pie--cambio { color: ${v('peligro')}; }
+
+/*
+ * Los cuatro tonos de categoria. Salen de marca.ts, que es el unico archivo
+ * del producto con colores escritos, y los cuatro pasaron la prueba de
+ * contraste en tema claro y en oscuro.
+ */
+.ini-tarjeta--citas { background: ${v('cat-citas-tenue')}; border-color: transparent; }
+.ini-tarjeta--citas .ini-tarjeta__icono { background: ${v('cat-citas')}; color: ${v('cat-citas-encima')}; }
+.ini-tarjeta--ventas { background: ${v('cat-ventas-tenue')}; border-color: transparent; }
+.ini-tarjeta--ventas .ini-tarjeta__icono { background: ${v('cat-ventas')}; color: ${v('cat-ventas-encima')}; }
+.ini-tarjeta--productos { background: ${v('cat-productos-tenue')}; border-color: transparent; }
+.ini-tarjeta--productos .ini-tarjeta__icono { background: ${v('cat-productos')}; color: ${v('cat-productos-encima')}; }
+.ini-tarjeta--cursos { background: ${v('cat-cursos-tenue')}; border-color: transparent; }
+.ini-tarjeta--cursos .ini-tarjeta__icono { background: ${v('cat-cursos')}; color: ${v('cat-cursos-encima')}; }
+
+/* ---------------------------------------------------------------- */
+/* El cuerpo: los paneles                                            */
+/* ---------------------------------------------------------------- */
+.ini-cuerpo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: ${v('espacio-3')};
+  /* Cada panel mide lo que necesita en vez de estirarse al alto del mas
+     largo: una lista de dos recordatorios no debe dejar medio metro vacio. */
+  align-items: start;
+  min-width: 0;
+}
+/*
+ * En pantalla ancha, la distribucion del diseño: la agenda alta a la
+ * izquierda, y a su derecha dos filas.
+ *
+ * Solo se aplica cuando ESTAN LOS CINCO PANELES —de ahi "--completo", que se
+ * pone cuando la persona puede ver finanzas—. Si se colocaran a mano siempre,
+ * a una recepcionista sin esos paneles le quedarian huecos en la rejilla.
+ */
+@media (min-width: 1180px) {
+  .ini-cuerpo--completo {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 0.95fr);
+  }
+  .ini-cuerpo--completo .ini-agenda { grid-column: 1; grid-row: 1 / span 2; }
+  .ini-cuerpo--completo .ini-grafica { grid-column: 2; grid-row: 1; }
+  .ini-cuerpo--completo .ini-ranking { grid-column: 3; grid-row: 1; }
+  .ini-cuerpo--completo .ini-productos { grid-column: 2; grid-row: 2; }
+  .ini-cuerpo--completo .ini-recordatorios { grid-column: 3; grid-row: 2; }
+}
+
+.ini-panel {
+  display: flex;
+  flex-direction: column;
+  gap: ${v('espacio-3')};
+  padding: ${v('espacio-4')};
+  background: ${v('superficie-elevada')};
+  border: 1px solid ${v('borde-suave')};
+  border-radius: ${v('radio-tarjeta')};
+  box-shadow: ${v('sombra-sutil')};
+  min-width: 0;
+}
+.ini-panel__barra { display: flex; align-items: center; gap: ${v('espacio-2')}; min-width: 0; }
+.ini-panel__titulo {
+  margin: 0;
+  font-size: ${v('texto-grande')};
+  font-weight: ${v('peso-fuerte')};
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ini-panel__enlace {
+  flex: none;
+  min-height: 36px;
+  padding: 0 ${v('espacio-3')};
+  border: 1px solid ${v('borde-suave')};
+  border-radius: ${v('radio-sistema')};
+  background: ${v('superficie')};
+  color: ${v('marca')};
+  font-family: ${v('familia')};
+  font-size: ${v('texto-micro')};
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ini-panel__enlace:hover { background: ${v('superficie-tenue')}; }
+.ini-panel__enlace:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- */
+/* Estados compartidos: vacio, error, cargando                       */
+/* ---------------------------------------------------------------- */
+.ini-vacio {
+  margin: 0;
+  padding: ${v('espacio-5')} ${v('espacio-3')};
+  text-align: center;
+  color: ${v('texto-suave')};
+  font-size: ${v('texto-chico')};
+  background: ${v('superficie-tenue')};
+  border-radius: ${v('radio-sistema')};
+}
+.ini-error {
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: ${v('espacio-2')};
+  padding: ${v('espacio-3')};
+  border-left: 3px solid ${v('peligro')};
+  background: ${v('peligro-tenue')};
+  border-radius: ${v('radio-sistema')};
+}
+.ini-error--ancho { align-items: flex-start; }
+.ini-error__que { margin: 0; font-size: ${v('texto-chico')}; color: ${v('texto')}; }
+.ini-error__detalle {
+  margin: 0; font-size: ${v('texto-micro')}; color: ${v('texto-suave')};
+  /* Un mensaje del servidor puede ser larguisimo y sin espacios. */
+  overflow-wrap: anywhere;
+}
+.ini-boton-suave {
+  min-height: 36px;
+  padding: 0 ${v('espacio-3')};
+  border: 1px solid ${v('borde')};
+  border-radius: ${v('radio-sistema')};
+  background: ${v('superficie')};
+  color: ${v('texto')};
+  font-family: ${v('familia')};
+  font-size: ${v('texto-micro')};
+  cursor: pointer;
+}
+.ini-boton-suave:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.ini-cargando { display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
+.ini-cargando__renglon { height: 44px; }
+.ini-cargando__grafica { height: 180px; }
+
+/* ---------------------------------------------------------------- */
+/* Agenda de hoy                                                     */
+/* ---------------------------------------------------------------- */
+.ini-agenda__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ini-cita {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: ${v('espacio-3')};
+  width: 100%;
+  min-height: 56px;
+  padding: ${v('espacio-2')};
+  background: transparent;
+  border: none;
+  border-radius: ${v('radio-sistema')};
+  cursor: pointer;
+  text-align: left;
+  font-family: ${v('familia')};
+  color: ${v('texto')};
+}
+.ini-cita:hover { background: ${v('superficie-tenue')}; }
+.ini-cita:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
+.ini-cita__horas { display: flex; flex-direction: column; font-variant-numeric: ${v('cifra-numeros')}; }
+.ini-cita__inicio { font-weight: ${v('peso-fuerte')}; font-size: ${v('texto-chico')}; }
+.ini-cita__fin { color: ${v('texto-tenue')}; font-size: ${v('texto-micro')}; }
+.ini-cita__inicial {
+  width: 36px; height: 36px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: ${v('radio-redondo')};
+  background: ${v('marca-tenue')};
+  color: ${v('marca')};
+  font-size: ${v('texto-micro')};
+  font-weight: ${v('peso-fuerte')};
+}
+.ini-cita__quien { display: flex; flex-direction: column; min-width: 0; }
+.ini-cita__nombre {
+  font-weight: ${v('peso-medio')};
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ini-cita__servicio {
+  color: ${v('texto-suave')}; font-size: ${v('texto-micro')};
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* El estado lleva color Y palabra. El color solo no le sirve a quien no lo
+   distingue, ni a quien mira la pantalla con el sol encima. */
+.ini-cita__estado {
+  flex: none;
+  font-size: ${v('texto-micro')};
+  padding: 3px ${v('espacio-2')};
+  border-radius: ${v('radio-redondo')};
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.ini-cita__estado--pendiente { background: ${v('advertencia-tenue')}; border-color: ${v('advertencia')}; }
+.ini-cita__estado--confirmada { background: ${v('exito-tenue')}; border-color: ${v('exito')}; }
+.ini-cita__estado--completada { background: ${v('marca-tenue')}; border-color: ${v('marca')}; }
+.ini-cita__estado--cancelada { background: ${v('peligro-tenue')}; border-color: ${v('peligro')}; }
+.ini-cita__estado--no_asistio { background: ${v('superficie-tenue')}; border-color: ${v('borde')}; }
+.ini-cita__flecha { color: ${v('texto-tenue')}; display: flex; flex: none; }
+.ini-agenda__nueva {
+  display: flex; align-items: center; justify-content: center; gap: ${v('espacio-2')};
+  min-height: 44px;
+  border: 1px dashed ${v('borde')};
+  border-radius: ${v('radio-sistema')};
+  background: ${v('superficie-tenue')};
+  color: ${v('texto')};
+  font-family: ${v('familia')};
+  font-size: ${v('texto-chico')};
+  cursor: pointer;
+}
+.ini-agenda__nueva:hover { border-color: ${v('marca')}; color: ${v('marca')}; }
+.ini-agenda__nueva:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+
+/*
+ * En celular el renglon se aprieta: se van el circulo de iniciales y la
+ * flecha, que son adorno, y se queda lo que se necesita para decidir —hora,
+ * quien, que servicio y en que estado—.
+ */
+@media (max-width: 560px) {
+  .ini-cita { grid-template-columns: auto minmax(0, 1fr) auto; gap: ${v('espacio-2')}; }
+  .ini-cita__inicial, .ini-cita__flecha { display: none; }
+}
+
+/* ---------------------------------------------------------------- */
+/* La grafica de ingresos                                            */
+/* ---------------------------------------------------------------- */
+.ini-grafica__periodo { display: flex; align-items: center; flex: none; }
+.ini-grafica__periodo select {
+  min-height: 36px;
+  padding: 0 ${v('espacio-2')};
+  border: 1px solid ${v('borde')};
+  border-radius: ${v('radio-sistema')};
+  background: ${v('superficie')};
+  color: ${v('texto')};
+  font-family: ${v('familia')};
+  font-size: ${v('texto-micro')};
+  max-width: 160px;
+}
+.ini-grafica__periodo select:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+
+.ini-grafica__cuerpo { display: flex; gap: ${v('espacio-2')}; min-width: 0; }
+.ini-grafica__eje {
+  list-style: none; margin: 0; padding: 0;
+  width: 46px; flex: none; height: 180px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  text-align: right;
+  font-size: ${v('texto-micro')};
+  color: ${v('texto-tenue')};
+  font-variant-numeric: ${v('cifra-numeros')};
+}
+.ini-grafica__lienzo { position: relative; flex: 1; min-width: 0; height: 180px; }
+.ini-grafica__svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ini-grafica__guia { stroke: ${v('borde-suave')}; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.ini-grafica__area { fill: ${v('marca-tenue')}; stroke: none; }
+.ini-grafica__linea {
+  fill: none;
+  stroke: ${v('marca')};
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  /* Sin esto, estirar el SVG a lo ancho engorda la linea horizontalmente y la
+     adelgaza en vertical: se ve como un trazo mal hecho. */
+  vector-effect: non-scaling-stroke;
+}
+.ini-grafica__columnas { position: absolute; inset: 0; }
+.ini-grafica__columna {
+  position: absolute; top: 0; bottom: 0;
+  padding: 0; margin: 0;
+  background: transparent; border: none; cursor: pointer;
+}
+.ini-grafica__columna:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
+/* La raya vertical del dia señalado, como en el diseño. */
+.ini-grafica__columna--activa::before {
+  content: '';
+  position: absolute; left: 50%; top: 0; bottom: 0;
+  border-left: 1px dashed ${v('borde')};
+}
+.ini-grafica__punto {
+  position: absolute; left: 50%;
+  width: 10px; height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: ${v('radio-redondo')};
+  background: ${v('superficie-elevada')};
+  border: 2px solid ${v('marca')};
+}
+.ini-grafica__columna--activa .ini-grafica__punto { background: ${v('marca')}; }
+.ini-grafica__globo {
+  position: absolute; top: ${v('espacio-2')};
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex; flex-direction: column;
+  padding: ${v('espacio-1')} ${v('espacio-2')};
+  background: ${v('superficie-elevada')};
+  border: 1px solid ${v('borde-suave')};
+  border-radius: ${v('radio-sistema')};
+  box-shadow: ${v('sombra-flotante')};
+  white-space: nowrap;
+  /* No intercepta el raton: si lo hiciera, el globito taparia la columna de
+     al lado y el señalado se quedaria pegado. */
+  pointer-events: none;
+}
+/* En los extremos se ancla hacia adentro para no salirse del panel. */
+.ini-grafica__globo--izquierda { transform: translateX(0); }
+.ini-grafica__globo--derecha { transform: translateX(-100%); }
+.ini-grafica__globo-dia { font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
+.ini-grafica__globo-total {
+  font-size: ${v('texto-chico')};
+  font-weight: ${v('peso-fuerte')};
+  font-variant-numeric: ${v('cifra-numeros')};
+}
+.ini-grafica__dias {
+  list-style: none; margin: 0; padding: 0;
+  display: flex;
+  /* El mismo hueco que ocupa el eje vertical, para que cada etiqueta caiga
+     bajo su franja. */
+  margin-left: calc(46px + ${v('espacio-2')});
+  font-size: ${v('texto-micro')};
+  color: ${v('texto-tenue')};
+}
+.ini-grafica__dias li {
+  flex: 1; min-width: 0; text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- */
+/* Rankings                                                          */
+/* ---------------------------------------------------------------- */
+.ini-ranking__lista {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: ${v('espacio-3')};
+}
+.ini-ranking__renglon { display: flex; align-items: center; gap: ${v('espacio-3')}; min-width: 0; }
+.ini-ranking__puesto {
+  width: 28px; height: 28px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: ${v('radio-redondo')};
+  background: ${v('marca-tenue')};
+  color: ${v('marca')};
+  font-size: ${v('texto-micro')};
+  font-weight: ${v('peso-fuerte')};
+  font-variant-numeric: ${v('cifra-numeros')};
+}
+.ini-ranking__texto { display: flex; flex-direction: column; min-width: 0; }
+.ini-ranking__nombre {
+  font-weight: ${v('peso-medio')};
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ini-ranking__dato { color: ${v('texto-suave')}; font-size: ${v('texto-micro')}; }
+
+.ini-productos__lista {
+  list-style: none; margin: 0; padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: ${v('espacio-3')};
+}
+.ini-producto {
+  display: flex; flex-direction: column; align-items: center; gap: ${v('espacio-1')};
+  min-width: 0; text-align: center;
+}
+.ini-producto__foto, .ini-producto__hueco {
+  width: 100%; max-width: 76px; aspect-ratio: 1;
+  border-radius: ${v('radio-sistema')};
+  background: ${v('superficie-tenue')};
+  border: 1px solid ${v('borde-suave')};
+}
+/* "contain" y no "cover": la foto de un frasco recortada por los lados deja
+   de parecerse al frasco que esta en el estante. */
+.ini-producto__foto { object-fit: contain; }
+.ini-producto__hueco {
+  display: flex; align-items: center; justify-content: center;
+  color: ${v('texto-tenue')};
+}
+.ini-producto__nombre {
+  font-size: ${v('texto-micro')};
+  font-weight: ${v('peso-medio')};
+  overflow-wrap: anywhere;
+}
+.ini-producto__dato { font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
+
+/* ---------------------------------------------------------------- */
+/* Recordatorios                                                     */
+/* ---------------------------------------------------------------- */
+.ini-recordatorios__lista {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: ${v('espacio-2')};
+}
+.ini-recordatorio {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: ${v('espacio-3')};
+  width: 100%;
+  min-height: 56px;
+  padding: ${v('espacio-2')} ${v('espacio-3')};
+  border: 1px solid ${v('borde-suave')};
+  border-left-width: 3px;
+  border-radius: ${v('radio-sistema')};
+  background: ${v('superficie')};
+  cursor: pointer;
+  text-align: left;
+  font-family: ${v('familia')};
+  color: ${v('texto')};
+}
+.ini-recordatorio:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.ini-recordatorio--vencido { border-left-color: ${v('peligro')}; background: ${v('peligro-tenue')}; }
+.ini-recordatorio--hoy { border-left-color: ${v('advertencia')}; background: ${v('advertencia-tenue')}; }
+.ini-recordatorio--proximo { border-left-color: ${v('borde')}; }
+.ini-recordatorio__icono {
+  width: 34px; height: 34px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: ${v('radio-redondo')};
+  background: ${v('superficie-elevada')};
+  color: ${v('texto-suave')};
+  border: 1px solid ${v('borde-suave')};
+}
+.ini-recordatorio__texto { display: flex; flex-direction: column; min-width: 0; }
+.ini-recordatorio__titulo {
+  font-weight: ${v('peso-medio')}; font-size: ${v('texto-chico')};
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ini-recordatorio__detalle {
+  color: ${v('texto-suave')}; font-size: ${v('texto-micro')};
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ini-recordatorio__cuando {
+  flex: none; font-size: ${v('texto-micro')}; color: ${v('texto-suave')};
+  white-space: nowrap;
+}
+.ini-recordatorio__flecha { color: ${v('texto-tenue')}; display: flex; flex: none; }
+@media (max-width: 560px) {
+  .ini-recordatorio { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .ini-recordatorio__flecha { display: none; }
+}
+
+/* ---------------------------------------------------------------- */
+/* Acciones rapidas                                                  */
+/* ---------------------------------------------------------------- */
+.ini-acciones__fila {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(146px, 1fr));
+  gap: ${v('espacio-2')};
+}
+.ini-accion {
+  display: flex; align-items: center; justify-content: center; gap: ${v('espacio-2')};
+  min-height: 52px; min-width: 0;
+  padding: 0 ${v('espacio-3')};
+  border: 1px solid ${v('borde-suave')};
+  border-radius: ${v('radio-sistema')};
+  background: ${v('superficie')};
+  color: ${v('texto')};
+  font-family: ${v('familia')};
+  font-size: ${v('texto-chico')};
+  cursor: pointer;
+}
+.ini-accion:hover { background: ${v('superficie-tenue')}; }
+.ini-accion:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.ini-accion__icono { display: flex; flex: none; }
+.ini-accion__texto { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* El icono toma el tono de la familia a la que pertenece la accion. El gasto
+   va en rojo a proposito: es lo unico de la fila que saca dinero. */
+.ini-accion--venta .ini-accion__icono { color: ${v('cat-citas')}; }
+.ini-accion--cliente .ini-accion__icono { color: ${v('cat-cursos')}; }
+.ini-accion--cita .ini-accion__icono { color: ${v('cat-citas')}; }
+.ini-accion--pago .ini-accion__icono { color: ${v('cat-citas')}; }
+.ini-accion--gasto .ini-accion__icono { color: ${v('peligro')}; }
+.ini-accion--reportes .ini-accion__icono { color: ${v('cat-ventas')}; }
+
+/* ================================================================ */
+/* LA BARRA SUPERIOR: buscador y campana                            */
+/* ================================================================ */
+/*
+ * Se ajusta la barra de la base para que quepan tres cosas mas.
+ *
+ * "flex-wrap" es lo que evita el scroll horizontal en celular: en vez de
+ * apretarse hasta salirse, el buscador baja a su propio renglon. Es un ajuste
+ * de acomodo, no un cambio del sistema de diseño: ni un color, ni un tamaño,
+ * ni un espacio propio.
+ */
+.neron-superior { flex-wrap: wrap; }
+.neron-superior__acciones { flex: 1 1 auto; min-width: 0; justify-content: flex-end; flex-wrap: wrap; }
+
+.ini-buscador {
+  position: relative;
+  display: flex; align-items: center;
+  flex: 1 1 190px; min-width: 0; max-width: 420px;
+}
+.ini-buscador__lupa {
+  position: absolute; left: ${v('espacio-3')};
+  display: flex; color: ${v('texto-tenue')};
+  /* No intercepta el clic: si lo hiciera, tocar la lupa no enfocaria el
+     campo, que es justo lo que todo el mundo intenta. */
+  pointer-events: none;
+}
+.ini-buscador__campo {
+  width: 100%; min-width: 0; min-height: 40px;
+  padding-left: calc(${v('espacio-3')} + 18px + ${v('espacio-2')});
+  padding-right: ${v('espacio-3')};
+  border: 1px solid ${v('borde')};
+  border-radius: ${v('radio-redondo')};
+  background: ${v('superficie-tenue')};
+  color: ${v('texto')};
+  font-family: ${v('familia')};
+  font-size: ${v('texto-chico')};
+}
+.ini-buscador__campo:focus-visible { outline: ${v('foco')}; outline-offset: 1px; }
+.ini-buscador__panel {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  /* Por encima del velo (40) y de la barra lateral (50) de la base: si
+     quedara debajo, se veria el fondo oscurecerse y el panel no aparecer —
+     que es exactamente el fallo que ya nos costo tiempo. */
+  z-index: 60;
+  max-height: 60vh; overflow-y: auto;
+  padding: ${v('espacio-2')};
+  background: ${v('superficie-elevada')};
+  border: 1px solid ${v('borde-suave')};
+  border-radius: ${v('radio-sistema')};
+  box-shadow: ${v('sombra-flotante')};
+}
+.ini-buscador__pista { margin: 0; padding: ${v('espacio-2')}; font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
+.ini-buscador__grupo + .ini-buscador__grupo { margin-top: ${v('espacio-2')}; }
+.ini-buscador__grupo-titulo {
+  margin: 0 0 ${v('espacio-1')};
+  padding: 0 ${v('espacio-2')};
+  font-size: ${v('texto-micro')};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: ${v('texto-tenue')};
+}
+.ini-buscador__lista { list-style: none; margin: 0; padding: 0; }
+.ini-buscador__cosa {
+  display: flex; align-items: baseline; justify-content: space-between; gap: ${v('espacio-2')};
+  width: 100%; min-height: 40px;
+  padding: 0 ${v('espacio-2')};
+  background: transparent; border: none; border-radius: ${v('radio-sistema')};
+  cursor: pointer; text-align: left;
+  font-family: ${v('familia')}; font-size: ${v('texto-chico')}; color: ${v('texto')};
+}
+.ini-buscador__cosa:hover, .ini-buscador__cosa--marcada { background: ${v('marca-tenue')}; }
+.ini-buscador__nombre { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ini-buscador__pista-corta { flex: none; font-size: ${v('texto-micro')}; color: ${v('texto-tenue')}; }
+
+.ini-campana { position: relative; flex: none; }
+.ini-campana__boton {
+  position: relative;
+  min-width: 40px; min-height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid ${v('borde-suave')};
+  border-radius: ${v('radio-redondo')};
+  background: ${v('superficie')};
+  color: ${v('texto-suave')};
+  cursor: pointer;
+}
+.ini-campana__boton:hover { background: ${v('superficie-tenue')}; }
+.ini-campana__boton:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.ini-campana__punto {
+  position: absolute; top: 7px; right: 8px;
+  width: 9px; height: 9px;
+  border-radius: ${v('radio-redondo')};
+  background: ${v('marca')};
+  border: 2px solid ${v('superficie')};
+}
+.ini-campana__panel {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  z-index: 60;
+  width: min(320px, calc(100vw - 2rem));
+  padding: ${v('espacio-2')};
+  background: ${v('superficie-elevada')};
+  border: 1px solid ${v('borde-suave')};
+  border-radius: ${v('radio-sistema')};
+  box-shadow: ${v('sombra-flotante')};
+}
+.ini-campana__vacio { margin: 0; padding: ${v('espacio-3')}; font-size: ${v('texto-chico')}; color: ${v('texto-suave')}; }
+.ini-campana__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: ${v('espacio-1')}; }
+.ini-campana__aviso {
+  display: flex; align-items: center; gap: ${v('espacio-3')};
+  width: 100%; min-height: 52px;
+  padding: ${v('espacio-2')};
+  background: transparent; border: none; border-radius: ${v('radio-sistema')};
+  cursor: pointer; text-align: left; font-family: ${v('familia')};
+  color: ${v('texto')};
+}
+.ini-campana__aviso:hover { background: ${v('superficie-tenue')}; }
+.ini-campana__aviso:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
+.ini-campana__icono { display: flex; flex: none; color: ${v('marca')}; }
+.ini-campana__texto { display: flex; flex-direction: column; min-width: 0; }
+.ini-campana__que { font-size: ${v('texto-chico')}; font-weight: ${v('peso-medio')}; }
+.ini-campana__porque { font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
+
+/* En celular el buscador se lleva un renglon entero, que es lo unico que
+   permite escribir comodo con el pulgar. */
+@media (max-width: 700px) {
+  .ini-buscador { flex: 1 1 100%; max-width: none; order: 3; }
+}
 `;
 }
