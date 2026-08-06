@@ -58,6 +58,18 @@ do $$ begin
     execute 'alter table material_curso enable row level security';
     execute 'alter table material_curso force row level security';
   end if;
+  if to_regclass('public.proveedor') is not null then
+    execute 'alter table proveedor enable row level security';
+    execute 'alter table proveedor force row level security';
+  end if;
+  if to_regclass('public.producto_proveedor') is not null then
+    execute 'alter table producto_proveedor enable row level security';
+    execute 'alter table producto_proveedor force row level security';
+  end if;
+  if to_regclass('public.movimiento_inventario') is not null then
+    execute 'alter table movimiento_inventario enable row level security';
+    execute 'alter table movimiento_inventario force row level security';
+  end if;
 end $$;
 
 -- El visitante sin sesion no ve absolutamente nada del producto.

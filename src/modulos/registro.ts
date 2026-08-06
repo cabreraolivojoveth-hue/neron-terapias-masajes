@@ -21,6 +21,9 @@ export const CAPACIDADES_DE_TERAPIAS = [
   'cobrar',
   'verFinanzas',
   'verExpediente',
+  // El costo y el margen no son para todo el mundo. Va aparte de `verFinanzas`
+  // porque quien administra el almacen necesita ver costos sin ver la caja.
+  'verCostos',
 ] as const;
 
 export type CapacidadDeTerapias = (typeof CAPACIDADES_DE_TERAPIAS)[number];

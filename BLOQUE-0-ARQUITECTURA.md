@@ -64,7 +64,9 @@ referencia por id y la resuelve al leer.
 | Cursos | `curso` | qué se enseña, cupo, precio, modalidad, instructor |
 | Sesiones de curso | `sesion_curso` | **la ejecución** — día, hora, instructor y lugar de cada reunión |
 | Material de curso | `material_curso` | el enlace a lo que se reparte, y a quién se le enseña |
-| Inventario | `producto` | precio, costo, existencias, umbral bajo |
+| Inventario | `producto` | precio, costo, SKU, umbral bajo — **`stock_actual` es derivado, nadie lo escribe a mano** |
+| Movimientos de inventario | `movimiento_inventario` | **por qué** cambió el stock. Solo se agrega: ni editar ni borrar |
+| Proveedores | `proveedor` + `producto_proveedor` | de dónde llega, y a qué precio de cada quien |
 | Agenda | `cita` | fecha, hora, estado, a quién y con quién |
 | Transacciones | `venta` + `venta_item` | qué se vendió y en cuánto |
 | Pagos | `pago` | con qué se pagó |

@@ -334,6 +334,41 @@ nulo, nunca con 999999.
 un rango de cinco semanas: se dicen "5 sesiones", porque enseñarlos como rango hace creer que el
 curso dura cinco semanas corridas.
 
+**Bloque 5 — Productos.** El catálogo físico y el inventario.
+
+**El stock no es un número que se edita: es la consecuencia de una lista de movimientos.** Un
+`update producto set stock = 20` no dice nada tres meses después — ni quién lo hizo, ni cuándo, ni
+por qué faltaban dos. Con `movimiento_inventario`, la pregunta *"¿por qué dice 18 si compramos
+20?"* tiene respuesta.
+
+**Nadie escribe `stock_actual` directamente.** Todo pasa por una sola función, que cambia el
+movimiento y el stock **en el mismo acto**, con el renglón del producto bloqueado. Un movimiento
+que diga −2 con el stock sin tocar es peor que no tener movimientos: hace creer que hay
+trazabilidad cuando no la hay.
+
+**El stock nunca queda negativo.** Un inventario en −3 no es un dato: es la prueba de que el
+sistema dejó vender lo que no había, y a partir de ahí ningún número de esa pantalla vale nada.
+**Probado con dos cajas vendiendo la última pieza a la vez: una vende, la otra recibe "solo queda
+0".**
+
+**Todo ajuste exige un motivo.** Un ajuste sin motivo es exactamente el `update stock = 20` que
+esto existe para evitar, sólo que con más pasos. Y la bitácora **no se puede editar ni borrar**:
+si el inventario no cuadra y los movimientos se corrigen a mano, no hay forma de saber si faltó
+mercancía o faltó honestidad.
+
+**El valor del inventario va con el COSTO, no con el precio de venta.** Con el precio sale
+inflado y se lee como si el centro tuviera ese dinero: lo que hay en la vitrina vale lo que costó.
+
+**El costo no es para todo el mundo, y esconderlo con CSS no lo esconde.** Quien no tiene
+`verCostos` recibe `null` desde la base — no cero — y la pantalla lo **dice**, en vez de enseñar
+un cero que se leería como "no vale nada".
+
+**El costo se congela al vender.** Sin esa foto, subir el costo el mes que viene reescribiría la
+utilidad de todos los meses anteriores.
+
+**"Desactivado" y "agotado" son cosas distintas.** Un producto activo con cero piezas está
+agotado, no inactivo: apagarlo solo porque se acabó lo escondería justo cuando hay que resurtirlo.
+
 ### La orden única
 
 ```bash
@@ -349,7 +384,7 @@ cuerpo de una función `plpgsql` al crearla, así que un nombre de columna equiv
 los tipos, a las guardias y a las 620 pruebas — y revienta en el SQL Editor. Aplicando el
 instalador real, cada función se parsea contra un Postgres de carne y hueso y el error sale aquí.
 
-**764 pruebas · 11 guardias · 111 ataques.**
+**862 pruebas · 11 guardias · 135 ataques.**
 
 ---
 
@@ -363,7 +398,8 @@ instalador real, cada función se parsea contra un Postgres de carne y hueso y e
 | **8** ✅ | **Inicio** — el tablero, el buscador global y los avisos |
 | **2** ✅ | **Clientes** — el expediente comercial de cada persona |
 | **3** ✅ | **Servicios** — el catálogo · **Cursos** — talleres, sesiones e inscripciones |
-| 5 | Productos · 6 · Ventas, Pagos y Caja · 7 · Gastos y Recordatorios |
+| **5** ✅ | **Productos** — el catálogo físico y el inventario trazable |
+| 6 | Ventas, Pagos y Caja · 7 · Gastos y Recordatorios |
 | 9 | Reportes · 10 · Configuración · 11 · Mensajes · 12 · Publicación |
 
 Inicio es el bloque 8, no el 1: es un resumen, y un resumen necesita que exista

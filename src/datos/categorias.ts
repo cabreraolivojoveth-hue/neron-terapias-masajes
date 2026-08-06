@@ -17,7 +17,13 @@ const texto = (v: unknown): string => (v === null || v === undefined ? '' : Stri
 const opcional = (v: unknown): string | null =>
   v === null || v === undefined || v === '' ? null : String(v);
 
-export type AmbitoDeCategoria = 'servicio' | 'curso';
+/**
+ * A que catalogo pertenece una categoria.
+ *
+ * UNA SOLA TABLA para los tres. Un centro llama "Aceites" a un grupo y no
+ * quiere tres listas distintas de grupos que se renombren por separado.
+ */
+export type AmbitoDeCategoria = 'servicio' | 'curso' | 'producto';
 
 export interface Categoria {
   readonly id: string;
@@ -60,7 +66,9 @@ export async function traerCategorias(
   const filas = (data ?? []) as Record<string, unknown>[];
   if (filas.length === 0) return [];
 
-  const tabla = ambito === 'servicio' ? 'servicio' : 'curso';
+  // La tabla que hay que contar depende del ambito: son tres catalogos
+  // distintos compartiendo una sola lista de grupos.
+  const tabla = ambito;
   const { data: usos, error: errorUsos } = await bd
     .from(tabla)
     .select('categoria_id')

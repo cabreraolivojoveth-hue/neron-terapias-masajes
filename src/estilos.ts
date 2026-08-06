@@ -2281,5 +2281,91 @@ body {
   background: ${v('superficie')};
 }
 
+
+/* ================================================================ */
+/* PRODUCTOS — el almacen                                           */
+/* ================================================================ */
+/*
+ * Reusa el esqueleto de Servicios y Cursos. Lo suyo es la miniatura, el SKU,
+ * el stock con su color, los movimientos y las ventas.
+ */
+.prd { min-width: 0; }
+
+.prd-foto {
+  width: 40px; height: 40px; flex: none;
+  object-fit: cover;
+  border-radius: ${v('radio-sistema')};
+  background: ${v('superficie-tenue')};
+}
+/* Sin imagen NO se carga una de ejemplo: va un icono neutro. */
+.prd-foto--vacia {
+  display: flex; align-items: center; justify-content: center;
+  color: ${v('texto-tenue')};
+}
+
+.prd-sku {
+  color: ${v('texto-suave')}; font-size: ${v('texto-micro')};
+  font-variant-numeric: ${v('cifra-numeros')};
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* El numero del stock lleva color Y la palabra va al lado en su badge: solo
+   con color, quien no distingue ambar de verde no sabe cual esta bajo. */
+.prd-stock { font-variant-numeric: ${v('cifra-numeros')}; font-weight: ${v('peso-medio')}; }
+.prd-stock--bajo    { color: ${v('advertencia')}; }
+.prd-stock--agotado { color: ${v('peligro')}; }
+
+.prd-estado--disponible { color: ${v('exito')};       border-color: ${v('exito')}; }
+.prd-estado--bajo       { color: ${v('advertencia')}; border-color: ${v('advertencia')}; }
+.prd-estado--agotado    { color: ${v('peligro')};     border-color: ${v('peligro')}; }
+
+/* ---------------------------------------------------------------- */
+/* La pestaña de inventario                                          */
+/* ---------------------------------------------------------------- */
+.prd-cifras {
+  display: flex; flex-wrap: wrap; gap: ${v('espacio-4')};
+  padding-bottom: ${v('espacio-3')};
+  border-bottom: 1px solid ${v('borde-suave')};
+}
+.prd-cifra { display: flex; flex-direction: column; min-width: 0; }
+.prd-cifra__valor {
+  font-size: ${v('texto-grande')}; font-weight: ${v('peso-fuerte')};
+  font-variant-numeric: ${v('cifra-numeros')};
+}
+
+.prd-movimientos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.prd-movimiento {
+  display: flex; align-items: flex-start; gap: ${v('espacio-3')};
+  padding: ${v('espacio-2')} 0;
+  border-bottom: 1px solid ${v('borde-suave')};
+  min-width: 0;
+}
+.prd-movimiento:last-child { border-bottom: none; }
+.prd-movimiento__cantidad {
+  flex: none; min-width: 48px; text-align: right;
+  font-variant-numeric: ${v('cifra-numeros')};
+  font-weight: ${v('peso-fuerte')};
+  font-size: ${v('texto-chico')};
+}
+.prd-movimiento__cantidad--entra { color: ${v('exito')}; }
+.prd-movimiento__cantidad--sale  { color: ${v('peligro')}; }
+
+/* ---------------------------------------------------------------- */
+/* La pestaña de ventas                                              */
+/* ---------------------------------------------------------------- */
+.prd-ventas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.prd-venta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: ${v('espacio-2')};
+  padding: ${v('espacio-2')} 0;
+  border-bottom: 1px solid ${v('borde-suave')};
+  min-width: 0;
+}
+.prd-venta:last-child { border-bottom: none; }
+.prd-venta__cifras {
+  display: flex; gap: ${v('espacio-3')}; flex: none;
+  font-size: ${v('texto-chico')};
+  font-variant-numeric: ${v('cifra-numeros')};
+}
+
 `;
 }

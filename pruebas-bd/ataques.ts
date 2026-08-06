@@ -44,7 +44,8 @@ const anotar = (titulo: string, paso: boolean, detalle = ''): void => {
 /** Las doce tablas del producto. Una sola lista, para que no se desincronicen. */
 const TABLAS = ['cliente', 'servicio', 'curso', 'producto', 'cita', 'venta',
   'venta_item', 'pago', 'gasto', 'movimiento_caja', 'inscripcion', 'recordatorio',
-  'categoria', 'sesion_curso', 'material_curso'] as const;
+  'categoria', 'sesion_curso', 'material_curso',
+  'proveedor', 'producto_proveedor', 'movimiento_inventario'] as const;
 
 const cliente = new pg.Client(CADENA ? { connectionString: CADENA } : {});
 
@@ -270,6 +271,8 @@ async function correr(): Promise<void> {
     ['categoria', 'las categorías del catálogo'],
     ['sesion_curso', 'las sesiones de curso'],
     ['material_curso', 'el material de los cursos'],
+    ['proveedor', 'los proveedores'],
+    ['movimiento_inventario', 'los movimientos de inventario'],
   ] as const) {
     await como(DUENO_OTRO, async () => {
       const n = await cuantos(`select * from ${tabla} where negocio_id = $1`, [CENTRO]);
@@ -576,6 +579,197 @@ async function correr(): Promise<void> {
   await como(DUENO_OTRO, async () => {
     const n = await cuantos(`select * from sesion_curso where negocio_id = $1`, [CENTRO]);
     anotar('desde otro centro las sesiones ajenas vienen VACIAS', n === 0, `vio ${n}`);
+  });
+
+  grupo('El inventario no cambia sin dejar rastro');
+
+  await como(DUENA, async () => {
+    /**
+     * LA PRUEBA QUE JUSTIFICA TODO EL MODULO.
+     *
+     * Un `update producto set stock_actual = 20` no dice nada tres meses
+     * despues: ni quien, ni cuando, ni por que faltaban dos. Cada cambio tiene
+     * que dejar su renglon, y el renglon y el stock tienen que moverse en el
+     * MISMO acto.
+     */
+    const p = await cliente.query(
+      `select (guardar_producto($1, null, 'Producto Del Ataque', null, 'ATQ1', null, null,
+         35000, 18000, 3, 'pieza', null, null, null, true, 10)).id as id`, [CENTRO]);
+    const prod = p.rows[0].id;
+
+    const m = await cliente.query(
+      `select tipo, cantidad, stock_antes, stock_despues from movimiento_inventario
+        where producto_id = $1`, [prod]);
+    anotar('el stock inicial deja su movimiento, no se asigna en silencio',
+      m.rowCount === 1 && m.rows[0].tipo === 'inicial' && m.rows[0].stock_despues === 10,
+      `trajo ${m.rowCount}`);
+
+    // EL MOTIVO ES OBLIGATORIO. Un ajuste sin motivo es exactamente el update
+    // a mano que esto existe para evitar, solo que con mas pasos.
+    const sinMotivo = await rechazado(() =>
+      cliente.query(`select ajustar_inventario($1,'ajuste_entrada',2,'  ')`, [prod]));
+    anotar('un ajuste SIN motivo se rechaza', sinMotivo !== null, sinMotivo ?? 'lo logro');
+
+    // EL STOCK NO SE VA A NEGATIVO. Un inventario en -3 es la prueba de que el
+    // sistema dejo vender lo que no habia.
+    const deMas = await rechazado(() =>
+      cliente.query(`select ajustar_inventario($1,'merma',50,'Intento')`, [prod]));
+    anotar('NO se puede sacar mas de lo que hay', deMas !== null, deMas ?? 'lo logro');
+
+    const stock = await cliente.query(`select stock_actual from producto where id=$1`, [prod]);
+    anotar('y el stock siguio en 10, no en negativo', stock.rows[0].stock_actual === 10,
+      `quedo en ${stock.rows[0].stock_actual}`);
+
+    // LA BITACORA NO SE EDITA. Si el inventario no cuadra y los movimientos se
+    // pueden corregir a mano, no hay forma de saber si falto mercancia o falto
+    // honestidad.
+    const editar = await rechazado(() =>
+      cliente.query(`update movimiento_inventario set cantidad = 999 where producto_id = $1`,
+        [prod]));
+    anotar('un movimiento NO se puede editar', editar !== null, editar ?? 'lo logro');
+    const borrar = await rechazado(() =>
+      cliente.query(`delete from movimiento_inventario where producto_id = $1`, [prod]));
+    anotar('ni borrar', borrar !== null, borrar ?? 'lo logro');
+  });
+
+  await como(RECEPCION, async () => {
+    const p = await cliente.query(`select id from producto where negocio_id=$1 limit 1`, [CENTRO]);
+    if (p.rows[0]) {
+      const e = await rechazado(() =>
+        cliente.query(`select ajustar_inventario($1,'entrada',5,'Sin permiso')`, [p.rows[0].id]));
+      anotar('Sin gestionarInventario NO se ajusta el inventario', e !== null, e ?? 'lo logro');
+    }
+  });
+
+  grupo('El costo no es para todo el mundo');
+
+  await como(RECEPCION, async () => {
+    /**
+     * ESCONDER EL COSTO CON CSS NO LO ESCONDE: quien abra la consola lo ve
+     * igual. La decision tiene que estar en el servidor, y la consulta tiene
+     * que devolver NULO — no cero, que seria un dato falso.
+     */
+    const r = await cliente.query(`select resumen_productos($1) as r`, [CENTRO]);
+    anotar('sin verCostos, el valor del inventario viene NULO',
+      r.rows[0].r?.valorCentavos === null, `vino ${r.rows[0].r?.valorCentavos}`);
+    anotar('pero SI ve cuantos productos hay: los necesita para vender',
+      Number(r.rows[0].r?.total) >= 0, 'no los vio');
+
+    const l = await cliente.query(`select productos_del_centro($1) as l`, [CENTRO]);
+    const fila = (l.rows[0].l?.filas ?? [])[0];
+    if (fila) {
+      anotar('y en la lista el costo tambien viene NULO', fila.costoCentavos === null,
+        `vino ${fila.costoCentavos}`);
+      anotar('el PRECIO de venta si lo ve: es lo que cobra', fila.precioCentavos > 0,
+        'no lo vio');
+    }
+  });
+
+  await como(DUENA, async () => {
+    // El producto se crea AQUI: cada bloque corre en su propia transaccion y
+    // se deshace al terminar, asi que lo de otro bloque ya no existe.
+    await cliente.query(
+      `select guardar_producto($1, null, 'Con Costo', null, 'CST1', null, null,
+         35000, 18000, 0, 'pieza', null, null, null, true, 10)`, [CENTRO]);
+    const r = await cliente.query(`select resumen_productos($1) as r`, [CENTRO]);
+    // El valor va con COSTO, no con precio de venta: lo que hay en la vitrina
+    // vale lo que costo. 10 x 180 = 1,800, no 10 x 350 = 3,500.
+    anotar('la dueña SI ve el valor, y va con el COSTO no con el precio',
+      Number(r.rows[0].r?.valorCentavos) === 180000,
+      `dijo ${r.rows[0].r?.valorCentavos}`);
+  });
+
+  grupo('Una venta mueve el inventario, y cancelarla lo devuelve');
+
+  await como(DUENA, async () => {
+    const p = await cliente.query(
+      `select (guardar_producto($1, null, 'Producto Vendible', null, 'VND1', null, null,
+         35000, 18000, 0, 'pieza', null, null, null, true, 5)).id as id`, [CENTRO]);
+    const prod = p.rows[0].id;
+
+    const f = await cliente.query(`select siguiente_folio($1) f`, [CENTRO]);
+    const v = await cliente.query(
+      `insert into venta (negocio_id, folio, total_centavos) values ($1,$2,0) returning id`,
+      [CENTRO, f.rows[0].f]);
+    await cliente.query(
+      `insert into venta_item (negocio_id, venta_id, tipo, producto_id, descripcion,
+         cantidad, precio_unitario_centavos, subtotal_centavos)
+       values ($1,$2,'producto',$3,'Producto Vendible',2,35000,70000)`, [CENTRO, v.rows[0].id, prod]);
+    await cliente.query(`select cobrar_venta($1)`, [v.rows[0].id]);
+
+    const s1 = await cliente.query(`select stock_actual from producto where id=$1`, [prod]);
+    anotar('cobrar baja el stock', s1.rows[0].stock_actual === 3, `quedo ${s1.rows[0].stock_actual}`);
+
+    const mv = await cliente.query(
+      `select tipo, cantidad from movimiento_inventario where producto_id=$1 and tipo='venta'`,
+      [prod]);
+    anotar('y deja su movimiento de VENTA, no un update mudo',
+      mv.rowCount === 1 && mv.rows[0].cantidad === -2, `trajo ${mv.rowCount}`);
+
+    // EL COSTO SE CONGELA AL VENDER. Sin esa foto, subir el costo el mes que
+    // viene reescribiria la utilidad de todos los meses anteriores.
+    const c = await cliente.query(
+      `select costo_unitario_centavos c from venta_item where venta_id=$1`, [v.rows[0].id]);
+    anotar('el costo se CONGELA en el renglon de la venta', Number(c.rows[0].c) === 18000,
+      `guardo ${c.rows[0].c}`);
+
+    await cliente.query(`update producto set costo_centavos = 25000 where id=$1`, [prod]);
+    const c2 = await cliente.query(
+      `select costo_unitario_centavos c from venta_item where venta_id=$1`, [v.rows[0].id]);
+    anotar('y subir el costo NO reescribe la utilidad historica',
+      Number(c2.rows[0].c) === 18000, `quedo en ${c2.rows[0].c}`);
+
+    // CANCELAR NO BORRA EL MOVIMIENTO: agrega el contrario. El de la venta
+    // ocurrio de verdad.
+    await cliente.query(`select cancelar_venta($1,'Prueba')`, [v.rows[0].id]);
+    const s2 = await cliente.query(`select stock_actual from producto where id=$1`, [prod]);
+    anotar('cancelar DEVUELVE el stock', s2.rows[0].stock_actual === 5,
+      `quedo ${s2.rows[0].stock_actual}`);
+
+    const mv2 = await cliente.query(
+      `select tipo from movimiento_inventario where producto_id=$1 order by creado_en`, [prod]);
+    const tipos = mv2.rows.map((r: { tipo: string }) => r.tipo);
+    anotar('sin borrar el de la venta: se agrega el contrario',
+      tipos.join(',') === 'inicial,venta,devolucion', tipos.join(','));
+  });
+
+  await como(DUENA, async () => {
+    // NO SE PUEDE VENDER LO QUE NO HAY. Aunque se capture a mano en la venta.
+    const p = await cliente.query(
+      `select (guardar_producto($1, null, 'Casi Agotado', null, 'AGT1', null, null,
+         10000, 5000, 0, 'pieza', null, null, null, true, 1)).id as id`, [CENTRO]);
+    const prod = p.rows[0].id;
+    const f = await cliente.query(`select siguiente_folio($1) f`, [CENTRO]);
+    const v = await cliente.query(
+      `insert into venta (negocio_id, folio, total_centavos) values ($1,$2,0) returning id`,
+      [CENTRO, f.rows[0].f]);
+    await cliente.query(
+      `insert into venta_item (negocio_id, venta_id, tipo, producto_id, descripcion,
+         cantidad, precio_unitario_centavos, subtotal_centavos)
+       values ($1,$2,'producto',$3,'Casi Agotado',5,10000,50000)`, [CENTRO, v.rows[0].id, prod]);
+    const e = await rechazado(() => cliente.query(`select cobrar_venta($1)`, [v.rows[0].id]));
+    anotar('NO se cobra una venta de 5 piezas si solo hay 1', e !== null, e ?? 'lo logro');
+  });
+
+  grupo('El folio no se repite, ni con dos cajas a la vez');
+
+  await como(DUENA, async () => {
+    /**
+     * LO QUE ESTABA MAL: `select max(folio) + 1`. Dos cajas cobrando al mismo
+     * tiempo leen el mismo maximo y calculan el mismo folio.
+     */
+    const a = await cliente.query(`select siguiente_folio($1) f`, [CENTRO]);
+    const b = await cliente.query(`select siguiente_folio($1) f`, [CENTRO]);
+    anotar('dos folios seguidos son DISTINTOS', a.rows[0].f !== b.rows[0].f,
+      `${a.rows[0].f} y ${b.rows[0].f}`);
+    anotar('y llevan el formato del centro', /^V-\d{5}$/.test(a.rows[0].f), a.rows[0].f);
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select guardar_producto($1, null, 'Infiltrado', null, null, null, null,
+        1000, 500, 0, 'pieza', null, null, null, true, 1)`, [CENTRO]));
+    anotar('NO puede crear un producto en el centro ajeno', e !== null, e ?? 'lo logro');
   });
 
   grupo('Sin permiso de finanzas, la base no entrega el dinero');
