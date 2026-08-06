@@ -153,6 +153,60 @@ Tocar un hueco abre "Nueva cita" con esa fecha y hora ya puestas.
 **Crear un paciente desde una cita no borra lo escrito:** se guarda en Clientes —la tabla de
 verdad— y al volver queda seleccionado, conservando servicio, fecha, hora y notas.
 
+**Los filtros viven en la dirección, no en la memoria.** Tocar "2 pendientes" en Inicio abre la
+Agenda de hoy ya filtrada, ese enlace se puede mandar por WhatsApp, y recargar no pierde el
+filtro. Cuando hay uno puesto, el botón lo dice **con un número** — una agenda que muestra tres
+citas de veinte sin avisar del filtro se lee como una agenda vacía.
+
+**El selector de fecha es el del sistema operativo.** No es pereza: un menú propio es
+exactamente el que puede quedar debajo de otra capa y no aparecer. El del sistema no tiene
+z-index, funciona con teclado sin escribir una línea, y en celular abre la rueda nativa.
+
+**La franja de horas se estira sola.** Se parte de un horario normal de consultorio y crece para
+que quepa cualquier cita fuera de él. Sin eso, una cita de las 7 de la mañana se recorta contra
+el borde y se lee como si empezara a las 8. Cuando llegue Configuración, el horario sale de ahí.
+
+**Los recordatorios de una cita se mueven CON ella**, y dentro de la misma transacción de la
+base. Reagendar al martes empuja sus recordatorios pendientes conservando el desfase —uno puesto
+para el día anterior sigue quedando el día anterior—, y cancelarla los descarta. Hacerlo desde
+el navegador tendría una ventana: si se cae la red en medio, la cita queda el martes y el
+recordatorio sigue avisando del lunes.
+
+**"Enviar mensaje" no manda nada desde Agenda:** abre Mensajes con el **id del paciente** y el
+de la cita. Un teléfono copiado deja de ser el bueno en cuanto alguien lo corrige en Clientes.
+
+**La sala del diseño no está, a propósito.** La captura muestra "Sala 1 – Paz y Luz"; en la base
+no hay tabla de salas. Escribir ese renglón con un texto fijo sería justo lo que este producto
+no hace.
+
+**Bloque 8 — Inicio.** El tablero, el buscador global y la campana de avisos.
+
+**No es dueño de un solo dato.** Cada cifra vive en otro módulo y aquí solo se pregunta.
+Las once cifras salen de `resumen_inicio` en **un** viaje al servidor, no once; y la agenda de
+hoy comparte la misma llave de caché que el módulo Agenda, así que abrir las dos pantallas
+cuesta una sola consulta y crear una cita refresca ambas sin apretar F5.
+
+**El rol no se disimula, se aplica.** `resumen_inicio` corre con los permisos de quien llama:
+a una recepcionista sin `verFinanzas` la base le entrega las ventas en cero, y la pantalla
+además no le pinta esa tarjeta — para que ese cero no se lea como "hoy no hemos vendido nada".
+
+**Dos cosas que en un tablero se confunden solas y salen caras:** "todavía no llega" se pinta
+con una raya y no con un cero; y cuando ayer no hubo ventas se dice "nuevo", no "+∞%". El eje
+de la gráfica **empieza en cero siempre**: entre $4,800 y $5,000, una escala automática dibuja
+una subida que no existió.
+
+**Los avisos de la campana se deducen de cifras reales** —productos bajos, recordatorios
+vencidos, citas sin confirmar—. No hay tabla de notificaciones, y por eso ninguno puede quedarse
+anunciando algo que ya se resolvió: si el producto se resurtió, el aviso desaparece solo.
+
+**El buscador no pierde el foco.** El campo se pinta siempre en el mismo lugar del árbol, ningún
+componente se define dentro de otro render, y se espera a que dejes de escribir antes de
+consultar. Hay una prueba que escribe "Fernanda" de un tirón y comprueba que el cursor sigue ahí.
+
+**Hay una guardia nueva:** toda operación que guarde algo tiene que declarar que refresca Inicio.
+Olvidarlo no revienta nada — solo deja el tablero mostrando el número de antes, con toda la cara
+de estar al día.
+
 ### La orden única
 
 ```bash
@@ -163,7 +217,7 @@ npm run consistencia
 Tipos → guardias → pruebas → compilación → ataques. **Termina en verde o no se publica.** Sin
 base de datos configurada te lo dice fuerte en vez de pasar en verde fingiendo que comprobó algo.
 
-**195 pruebas · 7 guardias · 77 ataques.**
+**401 pruebas · 11 guardias · 77 ataques.**
 
 ---
 
@@ -174,13 +228,15 @@ base de datos configurada te lo dice fuerte en vez de pasar en verde fingiendo q
 | **0** ✅ | Arquitectura, esquema, reglas, operaciones, ataques |
 | **1** ✅ | El armazón: sesión, marco, menú, rutas, identidad visual |
 | **4** ✅ | **Agenda** — día, semana, mes, sin choques de horario |
+| **8** ✅ | **Inicio** — el tablero, el buscador global y los avisos |
 | 2 | Clientes · 3 · Servicios y Cursos |
 | 5 | Productos · 6 · Ventas, Pagos y Caja · 7 · Gastos y Recordatorios |
-| **8** | **Inicio** — el tablero, ya con todo de dónde resumir |
-| 9 | Reportes · 10 · Configuración · 11 · Publicación |
+| 9 | Reportes · 10 · Configuración · 11 · Mensajes · 12 · Publicación |
 
 Inicio es el bloque 8, no el 1: es un resumen, y un resumen necesita que exista
-lo que resume.
+lo que resume. Sale antes que Clientes y Servicios a propósito — con Agenda ya
+construida, sus tarjetas tienen de dónde salir, y las que todavía no tienen
+fuente **están en cero porque no hay registros, no porque falte código**.
 
 ---
 

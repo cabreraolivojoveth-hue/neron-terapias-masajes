@@ -36,32 +36,29 @@ import {
   type ServicioBreve,
 } from '../datos/citas.js';
 import { useSesion } from '../identidad/sesion.js';
+import { ControlesDeAgenda } from './controles.js';
+import { ventanaDelDia } from './disposicion.js';
 import { FormularioDeCita, type ValoresDeCita } from './formulario.js';
 import { PanelDeCita } from './panel.js';
-import { mover, rangoDe, tituloDe, type Vista } from './rangos.js';
+import { mover, rangoDe, type Vista } from './rangos.js';
 import { Leyenda, VistaDia, VistaMes, VistaSemana } from './vistas.js';
+import { Icono } from '../ui/iconos.js';
 
 /**
- * El horario que se ve en la columna.
+ * La franja de horas de la que se PARTE. Es provisional y esta marcada.
  *
- * Vive aqui de forma provisional y ESTA MARCADO: cuando exista el modulo de
- * Configuracion (bloque 10) sale de ahi, por dia de la semana. No es un
- * numero escogido para que se parezca a la captura — es el rango que abarca
- * cualquier horario razonable, y una cita fuera de el se recorta pero NO se
- * esconde.
+ * Cuando exista Configuracion (bloque 10) el horario del centro sale de ahi,
+ * por dia de la semana. Mientras tanto se arranca en una franja normal de
+ * consultorio y `ventanaDelDia` la ESTIRA sola para que quepa cualquier cita
+ * que se salga — asi una cita de las siete de la mañana se ve a las siete y no
+ * recortada contra el borde fingiendo que empieza a las ocho.
  */
-const ABRE = 7 * 60;
-const CIERRA = 21 * 60;
-
-const VISTAS: readonly { clave: Vista; etiqueta: string }[] = [
-  { clave: 'dia', etiqueta: 'Día' },
-  { clave: 'semana', etiqueta: 'Semana' },
-  { clave: 'mes', etiqueta: 'Mes' },
-];
+const ABRE = 8 * 60;
+const CIERRA = 20 * 60;
 
 export function Agenda() {
   const { acceso } = useSesion();
-  const { ruta } = useNavegacion();
+  const { ruta, ir } = useNavegacion();
   const negocio = acceso?.negocioId ?? '';
   const puedeGestionar = acceso?.permisos['gestionarAgenda'] === true;
 
@@ -212,12 +209,29 @@ export function Agenda() {
 
   const cargando = citas.estado === 'cargando' && citas.datos === null;
 
+  /**
+   * La franja visible se calcula con las citas QUE YA LLEGARON.
+   *
+   * Mientras cargan se usa la de por omision: recalcularla al llegar hace que
+   * la regla se reacomode una vez, que es infinitamente mejor que recortar una
+   * cita y mostrarla en la hora equivocada.
+   */
+  const ventana = useMemo(
+    () => ventanaDelDia(citas.datos ?? [], ABRE, CIERRA),
+    [citas.datos],
+  );
+
+  /** Cuantos filtros hay puestos. Se dice con un numero, no solo con color. */
+  const filtrosPuestos = [filtros.profesionalId, filtros.servicioId, filtros.estado].filter(
+    Boolean,
+  ).length;
+
   const propiedadesDeVista = {
     fecha,
     citas: citas.datos ?? [],
     seleccionada,
-    abre: ABRE,
-    cierra: CIERRA,
+    abre: ventana.abre,
+    cierra: ventana.cierra,
     onSeleccionar: (c: CitaEnAgenda) => setSeleccionada(c.id),
     onHueco: (f: Fecha, hora: string) => abrirNueva(f, hora),
     onIrAlDia: (f: Fecha) => { setFecha(f); setVista('dia'); },
@@ -226,59 +240,28 @@ export function Agenda() {
   return (
     <div className="agenda">
       <header className="agenda-encabezado">
-        <div>
+        <span className="agenda-encabezado__icono" aria-hidden="true">
+          <Icono nombre="calendario" lado={26} />
+        </span>
+        <div className="agenda-encabezado__texto">
           <h2 className="agenda-encabezado__titulo">Agenda</h2>
           <p className="agenda-encabezado__lema">Gestiona tus citas y terapias</p>
         </div>
       </header>
 
-      <div className="agenda-controles">
-        {puedeGestionar ? (
-          <Boton tono="principal" onClick={() => abrirNueva()}>
-            + Nueva cita
-          </Boton>
-        ) : null}
-
-        <div className="agenda-controles__grupo" role="group" aria-label="Navegar">
-          <Boton tono="contorno" onClick={() => setFecha(desdeDate(new Date()))}>
-            Hoy
-          </Boton>
-          <Boton tono="contorno" onClick={() => setFecha(mover(vista, fecha, -1))} aria-label="Anterior">
-            ‹
-          </Boton>
-          <Boton tono="contorno" onClick={() => setFecha(mover(vista, fecha, 1))} aria-label="Siguiente">
-            ›
-          </Boton>
-        </div>
-
-        {/* Un aria-live para que quien usa lector se entere de que cambio la
-            fecha: el texto cambia sin que nada mas lo anuncie. */}
-        <span className="agenda-controles__fecha" aria-live="polite">
-          {tituloDe(vista, fecha)}
-        </span>
-
-        <div className="agenda-controles__vistas" role="group" aria-label="Vista">
-          {VISTAS.map((v) => (
-            <button
-              key={v.clave}
-              type="button"
-              className={`agenda-vista${v.clave === vista ? ' agenda-vista--puesta' : ''}`}
-              aria-pressed={v.clave === vista}
-              onClick={() => setVista(v.clave)}
-            >
-              {v.etiqueta}
-            </button>
-          ))}
-        </div>
-
-        <Boton
-          tono="contorno"
-          onClick={() => setFiltrosAbiertos((a) => !a)}
-          aria-expanded={filtrosAbiertos}
-        >
-          Filtros
-        </Boton>
-      </div>
+      <ControlesDeAgenda
+        vista={vista}
+        fecha={fecha}
+        puedeCrear={puedeGestionar}
+        filtrosAbiertos={filtrosAbiertos}
+        filtrosPuestos={filtrosPuestos}
+        onNueva={() => abrirNueva()}
+        onHoy={() => setFecha(desdeDate(new Date()))}
+        onMover={(pasos) => setFecha(mover(vista, fecha, pasos))}
+        onFecha={(f) => setFecha(f)}
+        onVista={setVista}
+        onFiltros={() => setFiltrosAbiertos((a) => !a)}
+      />
 
       {filtrosAbiertos ? (
         <div className="agenda-filtros">
@@ -382,6 +365,21 @@ export function Agenda() {
             })
           }
           onCambiarEstado={(e: EstadoDeCita) => void estado.ejecutar(cita!.id, e)}
+          onEnviarMensaje={() => {
+            if (!cita) return;
+            /**
+             * AGENDA NO MANDA MENSAJES: abre Mensajes con el contexto.
+             *
+             * Va el ID DEL PACIENTE, no su telefono. Un telefono copiado deja
+             * de ser el bueno en cuanto alguien lo corrige en Clientes, y
+             * ademas no permite reconocer una conversacion que ya existe. El
+             * id de la cita viaja detras para que la conversacion sepa de que
+             * cita salio.
+             */
+            ir('mensajes', {
+              intencion: `mensajes:escribir:${cita.clienteId}:${cita.id}`,
+            });
+          }}
         />
       </div>
 

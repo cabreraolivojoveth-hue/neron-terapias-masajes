@@ -33,7 +33,15 @@ export type NombreDeIcono =
   | 'barras'
   | 'reloj'
   | 'imagen'
-  | 'alerta';
+  | 'alerta'
+  | 'filtros'
+  | 'lugar'
+  | 'nota'
+  | 'mensaje'
+  | 'lapiz'
+  | 'volver'
+  | 'prohibido'
+  | 'palomita';
 
 /**
  * Todo en una rejilla de 24 y con trazo, no relleno.
@@ -72,6 +80,21 @@ const TRAZOS: Readonly<Record<NombreDeIcono, string[]>> = {
     'M3 16l5-5 4 4 3-3 6 6',
   ],
   alerta: ['M12 3l9 16H3l9-16z', 'M12 9v5M12 17.4v.2'],
+  filtros: ['M21 5h-7M10 5H3M21 12h-9M8 12H3M21 19h-5M12 19H3', 'M14 3v4M8 10v4M16 17v4'],
+  lugar: [
+    'M12 21.5s7-6.4 7-11.5a7 7 0 1 0-14 0c0 5.1 7 11.5 7 11.5z',
+    'M12 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
+  ],
+  nota: [
+    'M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z',
+    'M14 3v5h5',
+    'M9 13h6M9 17h4',
+  ],
+  mensaje: ['M21 12a8 8 0 0 1-11.7 7.1L3 21l1.9-6.3A8 8 0 1 1 21 12z'],
+  lapiz: ['M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z', 'M14.5 5.5l3 3'],
+  volver: ['M20 12a8 8 0 1 1-2.6-5.9', 'M20 4v4h-4'],
+  prohibido: ['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z', 'M5.5 5.5l13 13'],
+  palomita: ['M20 6L9 17l-5-5'],
 };
 
 export function Icono({

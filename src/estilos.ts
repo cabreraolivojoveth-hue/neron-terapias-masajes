@@ -139,45 +139,163 @@ body {
 /* ---------------------------------------------------------------- */
 /* AGENDA                                                            */
 /* ---------------------------------------------------------------- */
-.agenda { display: flex; flex-direction: column; gap: ${v('espacio-4')}; padding: ${v('espacio-4')}; min-width: 0; }
+.agenda { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
+.agenda-encabezado { display: flex; align-items: center; gap: ${v('espacio-3')}; min-width: 0; }
+.agenda-encabezado__icono { display: flex; flex: none; color: ${v('marca')}; }
+.agenda-encabezado__texto { min-width: 0; }
 .agenda-encabezado__titulo { margin: 0; font-size: ${v('texto-titulo-grande')}; font-weight: ${v('peso-fuerte')}; }
 .agenda-encabezado__lema { margin: 0; color: ${v('texto-suave')}; font-size: ${v('texto-chico')}; }
 
-.agenda-controles {
+/* ---------------------------------------------------------------- */
+/* La barra de controles                                             */
+/* ---------------------------------------------------------------- */
+.agenda-barra {
   display: flex;
   align-items: center;
   /* Se envuelven solos: en una laptop de 1280 caben en una linea, en tableta
      en dos, y en celular en tres. Sin esto empujarian el ancho de la pagina. */
   flex-wrap: wrap;
   gap: ${v('espacio-2')};
+  padding: ${v('espacio-3')};
+  background: ${v('superficie-elevada')};
+  border: 1px solid ${v('borde-suave')};
+  border-radius: ${v('radio-tarjeta')};
+  min-width: 0;
 }
-.agenda-controles__grupo, .agenda-controles__vistas { display: flex; gap: ${v('espacio-1')}; }
-.agenda-controles__fecha {
+.agenda-barra__nueva {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  min-height: 44px; flex: none;
+  padding: 0 ${v('espacio-4')};
+  border: none;
+  border-radius: ${v('radio-sistema')};
+  background: ${v('marca')};
+  color: ${v('sobre-marca')};
+  font-family: ${v('familia')};
+  font-size: ${v('texto-chico')};
   font-weight: ${v('peso-fuerte')};
-  font-size: ${v('texto-normal')};
-  /* Empuja los controles de vista hasta la derecha cuando hay lugar, y se
-     acomoda arriba cuando no lo hay. */
-  margin-inline: auto ${v('espacio-2')};
+  cursor: pointer;
 }
-.agenda-vista {
-  min-height: 44px;
+.agenda-barra__nueva:hover { background: ${v('marca-fuerte')}; }
+.agenda-barra__nueva:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+
+.agenda-barra__grupo { display: flex; align-items: center; gap: ${v('espacio-1')}; flex: none; }
+.agenda-barra__division {
+  width: 1px; height: 24px;
+  background: ${v('borde-suave')};
+  margin: 0 ${v('espacio-1')};
+}
+.agenda-barra__boton {
+  min-height: 40px; min-width: 44px;
   padding: 0 ${v('espacio-3')};
-  border: 1px solid ${v('borde')};
+  border: 1px solid ${v('borde-suave')};
   border-radius: ${v('radio-sistema')};
   background: ${v('superficie')};
+  color: ${v('texto')};
+  font-family: ${v('familia')};
+  font-size: ${v('texto-chico')};
+  cursor: pointer;
+}
+.agenda-barra__boton:hover { background: ${v('superficie-tenue')}; }
+.agenda-barra__boton:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.agenda-barra__boton--flecha { font-size: ${v('texto-grande')}; line-height: 1; padding: 0; }
+
+/*
+ * La fecha con su calendario. El <input type=date> va TRANSPARENTE encima:
+ * tocar el texto abre el calendario del sistema, que es lo que todo el mundo
+ * intenta primero, y ese calendario no puede quedar debajo de nada.
+ */
+.agenda-barra__fecha {
+  position: relative;
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  min-height: 40px; min-width: 0;
+  padding: 0 ${v('espacio-3')};
+  border-radius: ${v('radio-sistema')};
+  /* Empuja los controles de vista a la derecha cuando hay lugar. */
+  margin-inline: auto;
+  cursor: pointer;
+}
+.agenda-barra__fecha:hover { background: ${v('superficie-tenue')}; }
+.agenda-barra__fecha:focus-within { outline: ${v('foco')}; outline-offset: 2px; }
+.agenda-barra__fecha-texto {
+  font-weight: ${v('peso-fuerte')};
+  font-size: ${v('texto-normal')};
+  white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.agenda-barra__fecha-icono { display: flex; flex: none; color: ${v('texto-suave')}; }
+.agenda-barra__fecha-campo {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  /* Sin borde ni fondo: en Safari un input de fecha vacio dibuja igual su
+     marco aunque sea transparente. */
+  border: none; background: transparent; padding: 0;
+}
+
+.agenda-barra__vistas {
+  display: flex; flex: none;
+  padding: 2px;
+  gap: 2px;
+  background: ${v('superficie-tenue')};
+  border-radius: ${v('radio-sistema')};
+}
+.agenda-barra__vista {
+  min-height: 36px;
+  padding: 0 ${v('espacio-3')};
+  border: none;
+  border-radius: ${v('radio-chico')};
+  background: transparent;
   color: ${v('texto-suave')};
   font-family: ${v('familia')};
   font-size: ${v('texto-chico')};
   cursor: pointer;
 }
-.agenda-vista--puesta {
-  background: ${v('marca-tenue')};
+.agenda-barra__vista--puesta {
+  background: ${v('superficie-elevada')};
   color: ${v('texto')};
-  border-color: ${v('marca')};
-  border-width: 2px;
+  font-weight: ${v('peso-fuerte')};
+  box-shadow: ${v('sombra-sutil')};
+}
+.agenda-barra__vista:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
+
+.agenda-barra__filtros {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 40px; min-width: 44px; flex: none;
+  border: 1px solid ${v('borde-suave')};
+  border-radius: ${v('radio-sistema')};
+  background: ${v('superficie')};
+  color: ${v('texto-suave')};
+  cursor: pointer;
+}
+.agenda-barra__filtros:hover { background: ${v('superficie-tenue')}; }
+.agenda-barra__filtros:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.agenda-barra__filtros--puestos { border-color: ${v('marca')}; color: ${v('marca')}; }
+.agenda-barra__filtros-cuantos {
+  position: absolute; top: -6px; right: -6px;
+  min-width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: ${v('radio-redondo')};
+  background: ${v('marca')};
+  color: ${v('sobre-marca')};
+  font-size: ${v('texto-micro')};
   font-weight: ${v('peso-fuerte')};
 }
-.agenda-vista:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+
+/*
+ * En celular la barra se reacomoda en tres renglones en vez de encogerse.
+ *
+ * "Nueva cita" toma el ancho entero porque es lo que mas se aprieta en un
+ * mostrador, y la fecha se lleva su propio renglon: con el nombre del mes
+ * escrito no cabe al lado de las flechas sin recortarse.
+ */
+@media (max-width: 720px) {
+  .agenda-barra__nueva { flex: 1 1 100%; justify-content: center; }
+  .agenda-barra__fecha { flex: 1 1 100%; margin-inline: 0; justify-content: center; }
+  .agenda-barra__vistas { flex: 1 1 auto; }
+  .agenda-barra__vista { flex: 1; }
+}
 
 .agenda-filtros {
   display: flex; flex-wrap: wrap; gap: ${v('espacio-3')}; align-items: flex-end;
@@ -203,7 +321,13 @@ body {
   align-items: start;
 }
 @media (max-width: 1100px) {
-  /* En tableta el panel baja debajo del calendario en vez de comprimirlo. */
+  /*
+   * En tableta el panel baja DEBAJO del calendario en vez de comprimirlo.
+   *
+   * Comprimirlo a 200px parece la solucion obvia y es la peor: el nombre del
+   * paciente, el servicio y los cuatro botones quedan en columnas de una
+   * palabra. Abajo tiene el ancho entero y se lee igual que en escritorio.
+   */
   .agenda-cuerpo { grid-template-columns: minmax(0, 1fr); }
 }
 .agenda-calendario {
@@ -246,10 +370,9 @@ body {
 
 .agenda-cita {
   position: absolute;
-  display: flex; flex-direction: column; gap: 1px;
-  padding: ${v('espacio-1')} ${v('espacio-2')};
+  padding: ${v('espacio-2')} ${v('espacio-3')};
   border: 1px solid ${v('borde-suave')};
-  border-left: 3px solid ${v('borde')};
+  border-left: 4px solid ${v('borde')};
   border-radius: ${v('radio-sistema')};
   background: ${v('superficie')};
   font-family: ${v('familia')};
@@ -260,28 +383,104 @@ body {
   overflow: hidden;
   min-width: 0;
 }
-.agenda-cita > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* En DIA la cita es una tarjeta ancha: marca, texto y estado en una fila. */
+.agenda-cita--ancha {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: ${v('espacio-3')};
+}
+/* En SEMANA cinco columnas comparten el ancho: solo cabe apilado. */
+.agenda-cita--compacta {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: ${v('espacio-1')} ${v('espacio-2')};
+}
+.agenda-cita--compacta > span,
+.agenda-cita__cuerpo > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agenda-cita__cuerpo { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.agenda-cita__marca {
+  display: flex; flex: none;
+  width: 30px; height: 30px;
+  align-items: center; justify-content: center;
+  border-radius: ${v('radio-redondo')};
+  background: ${v('superficie-elevada')};
+}
+/* Una cita de media hora en una franja de doce horas mide treinta pixeles: sin
+   este minimo, el texto se corta a media letra. Se prefiere que dos bloques
+   cortos se rocen a que uno no se pueda leer. */
+.agenda-cita--ancha { min-height: 48px; }
+/* La hoja de la marca dentro del bloque toma el color del estado, no el verde
+   de siempre: si no, una cita cancelada llevaria una hoja verde. */
+.agenda-cita__marca .terapias-hoja { color: inherit; }
 .agenda-cita:focus-visible { outline: ${v('foco')}; outline-offset: 1px; z-index: 3; }
-.agenda-cita--puesta { border-width: 2px; box-shadow: ${v('sombra-flotante')}; z-index: 2; }
+.agenda-cita--puesta { border-width: 2px; border-left-width: 4px; box-shadow: ${v('sombra-flotante')}; z-index: 2; }
 .agenda-cita__hora { color: ${v('texto-tenue')}; font-variant-numeric: ${v('cifra-numeros')}; }
-.agenda-cita__quien { font-weight: ${v('peso-fuerte')}; color: ${v('texto')}; }
+.agenda-cita__quien { font-weight: ${v('peso-fuerte')}; color: ${v('texto')}; font-size: ${v('texto-chico')}; }
 .agenda-cita__que { color: ${v('texto-suave')}; }
-.agenda-cita__estado { color: ${v('texto-tenue')}; }
 
-/* El estado se distingue por color Y por palabra: el badge siempre lleva el
-   nombre escrito, para quien no distingue los tonos. */
+/* El estado se distingue por color Y por palabra: la pastilla siempre lleva
+   el nombre escrito, para quien no distingue los tonos. */
+.agenda-cita__estado {
+  flex: none;
+  font-size: ${v('texto-micro')};
+  padding: 3px ${v('espacio-2')};
+  border-radius: ${v('radio-redondo')};
+  white-space: nowrap;
+  background: ${v('superficie-elevada')};
+  border: 1px solid ${v('borde-suave')};
+}
+.agenda-cita--compacta .agenda-cita__estado {
+  background: transparent; border: none; padding: 0;
+  color: ${v('texto-tenue')};
+}
+
 .agenda-cita--pendiente { border-left-color: ${v('advertencia')}; background: ${v('advertencia-tenue')}; }
 .agenda-cita--confirmada { border-left-color: ${v('exito')}; background: ${v('exito-tenue')}; }
-.agenda-cita--completada { border-left-color: ${v('marca')}; background: ${v('marca-tenue')}; }
+.agenda-cita--completada { border-left-color: ${v('cat-ventas')}; background: ${v('cat-ventas-tenue')}; }
 .agenda-cita--cancelada { border-left-color: ${v('peligro')}; background: ${v('peligro-tenue')}; }
 .agenda-cita--no_asistio { border-left-color: ${v('texto-tenue')}; background: ${v('superficie-tenue')}; }
 
+.agenda-cita--pendiente .agenda-cita__marca { color: ${v('advertencia')}; }
+.agenda-cita--confirmada .agenda-cita__marca { color: ${v('exito')}; }
+.agenda-cita--completada .agenda-cita__marca { color: ${v('cat-ventas')}; }
+.agenda-cita--cancelada .agenda-cita__marca { color: ${v('peligro')}; }
+.agenda-cita--no_asistio .agenda-cita__marca { color: ${v('texto-tenue')}; }
+
+/* Las pastillas de estado, iguales en el bloque, en el panel y en la leyenda:
+   un mismo estado no puede verse de dos colores en la misma pantalla. */
+.agenda-estado--pendiente { color: ${v('advertencia')}; border-color: ${v('advertencia')}; }
+.agenda-estado--confirmada { color: ${v('exito')}; border-color: ${v('exito')}; }
+.agenda-estado--completada { color: ${v('cat-ventas')}; border-color: ${v('cat-ventas')}; }
+.agenda-estado--cancelada { color: ${v('peligro')}; border-color: ${v('peligro')}; }
+.agenda-estado--no_asistio { color: ${v('texto-suave')}; border-color: ${v('borde')}; }
+
+.agenda-estado-texto--pendiente { color: ${v('advertencia')}; }
+.agenda-estado-texto--confirmada { color: ${v('exito')}; }
+.agenda-estado-texto--completada { color: ${v('cat-ventas')}; }
+.agenda-estado-texto--cancelada { color: ${v('peligro')}; }
+.agenda-estado-texto--no_asistio { color: ${v('texto-suave')}; }
+
+.agenda-punto--pendiente { background: ${v('advertencia')}; }
+.agenda-punto--confirmada { background: ${v('exito')}; }
+.agenda-punto--completada { background: ${v('cat-ventas')}; }
+.agenda-punto--cancelada { background: ${v('peligro')}; }
+.agenda-punto--no_asistio { background: ${v('texto-tenue')}; }
+
 .agenda-ahora { position: absolute; left: 0; right: 0; border-top: 2px solid ${v('peligro')}; z-index: 1; }
+/* La hora se escribe SOBRE la regla de la izquierda, como en el diseño: en
+   rojo y sin pastilla, para no tapar la primera cita de esa franja. */
 .agenda-ahora__hora {
-  position: absolute; left: 0; top: -9px;
-  background: ${v('peligro')}; color: ${v('sobre-semantico')};
-  font-size: ${v('texto-micro')}; padding: 0 ${v('espacio-1')};
+  position: absolute; right: calc(100% + ${v('espacio-1')}); top: -9px;
+  color: ${v('peligro')};
+  font-size: ${v('texto-micro')};
+  font-weight: ${v('peso-fuerte')};
+  font-variant-numeric: ${v('cifra-numeros')};
+}
+.agenda-ahora__punto {
+  position: absolute; left: -4px; top: -4px;
+  width: 8px; height: 8px;
   border-radius: ${v('radio-redondo')};
+  background: ${v('peligro')};
 }
 
 .agenda-vacio, .agenda-panel__pista {
@@ -299,7 +498,7 @@ body {
   font-size: ${v('texto-micro')}; color: ${v('texto-suave')};
 }
 .agenda-leyenda__punto { display: flex; align-items: center; gap: ${v('espacio-1')}; }
-.agenda-leyenda__color { width: 10px; height: 10px; border-radius: ${v('radio-redondo')}; border-left-width: 3px; border-left-style: solid; }
+.agenda-leyenda__color { width: 9px; height: 9px; border-radius: ${v('radio-redondo')}; flex: none; }
 
 /* ---------------------------------------------------------------- */
 /* Vista de mes                                                      */
@@ -347,7 +546,14 @@ body {
 .agenda-panel--vacio { color: ${v('texto-suave')}; }
 .agenda-panel__barra { display: flex; align-items: center; gap: ${v('espacio-2')}; }
 .agenda-panel__titulo { font-weight: ${v('peso-fuerte')}; flex: 1; min-width: 0; }
-.agenda-panel__estado { font-size: ${v('texto-micro')}; padding: 2px ${v('espacio-2')}; border-radius: ${v('radio-redondo')}; border-left-width: 3px; border-left-style: solid; }
+.agenda-panel__estado {
+  font-size: ${v('texto-micro')};
+  padding: 3px ${v('espacio-2')};
+  border-radius: ${v('radio-redondo')};
+  border: 1px solid ${v('borde-suave')};
+  background: ${v('superficie')};
+  white-space: nowrap;
+}
 .agenda-panel__cerrar { background: transparent; border: none; cursor: pointer; font-size: ${v('texto-grande')}; color: ${v('texto-suave')}; min-height: 44px; min-width: 44px; }
 .agenda-panel__persona { display: flex; align-items: center; gap: ${v('espacio-3')}; min-width: 0; }
 .agenda-panel__inicial {
@@ -361,11 +567,60 @@ body {
 .agenda-panel__nombre { font-weight: ${v('peso-fuerte')}; overflow-wrap: anywhere; }
 .agenda-panel__enlace { color: ${v('marca')}; font-size: ${v('texto-chico')}; overflow-wrap: anywhere; }
 .agenda-panel__falta { color: ${v('texto-tenue')}; font-size: ${v('texto-chico')}; }
-.agenda-panel__dato { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.agenda-panel__etiqueta { font-size: ${v('texto-micro')}; color: ${v('texto-tenue')}; text-transform: uppercase; letter-spacing: 0.04em; }
+/*
+ * Cada dato es un renglon con su icono, como en el diseño. El icono ayuda a
+ * encontrar "Servicio" o "Notas" de un vistazo en un panel de ocho renglones;
+ * la etiqueta escrita sigue estando, porque un icono solo no dice nada.
+ */
+.agenda-panel__renglon {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: ${v('espacio-3')};
+  align-items: start;
+  padding-top: ${v('espacio-3')};
+  border-top: 1px solid ${v('borde-suave')};
+}
+.agenda-panel__renglon-icono { display: flex; flex: none; color: ${v('texto-tenue')}; padding-top: 2px; }
+.agenda-panel__renglon-cuerpo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.agenda-panel__etiqueta { font-size: ${v('texto-micro')}; color: ${v('texto-tenue')}; }
 .agenda-panel__valor { font-size: ${v('texto-chico')}; color: ${v('texto')}; overflow-wrap: anywhere; }
 .agenda-panel__secundario { color: ${v('texto-suave')}; font-size: ${v('texto-micro')}; }
-.agenda-panel__acciones { display: flex; flex-wrap: wrap; gap: ${v('espacio-2')}; }
+/* Una nota larga respeta los saltos de linea que escribio quien la capturo. */
+.agenda-panel__notas { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/*
+ * Las cuatro acciones del diseño, en cuadricula de dos. En una sola fila se
+ * aprietan hasta partir "Cancelar cita" en dos renglones dentro del boton.
+ */
+.agenda-panel__acciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
+  gap: ${v('espacio-2')};
+  padding-top: ${v('espacio-3')};
+  border-top: 1px solid ${v('borde-suave')};
+}
+/* Los botones de la base llevan icono y texto: sin esto salen uno debajo del
+   otro y el icono queda a la izquierda del todo. */
+.agenda-panel__acciones .neron-boton,
+.agenda-panel__cambio {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: ${v('espacio-1')};
+}
+.agenda-panel__estados { display: flex; flex-wrap: wrap; gap: ${v('espacio-2')}; margin-top: -${v('espacio-1')}; }
+.agenda-panel__cambio {
+  display: flex; align-items: center; gap: ${v('espacio-1')};
+  min-height: 36px;
+  padding: 0 ${v('espacio-3')};
+  border: 1px dashed ${v('borde')};
+  border-radius: ${v('radio-sistema')};
+  background: transparent;
+  color: ${v('texto-suave')};
+  font-family: ${v('familia')};
+  font-size: ${v('texto-micro')};
+  cursor: pointer;
+}
+.agenda-panel__cambio:hover { background: ${v('superficie-tenue')}; color: ${v('texto')}; }
+.agenda-panel__cambio:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
 
 /* ---------------------------------------------------------------- */
 /* El formulario de cita                                             */

@@ -6,7 +6,7 @@
  */
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { Icono, type NombreDeIcono } from '../../src/inicio/iconos.js';
+import { Icono, type NombreDeIcono } from '../../src/ui/iconos.js';
 
 afterEach(cleanup);
 

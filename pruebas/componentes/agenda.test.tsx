@@ -8,7 +8,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ProveedorDeNavegacion, olvidarIntencion } from '@neron/base/marco';
+import { ProveedorDeNavegacion, olvidarIntencion, ponerIntencion } from '@neron/base/marco';
 import { olvidarTodo } from '../../src/datos/consulta.js';
 
 const sesion = vi.hoisted(() => ({
@@ -132,7 +132,7 @@ describe('navegar', () => {
   it('el boton siguiente cambia el rango que se pide', async () => {
     montar();
     await waitFor(() => expect(datos.pedidos).toHaveLength(1));
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Siguiente' }));
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Día siguiente' }));
     await waitFor(() => expect(datos.pedidos.length).toBe(2));
     expect(datos.pedidos[1]!.desde).not.toBe(datos.pedidos[0]!.desde);
   });
@@ -152,7 +152,7 @@ describe('navegar', () => {
     const titulo = screen.getByText(/de \w+ de \d{4}/);
     const deHoy = titulo.textContent;
 
-    await u.click(screen.getByRole('button', { name: 'Siguiente' }));
+    await u.click(screen.getByRole('button', { name: 'Día siguiente' }));
     await waitFor(() => expect(datos.pedidos.length).toBe(2));
     expect(screen.getByText(/de \w+ de \d{4}/).textContent).not.toBe(deHoy);
 
@@ -194,7 +194,7 @@ describe('seleccionar una cita', () => {
 describe('crear una cita', () => {
   it('el boton solo aparece con permiso de agenda', async () => {
     montar();
-    expect(screen.getByRole('button', { name: '+ Nueva cita' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Nueva cita' })).toBeDefined();
     await waitFor(() => expect(datos.pedidos.length).toBeGreaterThan(0));
   });
 
@@ -204,7 +204,7 @@ describe('crear una cita', () => {
       acceso: { ...sesion.valor.acceso, permisos: { gestionarClientes: true } },
     };
     montar();
-    expect(screen.queryByRole('button', { name: '+ Nueva cita' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Nueva cita' })).toBeNull();
     await waitFor(() => expect(datos.pedidos.length).toBeGreaterThan(0));
     sesion.valor = {
       ...sesion.valor,
@@ -216,7 +216,7 @@ describe('crear una cita', () => {
     const u = userEvent.setup();
     montar();
     await waitFor(() => expect(datos.pedidos.length).toBeGreaterThan(0));
-    await u.click(screen.getByRole('button', { name: '+ Nueva cita' }));
+    await u.click(screen.getByRole('button', { name: 'Nueva cita' }));
     await u.click(await screen.findByRole('button', { name: /Paciente Uno/ }));
     await u.selectOptions(screen.getByLabelText('Servicio'), 's1');
     await u.click(screen.getByRole('button', { name: 'Guardar' }));
@@ -232,7 +232,7 @@ describe('crear una cita', () => {
     const u = userEvent.setup();
     montar();
     await waitFor(() => expect(datos.pedidos).toHaveLength(1));
-    await u.click(screen.getByRole('button', { name: '+ Nueva cita' }));
+    await u.click(screen.getByRole('button', { name: 'Nueva cita' }));
     await u.click(await screen.findByRole('button', { name: /Paciente Uno/ }));
     await u.selectOptions(screen.getByLabelText('Servicio'), 's1');
     await u.click(screen.getByRole('button', { name: 'Guardar' }));
@@ -249,5 +249,91 @@ describe('filtros', () => {
     await u.click(screen.getByRole('button', { name: 'Filtros' }));
     await u.selectOptions(await screen.findByLabelText('Terapeuta'), 'p1');
     await waitFor(() => expect(datos.pedidos.length).toBe(2));
+  });
+});
+
+describe('lo que Agenda recibe de otras pantallas', () => {
+  it('llegar con ?fecha= abre ESE dia, no el de hoy', async () => {
+    // Es lo que hace que la tarjeta "Citas hoy" de Inicio lleve al dia
+    // correcto, y que ese enlace se pueda mandar por WhatsApp.
+    montar('agenda?fecha=10%2F07%2F2026');
+    await waitFor(() => expect(datos.pedidos.length).toBeGreaterThan(0));
+    expect(datos.pedidos.at(-1)).toEqual({ desde: '10/07/2026', hasta: '10/07/2026' });
+  });
+
+  it('llegar con ?estado=pendiente deja el filtro puesto Y VISIBLE', async () => {
+    /**
+     * Los filtros se ABREN al llegar filtrado. Una agenda que muestra tres
+     * citas de veinte sin decir que hay un filtro puesto se lee como una
+     * agenda casi vacia, y quien la ve concluye que se perdieron citas.
+     */
+    montar('agenda?estado=pendiente');
+    const filtro = (await screen.findByLabelText('Estado')) as HTMLSelectElement;
+    expect(filtro.value).toBe('pendiente');
+    // Y el boton dice cuantos filtros hay, con numero.
+    expect(screen.getByRole('button', { name: 'Filtros: 1 puesto' })).toBeDefined();
+  });
+
+  it('el recado "agenda:nueva" abre el formulario al llegar', async () => {
+    // Es "Nueva cita" de las acciones rapidas de Inicio: abre la Agenda Y el
+    // formulario, en un solo toque.
+    ponerIntencion('agenda:nueva');
+    montar();
+    expect(await screen.findByRole('heading', { name: 'Nueva cita' })).toBeDefined();
+  });
+
+  it('el recado "agenda:abrir:id" deja esa cita seleccionada', async () => {
+    datos.citas = [{ ...CITA, id: 'cita-9', fecha: hoy() }];
+    ponerIntencion('agenda:abrir:cita-9');
+    montar();
+    // El panel de la derecha se abre solo, con los datos de esa cita.
+    expect(await screen.findByRole('complementary', { name: 'Cita seleccionada' })).toBeDefined();
+  });
+
+  it('el recado se consume UNA vez: volver no reabre el formulario', async () => {
+    // Sin esto, cada regreso a la Agenda abriria el formulario otra vez, que
+    // es de las cosas que mas rapido hartan.
+    ponerIntencion('agenda:nueva');
+    const primero = montar();
+    await screen.findByRole('heading', { name: 'Nueva cita' });
+    primero.unmount();
+
+    montar();
+    await waitFor(() => expect(datos.pedidos.length).toBeGreaterThan(0));
+    expect(screen.queryByRole('heading', { name: 'Nueva cita' })).toBeNull();
+  });
+});
+
+describe('escribir sin perder el foco', () => {
+  it('el buscador de paciente aguanta un nombre completo de un tiron', async () => {
+    /**
+     * LA PRUEBA DEL FOCO, aqui tambien.
+     *
+     * Si el campo se desmontara en cada tecla, el valor se quedaria en la
+     * primera letra y el elemento activo dejaria de ser el campo. Es la queja
+     * de "escribo Ana y tengo que volver a hacer clic".
+     */
+    const u = userEvent.setup();
+    montar();
+    await waitFor(() => expect(datos.pedidos).toHaveLength(1));
+    await u.click(screen.getByRole('button', { name: 'Nueva cita' }));
+
+    const campo = await screen.findByLabelText(/Paciente/);
+    await u.type(campo, 'Alejandra Hernández');
+
+    expect((campo as HTMLInputElement).value).toBe('Alejandra Hernández');
+    expect(document.activeElement).toBe(campo);
+  });
+
+  it('las notas tambien, y conservan lo escrito', async () => {
+    const u = userEvent.setup();
+    montar();
+    await waitFor(() => expect(datos.pedidos).toHaveLength(1));
+    await u.click(screen.getByRole('button', { name: 'Nueva cita' }));
+
+    const notas = await screen.findByLabelText(/Notas/);
+    await u.type(notas, 'Primera sesión');
+    expect((notas as HTMLTextAreaElement).value).toBe('Primera sesión');
+    expect(document.activeElement).toBe(notas);
   });
 });

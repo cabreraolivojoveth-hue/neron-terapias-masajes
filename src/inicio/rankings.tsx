@@ -16,7 +16,7 @@
 
 import { useState } from 'react';
 import type { ProductoVendido, ServicioVendido } from '../datos/tablero.js';
-import { Icono } from './iconos.js';
+import { Icono } from '../ui/iconos.js';
 
 /* ------------------------------------------------------------------ */
 /* Servicios                                                           */

@@ -8,10 +8,20 @@
  * El historial y la proxima cita se CALCULAN. "Total de citas: 8" no existe
  * guardado en ningun lado — un contador a mano se desincroniza a la primera
  * cancelacion y despues nadie sabe cual de los dos numeros es el bueno.
+ *
+ * LA SALA NO APARECE, y es a proposito. El diseño muestra "Sala 1 – Paz y
+ * Luz"; en la base no hay tabla de salas ni columna que las guarde. Escribir
+ * ese renglon con un texto fijo seria exactamente lo que este producto no
+ * hace, y dejarlo vacio solo haria preguntarse que se rompio. Cuando existan
+ * salas de verdad —con su tabla, sus reglas de acceso y su validacion de que
+ * dos citas no ocupen la misma— el renglon entra aqui con datos reales.
  */
 
 import { Boton } from '@neron/base/ui';
 import { formatearMoneda } from '@neron/base/utils';
+import type { ReactNode } from 'react';
+import { Icono, type NombreDeIcono } from '../ui/iconos.js';
+import { duracionEnPalabras, fechaLarga } from '../ui/fechas-en-palabras.js';
 import type { CitaEnAgenda, EstadoDeCita, Historial } from '../datos/citas.js';
 import { etiquetaDeEstado } from '../datos/citas.js';
 
@@ -23,19 +33,40 @@ export interface PropiedadesDelPanel {
   onEditar(): void;
   onReagendar(): void;
   onCambiarEstado(estado: EstadoDeCita): void;
+  /** Abre Mensajes con ESTE paciente y ESTA cita como contexto. */
+  onEnviarMensaje(): void;
   onCerrar(): void;
 }
 
-function Dato({ titulo, children }: { readonly titulo: string; readonly children: React.ReactNode }) {
+function Renglon({
+  icono,
+  titulo,
+  children,
+}: {
+  readonly icono: NombreDeIcono;
+  readonly titulo: string;
+  readonly children: ReactNode;
+}) {
   return (
-    <div className="agenda-panel__dato">
-      <span className="agenda-panel__etiqueta">{titulo}</span>
-      <div className="agenda-panel__valor">{children}</div>
+    <div className="agenda-panel__renglon">
+      <span className="agenda-panel__renglon-icono" aria-hidden="true">
+        <Icono nombre={icono} lado={18} />
+      </span>
+      <div className="agenda-panel__renglon-cuerpo">
+        <span className="agenda-panel__etiqueta">{titulo}</span>
+        <div className="agenda-panel__valor">{children}</div>
+      </div>
     </div>
   );
 }
 
-/** Las iniciales, cuando no hay foto. Nunca una foto de ejemplo. */
+/**
+ * Las iniciales, cuando no hay foto.
+ *
+ * NO HAY FOTOS DE PACIENTES en el sistema: la tabla `cliente` no guarda
+ * ninguna. El diseño muestra retratos porque es un diseño; poner caras de
+ * archivo seria inventar personas.
+ */
 function Inicial({ nombre }: { readonly nombre: string }) {
   const letras = nombre
     .split(/\s+/)
@@ -58,6 +89,7 @@ export function PanelDeCita({
   onEditar,
   onReagendar,
   onCambiarEstado,
+  onEnviarMensaje,
   onCerrar,
 }: PropiedadesDelPanel) {
   if (!cita) {
@@ -84,10 +116,15 @@ export function PanelDeCita({
     <aside className="agenda-panel" aria-label="Cita seleccionada">
       <div className="agenda-panel__barra">
         <span className="agenda-panel__titulo">Cita seleccionada</span>
-        <span className={`agenda-panel__estado agenda-cita--${cita.estado}`}>
+        <span className={`agenda-panel__estado agenda-estado--${cita.estado}`}>
           {etiquetaDeEstado(cita.estado)}
         </span>
-        <button type="button" className="agenda-panel__cerrar" onClick={onCerrar} aria-label="Cerrar el detalle">
+        <button
+          type="button"
+          className="agenda-panel__cerrar"
+          onClick={onCerrar}
+          aria-label="Cerrar el detalle"
+        >
           ×
         </button>
       </div>
@@ -112,24 +149,40 @@ export function PanelDeCita({
         </div>
       </div>
 
-      <Dato titulo="Cuándo">
-        {cita.fecha} · {cita.horaInicio} a {cita.horaFin} ({cita.servicioMinutos} min)
-      </Dato>
+      <Renglon icono="calendario" titulo={fechaLarga(cita.fecha)}>
+        {cita.horaInicio} – {cita.horaFin}
+        {cita.servicioMinutos > 0 ? ` (${duracionEnPalabras(cita.servicioMinutos)})` : ''}
+      </Renglon>
 
-      <Dato titulo="Servicio">
+      <Renglon icono="bolsa" titulo="Servicio">
         {cita.servicio}
         {cita.servicioPrecio > 0 ? (
           <span className="agenda-panel__secundario"> · {formatearMoneda(cita.servicioPrecio)}</span>
         ) : null}
-      </Dato>
+      </Renglon>
 
-      <Dato titulo="Terapeuta">
-        {cita.profesional ?? <span className="agenda-panel__falta">Sin asignar</span>}
-      </Dato>
+      <Renglon icono="persona" titulo="Terapeuta">
+        {cita.profesional ?? (
+          <span className="agenda-panel__falta">Sin asignar</span>
+        )}
+      </Renglon>
 
-      {cita.notas ? <Dato titulo="Notas">{cita.notas}</Dato> : null}
+      <Renglon icono="reloj" titulo="Estado">
+        <span className={`agenda-panel__estado-texto agenda-estado-texto--${cita.estado}`}>
+          {etiquetaDeEstado(cita.estado)}
+        </span>
+      </Renglon>
 
-      <Dato titulo="Historial del paciente">
+      {cita.notas ? (
+        <Renglon icono="nota" titulo="Notas">
+          {/* Se pinta como TEXTO, nunca como HTML: una nota es lo que alguien
+              escribio, y si se interpretara, una nota con etiquetas podria
+              romper la pantalla o algo peor. */}
+          <span className="agenda-panel__notas">{cita.notas}</span>
+        </Renglon>
+      ) : null}
+
+      <Renglon icono="barras" titulo="Historial del cliente">
         {cargandoHistorial ? (
           // Mientras carga NO se muestra un cero: "0 sesiones" es una
           // respuesta real y equivocada sobre un paciente que lleva años.
@@ -137,7 +190,7 @@ export function PanelDeCita({
         ) : historial ? (
           <>
             <div>
-              {historial.completadas} {historial.completadas === 1 ? 'sesión' : 'sesiones'} completadas
+              Total de citas: {historial.completadas}
             </div>
             {historial.canceladas > 0 || historial.noAsistio > 0 ? (
               <div className="agenda-panel__secundario">
@@ -146,46 +199,83 @@ export function PanelDeCita({
             ) : null}
             {historial.ultima ? (
               <div className="agenda-panel__secundario">
-                Última: {historial.ultima.fecha} · {historial.ultima.servicio}
+                Última cita: {historial.ultima.fecha} – {historial.ultima.servicio}
               </div>
             ) : null}
           </>
         ) : (
           <span className="agenda-panel__falta">No se pudo cargar el historial.</span>
         )}
-      </Dato>
+      </Renglon>
 
       {historial?.proxima && historial.proxima.id !== cita.id ? (
-        <Dato titulo="Próxima cita">
-          {historial.proxima.fecha} · {historial.proxima.hora} · {historial.proxima.servicio}
-        </Dato>
+        <Renglon icono="calendario" titulo="Próxima cita">
+          {historial.proxima.fecha} · {historial.proxima.hora}
+          <div className="agenda-panel__secundario">{historial.proxima.servicio}</div>
+        </Renglon>
       ) : null}
 
       {puedeGestionar ? (
-        <div className="agenda-panel__acciones">
-          {cita.estado === 'pendiente' ? (
-            <Boton tono="principal" onClick={() => onCambiarEstado('confirmada')}>
-              Confirmar
+        <>
+          {/*
+            Las cuatro del diseño, en cuadricula. "Enviar mensaje" no manda
+            nada desde aqui: abre Mensajes con el paciente y la cita como
+            contexto. Agenda no es Mensajes.
+          */}
+          <div className="agenda-panel__acciones">
+            {viva ? (
+              <Boton tono="principal" onClick={onEditar}>
+                <Icono nombre="lapiz" lado={16} /> Editar cita
+              </Boton>
+            ) : null}
+            {viva ? (
+              <Boton tono="contorno" onClick={onReagendar}>
+                <Icono nombre="volver" lado={16} /> Reagendar
+              </Boton>
+            ) : null}
+            {!terminada ? (
+              <Boton tono="peligro" onClick={() => onCambiarEstado('cancelada')}>
+                <Icono nombre="prohibido" lado={16} /> Cancelar cita
+              </Boton>
+            ) : null}
+            <Boton tono="contorno" onClick={onEnviarMensaje}>
+              <Icono nombre="mensaje" lado={16} /> Enviar mensaje
             </Boton>
-          ) : null}
-          {viva ? <Boton tono="contorno" onClick={onEditar}>Editar</Boton> : null}
-          {viva ? <Boton tono="contorno" onClick={onReagendar}>Reagendar</Boton> : null}
+          </div>
+
+          {/*
+            Los cambios de estado van aparte y debajo: son los que dejan huella
+            en el historial y en los reportes, y mezclarlos con "Editar" hace
+            que se aprieten sin pensar.
+          */}
           {viva ? (
-            <Boton tono="contorno" onClick={() => onCambiarEstado('completada')}>
-              Marcar completada
-            </Boton>
+            <div className="agenda-panel__estados">
+              {cita.estado === 'pendiente' ? (
+                <button
+                  type="button"
+                  className="agenda-panel__cambio"
+                  onClick={() => onCambiarEstado('confirmada')}
+                >
+                  <Icono nombre="palomita" lado={15} /> Confirmar
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="agenda-panel__cambio"
+                onClick={() => onCambiarEstado('completada')}
+              >
+                <Icono nombre="palomita" lado={15} /> Marcar completada
+              </button>
+              <button
+                type="button"
+                className="agenda-panel__cambio"
+                onClick={() => onCambiarEstado('no_asistio')}
+              >
+                <Icono nombre="alerta" lado={15} /> No asistió
+              </button>
+            </div>
           ) : null}
-          {viva ? (
-            <Boton tono="contorno" onClick={() => onCambiarEstado('no_asistio')}>
-              No asistió
-            </Boton>
-          ) : null}
-          {!terminada ? (
-            <Boton tono="peligro" onClick={() => onCambiarEstado('cancelada')}>
-              Cancelar cita
-            </Boton>
-          ) : null}
-        </div>
+        </>
       ) : null}
     </aside>
   );

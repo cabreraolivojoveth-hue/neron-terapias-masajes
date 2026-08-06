@@ -1423,6 +1423,29 @@ begin
    where id = p_cita
   returning * into v_cita;
 
+  /**
+   * LOS RECORDATORIOS DE ESA CITA SE MUEVEN CON ELLA, y va DENTRO de la misma
+   * transaccion a proposito.
+   *
+   * Hacerlo desde el navegador —mover la cita, luego mover el recordatorio—
+   * tiene una ventana: si la red se cae en medio, la cita queda el martes y su
+   * recordatorio sigue avisando del lunes. Nadie se entera hasta que el aviso
+   * sale con la fecha vieja. Aqui pasa entero o no pasa.
+   *
+   * Se conserva el DESFASE: un recordatorio puesto para el dia anterior sigue
+   * quedando el dia anterior a la fecha nueva. Empujarlos todos a la fecha de
+   * la cita convertiria un "confirmar 24 horas antes" en un aviso el mismo dia.
+   *
+   * Solo los PENDIENTES. Uno ya hecho es historia y no se reescribe.
+   */
+  update recordatorio r
+     set fecha = p_fecha - ((v_antes->>'fecha')::date - r.fecha)
+   where r.negocio_id = v_cita.negocio_id
+     and r.entidad_tipo = 'cita'
+     and r.entidad_id = p_cita
+     and r.estado = 'pendiente'
+     and not r.eliminado;
+
   select * into v_quien from membresia
    where negocio_id = v_cita.negocio_id and usuario_id = auth.uid() limit 1;
 
@@ -1491,6 +1514,29 @@ begin
                                else coalesce(notas || E'\n', '') || p_motivo end
    where id = p_cita
   returning * into v_cita;
+
+  /**
+   * UNA CITA QUE SE CIERRA APAGA SUS RECORDATORIOS PENDIENTES.
+   *
+   * El caso concreto: se cancela la cita del jueves y al dia siguiente sale
+   * igual el recordatorio de confirmarla. La paciente recibe un aviso de una
+   * cita que ya no existe, y a partir de ahi deja de creerles a los avisos.
+   *
+   * Se marcan `descartado`, NO se borran: el recordatorio siguio existiendo y
+   * borrarlo dejaria un hueco en el rastro de por que nadie la confirmo.
+   *
+   * "Completada" tambien los apaga: recordar confirmar una cita que ya se dio
+   * no le sirve a nadie. "No asistio" igual — esa cita ya termino.
+   */
+  if p_estado in ('cancelada', 'completada', 'no_asistio') then
+    update recordatorio
+       set estado = 'descartado'
+     where negocio_id = v_cita.negocio_id
+       and entidad_tipo = 'cita'
+       and entidad_id = p_cita
+       and estado = 'pendiente'
+       and not eliminado;
+  end if;
 
   select * into v_quien from membresia
    where negocio_id = v_cita.negocio_id and usuario_id = auth.uid() limit 1;

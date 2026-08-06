@@ -1,31 +1,16 @@
 /**
- * EL SALUDO Y LA FECHA DEL ENCABEZADO. Aritmetica pura, sin pantalla.
+ * EL SALUDO DEL ENCABEZADO DE INICIO. Aritmetica pura, sin pantalla.
  *
  * Vive aparte para poder probarlo a cualquier hora del dia sin tocar el reloj
  * de la maquina: las funciones RECIBEN el momento en vez de preguntarselo al
  * sistema. Una prueba que dice "a las ocho de la noche saluda con buenas
  * noches" tiene que poder correr a las tres de la tarde.
- */
-
-import type { Fecha } from '@neron/base/utils';
-
-/**
- * LOS NOMBRES ESCRITOS, no `toLocaleDateString`.
  *
- * `Intl` depende de los datos de idioma que traiga el entorno. En un navegador
- * normal sobran, pero en una compilacion recortada de Node —o en el entorno de
- * pruebas— la misma llamada devuelve "Thursday" sin avisar de nada. Doce
- * palabras escritas a mano no se equivocan nunca y se leen igual en todos
- * lados.
+ * Las fechas escritas en palabras se fueron a `ui/fechas-en-palabras.ts`
+ * cuando Agenda empezo a escribir la misma fecha en su barra: dos pantallas
+ * que escriben "Jueves 10 de julio de 2025" tienen que escribirlo con el mismo
+ * codigo, y Agenda no tiene por que depender de Inicio para eso.
  */
-const DIAS = [
-  'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado',
-] as const;
-
-const MESES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-] as const;
 
 export type Saludo = 'Buenos días' | 'Buenas tardes' | 'Buenas noches';
 
@@ -68,51 +53,4 @@ export function encabezadoDeSaludo(
   const saludo = saludoSegunLaHora(momento);
   const nombre = primerNombre(nombreCompleto);
   return nombre ? `¡${saludo}, ${nombre}!` : `¡${saludo}!`;
-}
-
-/**
- * `10/07/2025` → `Jueves, 10 de julio de 2025`.
- *
- * Se arma a mano desde las tres partes del texto. Pasarlo por `new Date` es lo
- * que mueve la fecha un dia segun la zona horaria de quien abrio la pantalla,
- * y el dia que se ve mal es justo el que la persona esta mirando.
- *
- * Para saber QUE DIA DE LA SEMANA cae si hace falta un calendario, y ahi se
- * usa mediodia UTC: a mediodia sobra margen para cualquier salto de horario de
- * verano, que a medianoche cambia el dia.
- */
-export function fechaLarga(fecha: Fecha): string {
-  const partes = fecha.split('/');
-  const dia = Number(partes[0]);
-  const mes = Number(partes[1]);
-  const anio = Number(partes[2]);
-  if (!Number.isFinite(dia) || !Number.isFinite(mes) || !Number.isFinite(anio)) return '';
-  if (mes < 1 || mes > 12) return '';
-
-  const iso = `${String(anio).padStart(4, '0')}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-  const marca = Date.parse(`${iso}T12:00:00Z`);
-  if (!Number.isFinite(marca)) return '';
-
-  const nombreDelDia = DIAS[new Date(marca).getUTCDay()] ?? '';
-  return `${nombreDelDia}, ${dia} de ${MESES[mes - 1]} de ${anio}`;
-}
-
-/** `Lun`, `Mar`… para el eje de la grafica. Vacio si la fecha no se entiende. */
-export function diaCorto(fecha: Fecha): string {
-  const partes = fecha.split('/');
-  const iso = `${partes[2] ?? ''}-${partes[1] ?? ''}-${partes[0] ?? ''}`;
-  const marca = Date.parse(`${iso}T12:00:00Z`);
-  if (!Number.isFinite(marca)) return '';
-  return (DIAS[new Date(marca).getUTCDay()] ?? '').slice(0, 3);
-}
-
-/** `Jueves 10 de julio` — lo que dice el globito de la grafica. */
-export function diaYMes(fecha: Fecha): string {
-  const partes = fecha.split('/');
-  const dia = Number(partes[0]);
-  const mes = Number(partes[1]);
-  if (!Number.isFinite(dia) || mes < 1 || mes > 12) return fecha;
-  const largo = fechaLarga(fecha);
-  const nombreDelDia = largo.split(',')[0] ?? '';
-  return `${nombreDelDia} ${dia} de ${MESES[mes - 1]}`;
 }

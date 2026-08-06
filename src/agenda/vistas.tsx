@@ -7,6 +7,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import type { Fecha } from '@neron/base/utils';
+import { Hoja } from '../marco/hoja.js';
 import type { CitaEnAgenda } from '../datos/citas.js';
 import { etiquetaDeEstado } from '../datos/citas.js';
 import { colocar, horaDelClic, horasDe, lineaDeAhora, minutosDe } from './disposicion.js';
@@ -24,8 +25,13 @@ export interface PropiedadesDeVista {
   onIrAlDia(fecha: Fecha): void;
 }
 
-const clasesDe = (c: CitaEnAgenda, puesta: boolean): string =>
-  ['agenda-cita', `agenda-cita--${c.estado}`, puesta ? 'agenda-cita--puesta' : '']
+const clasesDe = (c: CitaEnAgenda, puesta: boolean, compacta: boolean): string =>
+  [
+    'agenda-cita',
+    compacta ? 'agenda-cita--compacta' : 'agenda-cita--ancha',
+    `agenda-cita--${c.estado}`,
+    puesta ? 'agenda-cita--puesta' : '',
+  ]
     .filter(Boolean)
     .join(' ');
 
@@ -63,6 +69,7 @@ function ColumnaDelDia({
   readonly ahora: Date;
   onSeleccionar(c: CitaEnAgenda): void;
   onHueco(f: Fecha, h: string): void;
+  /** La semana aprieta cinco columnas: cabe menos texto y ningun icono. */
   readonly compacta?: boolean;
 }) {
   const puestas = colocar(citas, abre, cierra);
@@ -83,7 +90,7 @@ function ColumnaDelDia({
         <button
           key={cita.id}
           type="button"
-          className={clasesDe(cita, cita.id === seleccionada)}
+          className={clasesDe(cita, cita.id === seleccionada, compacta)}
           style={{
             top: `${arriba}%`,
             height: `${alto}%`,
@@ -94,25 +101,43 @@ function ColumnaDelDia({
           aria-pressed={cita.id === seleccionada}
           onClick={() => onSeleccionar(cita)}
         >
-          <span className="agenda-cita__hora">
-            {cita.horaInicio} – {cita.horaFin}
-          </span>
+          {/*
+            La hoja de la marca, teñida del color del estado.
+            El diseño pone un dibujo distinto por terapia; los servicios los
+            captura cada centro, asi que no hay forma de saber que dibujo le
+            toca a uno nuevo sin inventarselo. Una sola marca teñida da el
+            mismo golpe de vista y no miente.
+          */}
           {!compacta ? (
-            <>
-              <span className="agenda-cita__quien">{cita.cliente}</span>
-              <span className="agenda-cita__que">{cita.servicio}</span>
-            </>
-          ) : (
+            <span className="agenda-cita__marca" aria-hidden="true">
+              <Hoja pequena />
+            </span>
+          ) : null}
+
+          <span className="agenda-cita__cuerpo">
+            {/* En 24 horas, como el diseño. "09:00 a. m. – 10:00 a. m." ocupa
+                el doble en un bloque que ya va apretado, y en una agenda de
+                trabajo nadie duda de si las nueve son de la mañana. */}
+            <span className="agenda-cita__hora">
+              {cita.horaInicio} – {cita.horaFin}
+            </span>
             <span className="agenda-cita__quien">{cita.cliente}</span>
-          )}
+            {!compacta ? <span className="agenda-cita__que">{cita.servicio}</span> : null}
+          </span>
+
           {/* El estado va con PALABRA, no solo con el color del bloque. */}
-          <span className="agenda-cita__estado">{etiquetaDeEstado(cita.estado)}</span>
+          <span className={`agenda-cita__estado agenda-estado--${cita.estado}`}>
+            {etiquetaDeEstado(cita.estado)}
+          </span>
         </button>
       ))}
 
       {linea ? (
         <div className="agenda-ahora" style={{ top: `${linea.arriba}%` }} aria-hidden="true">
+          {/* La hora se escribe SOBRE la regla de la izquierda, como en el
+              diseño, y el punto marca donde empieza la linea. */}
           <span className="agenda-ahora__hora">{linea.hora}</span>
+          <span className="agenda-ahora__punto" />
         </div>
       ) : null}
     </div>
@@ -321,12 +346,20 @@ export function VistaMes(p: PropiedadesDeVista) {
 
 /* ------------------------------------------------------------------ */
 
+/**
+ * La leyenda de estados.
+ *
+ * Estan los CINCO, no los cuatro del diseño: "No asistió" existe aparte de
+ * "Cancelada" porque para el negocio no son lo mismo —una se reagenda, la otra
+ * ya costó— y dejarlo fuera de la leyenda haria que su color no significara
+ * nada para quien lo ve por primera vez.
+ */
 export function Leyenda(): ReactNode {
   return (
     <ul className="agenda-leyenda">
-      {['pendiente', 'confirmada', 'completada', 'cancelada', 'no_asistio'].map((e) => (
+      {['confirmada', 'pendiente', 'cancelada', 'completada', 'no_asistio'].map((e) => (
         <li key={e} className="agenda-leyenda__punto">
-          <span className={`agenda-leyenda__color agenda-cita--${e}`} aria-hidden="true" />
+          <span className={`agenda-leyenda__color agenda-punto--${e}`} aria-hidden="true" />
           {etiquetaDeEstado(e)}
         </li>
       ))}

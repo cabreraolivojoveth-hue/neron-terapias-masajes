@@ -24,7 +24,7 @@
  * aqui.
  */
 
-import { Icono, type NombreDeIcono } from './iconos.js';
+import { Icono, type NombreDeIcono } from '../ui/iconos.js';
 
 export interface AccionRapida {
   readonly clave: string;

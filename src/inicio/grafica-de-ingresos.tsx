@@ -25,7 +25,7 @@ import { comoArea, comoPolilinea } from '@neron/base/tablero';
 import { formatearMoneda } from '@neron/base/utils';
 import { useEffect, useRef, useState } from 'react';
 import type { ClaveDePeriodo, DiaConIngreso, PeriodoDeIngresos } from '../datos/tablero.js';
-import { diaCorto, diaYMes } from './saludo.js';
+import { diaCorto, diaYMes } from '../ui/fechas-en-palabras.js';
 
 /** En cuantos tramos se parte el eje vertical. Cuatro deja cinco etiquetas. */
 const DIVISIONES = 4;

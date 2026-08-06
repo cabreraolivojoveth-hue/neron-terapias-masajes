@@ -6,14 +6,7 @@
  * reloj de la maquina.
  */
 import { describe, expect, it } from 'vitest';
-import {
-  diaCorto,
-  diaYMes,
-  encabezadoDeSaludo,
-  fechaLarga,
-  primerNombre,
-  saludoSegunLaHora,
-} from '../src/inicio/saludo.js';
+import { encabezadoDeSaludo, primerNombre, saludoSegunLaHora } from '../src/inicio/saludo.js';
 
 const alas = (hora: number): Date => new Date(2026, 7, 6, hora, 0, 0);
 
@@ -65,35 +58,5 @@ describe('con quien se saluda', () => {
   it('el encabezado saluda igual aunque no se sepa el nombre', () => {
     expect(encabezadoDeSaludo('Ana Ruiz', alas(9))).toBe('¡Buenos días, Ana!');
     expect(encabezadoDeSaludo(null, alas(9))).toBe('¡Buenos días!');
-  });
-});
-
-describe('la fecha larga', () => {
-  it('se arma desde el texto, sin pasar por new Date(texto)', () => {
-    // Es lo que evita que la fecha se mueva un dia segun la zona horaria de
-    // quien abrio la pantalla — y el dia que se ve mal es justo el que la
-    // persona esta mirando.
-    expect(fechaLarga('06/08/2026')).toBe('Jueves, 6 de agosto de 2026');
-  });
-
-  it('calcula el dia de la semana, no lo supone', () => {
-    expect(fechaLarga('01/01/2026')).toBe('Jueves, 1 de enero de 2026');
-    expect(fechaLarga('29/02/2024')).toBe('Jueves, 29 de febrero de 2024');
-  });
-
-  it('una fecha imposible devuelve vacio en vez de reventar', () => {
-    expect(fechaLarga('lo que sea')).toBe('');
-    expect(fechaLarga('10/13/2026')).toBe('');
-  });
-});
-
-describe('las etiquetas cortas', () => {
-  it('el dia corto son tres letras', () => {
-    expect(diaCorto('03/08/2026')).toBe('Lun');
-    expect(diaCorto('09/08/2026')).toBe('Dom');
-  });
-
-  it('el globito de la grafica dice dia y mes', () => {
-    expect(diaYMes('06/08/2026')).toBe('Jueves 6 de agosto');
   });
 });

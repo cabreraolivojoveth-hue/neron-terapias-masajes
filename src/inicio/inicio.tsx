@@ -48,7 +48,8 @@ import { AgendaDeHoy } from './agenda-de-hoy.js';
 import { GraficaDeIngresos } from './grafica-de-ingresos.js';
 import { ProductosMasVendidos, ServiciosMasVendidos } from './rankings.js';
 import { RecordatoriosCercanos } from './recordatorios-cercanos.js';
-import { encabezadoDeSaludo, fechaLarga } from './saludo.js';
+import { encabezadoDeSaludo } from './saludo.js';
+import { fechaLarga } from '../ui/fechas-en-palabras.js';
 import { Tarjetas, type Destino } from './tarjetas.js';
 
 /**

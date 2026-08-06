@@ -202,8 +202,8 @@ historial.
 | 5 | Productos |
 | 6 | Ventas, Pagos y Caja |
 | 7 | Gastos y Recordatorios |
-| **8** | **Inicio** — el tablero, ya con todo de dónde resumir |
-| 9 | Reportes · 10 · Configuración · 11 · Publicación |
+| **8** ✅ | **Inicio** — el tablero, el buscador global y los avisos |
+| 9 | Reportes · 10 · Configuración · 11 · Mensajes · 12 · Publicación |
 
 Inicio es el bloque 8, no el 1. Cuando llegue, cada tarjeta va a tener una
 fuente real detrás, y las que estén en cero van a estar en cero **porque no hay

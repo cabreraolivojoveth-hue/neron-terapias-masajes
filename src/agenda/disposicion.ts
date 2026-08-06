@@ -130,6 +130,42 @@ export function colocar<T extends CitaColocable>(
 }
 
 /**
+ * QUE FRANJA DE HORAS SE VE, y por que no es un numero escrito a mano.
+ *
+ * El horario del centro lo va a administrar Configuracion (bloque 10). Hasta
+ * entonces se parte de una franja razonable —la que cubre un centro normal— y
+ * SE ESTIRA para que quepa cualquier cita que se salga.
+ *
+ * Estirarla no es un adorno: sin eso, una cita de las 7 de la mañana en un
+ * centro que abre a las 8 se recorta contra el borde superior y se lee como si
+ * empezara a las 8. La persona la agendo, existe, y verla en la hora
+ * equivocada es peor que no verla.
+ *
+ * Se redondea a horas completas para que la regla de la izquierda siga
+ * marcando 07:00, 08:00 y no 07:23.
+ */
+export function ventanaDelDia(
+  citas: readonly CitaColocable[],
+  abrePorOmision: number,
+  cierraPorOmision: number,
+): { readonly abre: number; readonly cierra: number } {
+  let abre = abrePorOmision;
+  let cierra = cierraPorOmision;
+
+  for (const c of citas) {
+    const inicio = minutosDe(c.horaInicio);
+    const fin = minutosDe(c.horaFin);
+    if (inicio !== null && inicio < abre) abre = Math.floor(inicio / 60) * 60;
+    if (fin !== null && fin > cierra) cierra = Math.ceil(fin / 60) * 60;
+  }
+
+  // Un margen minimo: con una sola cita de media hora, una franja de media
+  // hora dejaria el bloque ocupando la pantalla entera.
+  if (cierra - abre < 120) cierra = abre + 120;
+  return { abre: Math.max(0, abre), cierra: Math.min(24 * 60, cierra) };
+}
+
+/**
  * Donde va la linea de la hora actual.
  *
  * Devuelve `null` cuando no se debe pintar — y son dos casos distintos: que

@@ -35,7 +35,7 @@ import {
   normalizarBusqueda,
   type Encontrado,
 } from '../datos/busqueda.js';
-import { Icono } from '../inicio/iconos.js';
+import { Icono } from '../ui/iconos.js';
 
 /** Cuanto se espera a que dejen de escribir. */
 const ESPERA_MS = 250;

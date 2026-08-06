@@ -13,7 +13,7 @@
 
 import { diasEntre, esFecha, type Fecha } from '@neron/base/utils';
 import type { EntidadDeRecordatorio, RecordatorioCercano } from '../datos/tablero.js';
-import { Icono, type NombreDeIcono } from './iconos.js';
+import { Icono, type NombreDeIcono } from '../ui/iconos.js';
 
 export type Urgencia = 'vencido' | 'hoy' | 'proximo';
 

@@ -31,7 +31,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useConsulta } from '../datos/consulta.js';
 import { llaveDelResumen, traerResumen, type ResumenDeInicio } from '../datos/tablero.js';
 import { useSesion } from '../identidad/sesion.js';
-import { Icono, type NombreDeIcono } from '../inicio/iconos.js';
+import { Icono, type NombreDeIcono } from '../ui/iconos.js';
 
 export interface Aviso {
   readonly clave: string;

@@ -23,7 +23,7 @@ import { comparar, comoSeDice } from '@neron/base/tablero';
 import { formatearMoneda } from '@neron/base/utils';
 import type { Categoria } from '../marca.js';
 import type { ResumenDeInicio } from '../datos/tablero.js';
-import { Icono, type NombreDeIcono } from './iconos.js';
+import { Icono, type NombreDeIcono } from '../ui/iconos.js';
 
 export interface Destino {
   readonly modulo: string;

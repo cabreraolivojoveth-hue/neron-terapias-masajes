@@ -17,10 +17,9 @@
  * y quien la mira concluye —con razon— que una de las dos esta mal.
  */
 
-import { hora24aLegible } from '@neron/base/utils';
 import type { CitaEnAgenda } from '../datos/citas.js';
 import { etiquetaDeEstado } from '../datos/citas.js';
-import { Icono } from './iconos.js';
+import { Icono } from '../ui/iconos.js';
 
 /**
  * Las iniciales, para el circulo del renglon.
@@ -104,8 +103,8 @@ export function AgendaDeHoy({
             <li key={c.id}>
               <button type="button" className="ini-cita" onClick={() => onAbrir(c)}>
                 <span className="ini-cita__horas">
-                  <span className="ini-cita__inicio">{hora24aLegible(c.horaInicio)}</span>
-                  <span className="ini-cita__fin">{hora24aLegible(c.horaFin)}</span>
+                  <span className="ini-cita__inicio">{c.horaInicio}</span>
+                  <span className="ini-cita__fin">{c.horaFin}</span>
                 </span>
                 <span className="ini-cita__inicial" aria-hidden="true">
                   {iniciales(c.cliente)}

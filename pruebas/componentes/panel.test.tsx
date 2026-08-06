@@ -2,6 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PanelDeCita } from '../../src/agenda/panel.js';
 import type { CitaEnAgenda, Historial } from '../../src/datos/citas.js';
@@ -25,7 +26,8 @@ const pintar = (props: Record<string, unknown> = {}) =>
   render(
     <PanelDeCita
       cita={CITA} historial={HISTORIAL} cargandoHistorial={false} puedeGestionar
-      onEditar={vi.fn()} onReagendar={vi.fn()} onCambiarEstado={vi.fn()} onCerrar={vi.fn()}
+      onEditar={vi.fn()} onReagendar={vi.fn()} onCambiarEstado={vi.fn()}
+      onEnviarMensaje={vi.fn()} onCerrar={vi.fn()}
       {...props}
     />,
   );
@@ -65,7 +67,7 @@ describe('con una cita', () => {
 
   it('la duracion sale del servicio', () => {
     pintar();
-    expect(screen.getByText(/09:00 a 10:00 \(60 min\)/)).toBeDefined();
+    expect(screen.getByText(/09:00 – 10:00 \(1 hora\)/)).toBeDefined();
   });
 
   it('no trae ningun dato de la captura de referencia', () => {
@@ -79,7 +81,7 @@ describe('con una cita', () => {
 describe('el historial', () => {
   it('cuenta las sesiones COMPLETADAS', () => {
     pintar();
-    expect(screen.getByText('3 sesiones completadas')).toBeDefined();
+    expect(screen.getByText('Total de citas: 3')).toBeDefined();
   });
 
   it('mientras carga NO muestra un cero', () => {
@@ -139,5 +141,35 @@ describe('las acciones dependen del estado', () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     await userEvent.setup().click(screen.getByRole('button', { name: 'Cancelar cita' }));
     expect(onCambiarEstado).toHaveBeenCalledWith('cancelada');
+  });
+});
+
+describe('la conexion con Mensajes', () => {
+  it('"Enviar mensaje" avisa: Agenda no manda nada por su cuenta', async () => {
+    /**
+     * El panel no abre WhatsApp ni escribe una conversacion. Avisa, y quien lo
+     * usa decide a donde lleva — que es como Agenda se conecta con Mensajes
+     * sin convertirse en Mensajes.
+     */
+    const enviar = vi.fn();
+    pintar({ onEnviarMensaje: enviar });
+    await userEvent.click(screen.getByRole('button', { name: /Enviar mensaje/ }));
+    expect(enviar).toHaveBeenCalled();
+  });
+
+  it('el boton esta aunque la cita ya termino: escribirle al paciente siempre se puede', () => {
+    pintar({ cita: { ...CITA, estado: 'completada' } });
+    expect(screen.getByRole('button', { name: /Enviar mensaje/ })).toBeDefined();
+  });
+});
+
+describe('la sala del diseño', () => {
+  it('NO se escribe una sala inventada', () => {
+    // El diseño muestra "Sala 1 – Paz y Luz". En la base no hay tabla de salas:
+    // escribir ese renglon con un texto fijo seria justo lo que este producto
+    // no hace.
+    pintar();
+    expect(screen.queryByText(/Sala/)).toBeNull();
+    expect(screen.queryByText(/Paz y Luz/)).toBeNull();
   });
 });
