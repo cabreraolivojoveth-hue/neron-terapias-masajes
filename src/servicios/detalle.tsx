@@ -307,7 +307,16 @@ export function DetalleDeServicio({
 
           {pestana === 'historial' ? (
             <div className="srv-detalle__cuerpo">
-              {ficha.historial.length === 0 ? (
+              {/* "No puedes verlo" NO es lo mismo que "no existe". La bitacora
+                  solo se le entrega a quien tiene permiso de auditoría; decir
+                  "no hay cambios" a quien sí los tiene enseña a desconfiar de
+                  todo lo demás que dice la pantalla. */}
+              {!ficha.puedeVerHistorial ? (
+                <p className="cli-vacio__texto">
+                  Tu rol no tiene permiso para ver la bitácora del centro. Aquí van los cambios de
+                  precio y de duración, con quién los hizo y cuándo.
+                </p>
+              ) : ficha.historial.length === 0 ? (
                 <p className="cli-vacio__texto">Todavía no hay cambios registrados.</p>
               ) : (
                 <ul className="srv-historial">

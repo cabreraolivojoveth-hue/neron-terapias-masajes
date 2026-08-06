@@ -152,7 +152,11 @@ alter table servicio add constraint servicio_categoria_mismo_negocio
   foreign key (negocio_id, categoria_id) references categoria (negocio_id, id)
   -- Si alguien archiva la categoria, el servicio se queda SIN categoria, no
   -- desaparece. Nadie deberia tener que reasignar treinta servicios a mano.
-  on delete set null;
+  -- `set null (columna)` y NO `set null` a secas. La llave es COMPUESTA: un
+  -- `set null` pelon vacia las DOS columnas, y `negocio_id` no acepta nulos —
+  -- asi que el borrado revienta y la fila de la izquierda no se puede borrar
+  -- nunca. Se nombra la columna que si se debe vaciar.
+  on delete set null (categoria_id);
 
 -- ---------------------------------------------------------------------
 -- CURSOS — los talleres con fecha, cupo y precio
@@ -301,7 +305,12 @@ end $$;
 
 alter table cita drop constraint if exists cita_profesional_mismo_negocio;
 alter table cita add constraint cita_profesional_mismo_negocio
-  foreign key (negocio_id, profesional_id) references membresia (negocio_id, id) on delete set null;
+  foreign key (negocio_id, profesional_id) references membresia (negocio_id, id)
+  -- `set null (columna)` y NO `set null` a secas. La llave es COMPUESTA: un
+  -- `set null` pelon vacia las DOS columnas, y `negocio_id` no acepta nulos —
+  -- asi que el borrado revienta y la fila de la izquierda no se puede borrar
+  -- nunca. Se nombra la columna que si se debe vaciar.
+  on delete set null (profesional_id);
 
 -- El indice que sostiene "Citas hoy" y "Agenda de hoy" del tablero.
 create index if not exists cita_negocio_fecha_idx on cita (negocio_id, fecha, hora_inicio)
@@ -508,7 +517,12 @@ alter table inscripcion add constraint inscripcion_cliente_mismo_negocio
   foreign key (negocio_id, cliente_id) references cliente (negocio_id, id) on delete restrict;
 alter table inscripcion drop constraint if exists inscripcion_venta_mismo_negocio;
 alter table inscripcion add constraint inscripcion_venta_mismo_negocio
-  foreign key (negocio_id, venta_id) references venta (negocio_id, id) on delete set null;
+  foreign key (negocio_id, venta_id) references venta (negocio_id, id)
+  -- `set null (columna)` y NO `set null` a secas. La llave es COMPUESTA: un
+  -- `set null` pelon vacia las DOS columnas, y `negocio_id` no acepta nulos —
+  -- asi que el borrado revienta y la fila de la izquierda no se puede borrar
+  -- nunca. Se nombra la columna que si se debe vaciar.
+  on delete set null (venta_id);
 
 create index if not exists inscripcion_curso_idx on inscripcion (curso_id);
 

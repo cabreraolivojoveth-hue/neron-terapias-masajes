@@ -105,10 +105,27 @@ let membresiaRecepcion = '';
 let categoriaId = '';
 let categoriaOtra = '';
 
+/**
+ * SE APLICA EL INSTALADOR DE VERDAD, no una copia.
+ *
+ * LO QUE COSTO APRENDER ESTO: `basedatos/*.sql` se quedo atras y doce
+ * funciones vivian SOLO en `INSTALAR-EN-TERAPIAS.sql`. Como Postgres no revisa
+ * el cuerpo de una funcion `plpgsql` al crearla, y estas pruebas nunca veian
+ * las de `sql`, un nombre de columna equivocado —`creado_en` donde la bitacora
+ * dice `ocurrido_en`— paso los tipos, las guardias, 618 pruebas y la
+ * compilacion, y reventó en el SQL Editor con el centro esperando.
+ *
+ * Aplicar el instalador completo aqui hace que Postgres parsee cada funcion
+ * `sql` de verdad. El error sale en `npm run consistencia`, no a las nueve de
+ * la mañana.
+ */
 async function aplicarEsquema(): Promise<void> {
   for (const a of ['01-esquema.sql', '02-reglas.sql', '03-funciones.sql']) {
     await cliente.query(readFileSync(join(RAIZ, 'basedatos', a), 'utf8'));
   }
+  // Va DESPUES de los tres: es idempotente —todo con `if not exists` o
+  // `create or replace`— y trae ademas lo que ellos no tienen.
+  await cliente.query(readFileSync(join(RAIZ, 'INSTALAR-EN-TERAPIAS.sql'), 'utf8'));
   if (SIN_REGLAS) {
     /**
      * EL CANDADO DEL CONTROL NEGATIVO.
@@ -315,6 +332,69 @@ async function correr(): Promise<void> {
     await cliente.query('set local role authenticated');
     const n = await cuantos(`select * from servicio where id=$1`, [servicioId]);
     anotar('borrar la categoria NO borra sus servicios', n === 1, `quedaron ${n}`);
+  });
+
+  grupo('El catalogo deja rastro, y el rastro se puede volver a leer');
+
+  await como(DUENA, async () => {
+    /**
+     * LA PRUEBA QUE FALTABA, Y QUE COSTO UN SQL ROTO EN PRODUCCION.
+     *
+     * Guardar y volver a leer es lo unico que comprueba que las dos mitades
+     * usan los mismos nombres de columna. `ficha_del_servicio` leia
+     * `a.creado_en` cuando la bitacora se llama `ocurrido_en`, y nada lo
+     * detuvo: los tipos no ven SQL, las guardias tampoco, y las pruebas del
+     * navegador simulan el servidor.
+     */
+    const s = await cliente.query(
+      `select (guardar_servicio($1, null, 'Sesion Del Rastro', null, null, 60, 50000)).id as id`,
+      [CENTRO]);
+    const nuevo = s.rows[0].id;
+
+    const f = await cliente.query(`select ficha_del_servicio($1) as f`, [nuevo]);
+    const ficha = f.rows[0].f;
+    anotar('guardar y volver a leer la ficha NO revienta', ficha !== null, 'devolvio nulo');
+
+    const historial = ficha?.historial ?? [];
+    anotar('crear un servicio deja su renglon en la bitacora',
+      historial.length === 1 && historial[0]?.accion === 'crear',
+      `trajo ${historial.length}`);
+    // Sin fecha, el historial se lee como una lista de cambios sin cuando.
+    anotar('el renglon trae CUANDO paso', Boolean(historial[0]?.cuando), 'vino vacio');
+    // El id del rol ('dueno') no es su etiqueta ('Dueña'). La bitacora guarda
+    // la etiqueta para que se siga leyendo dentro de tres años.
+    const a = await cliente.query(
+      `select rol_etiqueta from auditoria where entidad = $1`, [nuevo]);
+    anotar('la bitacora guarda la ETIQUETA del rol, no su id',
+      a.rows[0]?.rol_etiqueta === 'Dueña', `guardo ${a.rows[0]?.rol_etiqueta}`);
+  });
+
+  await como(RECEPCION, async () => {
+    /**
+     * "No puedes verlo" NO es lo mismo que "no existe".
+     *
+     * La regla de fila de la bitacora solo la entrega a quien tiene
+     * `verAuditoria`. Sin decirlo, la pantalla enseñaria "todavia no hay
+     * cambios registrados" a quien si los hay — y una pantalla que confunde
+     * las dos cosas enseña a desconfiar de todo lo demas que dice.
+     */
+    const f = await cliente.query(`select ficha_del_servicio($1) as f`, [servicioId]);
+    anotar('sin verAuditoria, la ficha lo DICE en vez de fingir que no hay nada',
+      f.rows[0].f?.puedeVerHistorial === false, `dijo ${f.rows[0].f?.puedeVerHistorial}`);
+  });
+
+  await como(RECEPCION, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select guardar_servicio($1, null, 'Sin permiso', null, null, 60, 1000)`,
+        [CENTRO]));
+    anotar('Sin gestionarCatalogo NO se guarda un servicio', e !== null, e ?? 'lo logro');
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select guardar_servicio($1, null, 'Infiltrado', null, null, 60, 1000)`,
+        [CENTRO]));
+    anotar('NO puede guardar un servicio en el centro ajeno', e !== null, e ?? 'lo logro');
   });
 
   grupo('Sin permiso de finanzas, la base no entrega el dinero');

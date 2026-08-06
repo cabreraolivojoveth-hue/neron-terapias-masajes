@@ -29,7 +29,8 @@ const FICHA: FichaDeServicio = {
   precioHoyCentavos: 50000, color: null,
   requierePreparacion: false, preparacion: null,
   diasDisponibles: null, horaDesde: null, horaHasta: null,
-  activo: true, citasFuturas: 0, citasCompletadas: 0, historial: [],
+  activo: true, citasFuturas: 0, citasCompletadas: 0,
+  puedeVerHistorial: true, historial: [],
 };
 
 describe('como se lee la disponibilidad', () => {
@@ -126,6 +127,39 @@ describe('un servicio recien creado, sin nada capturado', () => {
     expect(screen.getByText(/todavía no tiene descripción/)).toBeTruthy();
     await userEvent.click(screen.getByRole('tab', { name: 'Notas' }));
     expect(screen.getByText(/Sin notas internas/)).toBeTruthy();
+    await userEvent.click(screen.getByRole('tab', { name: 'Historial' }));
+    expect(screen.getByText('Todavía no hay cambios registrados.')).toBeTruthy();
+  });
+});
+
+describe('"no puedes verlo" NO es lo mismo que "no existe"', () => {
+  it('sin permiso de auditoria, el historial lo DICE en vez de fingir que esta vacio', async () => {
+    /**
+     * La regla de fila de la bitacora solo la entrega a quien tiene
+     * `verAuditoria`: sin ese permiso la lista llega vacia. Decir "todavia no
+     * hay cambios registrados" seria mentira —los hay— y una pantalla que
+     * confunde las dos cosas enseña a desconfiar de todo lo demas que dice.
+     */
+    render(
+      <DetalleDeServicio
+        ficha={{ ...FICHA, puedeVerHistorial: false }}
+        cargando={false} error={null} permisos={{}}
+        onEditar={() => {}} onCambiarEstado={() => {}} onCerrar={() => {}}
+      />,
+    );
+    await userEvent.click(screen.getByRole('tab', { name: 'Historial' }));
+    expect(screen.getByText(/no tiene permiso para ver la bitácora/)).toBeTruthy();
+    expect(screen.queryByText('Todavía no hay cambios registrados.')).toBeNull();
+  });
+
+  it('CON permiso y sin cambios, si dice que no hay nada', async () => {
+    render(
+      <DetalleDeServicio
+        ficha={{ ...FICHA, puedeVerHistorial: true }}
+        cargando={false} error={null} permisos={{}}
+        onEditar={() => {}} onCambiarEstado={() => {}} onCerrar={() => {}}
+      />,
+    );
     await userEvent.click(screen.getByRole('tab', { name: 'Historial' }));
     expect(screen.getByText('Todavía no hay cambios registrados.')).toBeTruthy();
   });

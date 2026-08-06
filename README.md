@@ -296,7 +296,12 @@ npm run consistencia
 Tipos → guardias → pruebas → compilación → ataques. **Termina en verde o no se publica.** Sin
 base de datos configurada te lo dice fuerte en vez de pasar en verde fingiendo que comprobó algo.
 
-**618 pruebas · 11 guardias · 83 ataques.**
+**Los ataques aplican `INSTALAR-EN-TERAPIAS.sql` de verdad**, no una copia. Postgres no revisa el
+cuerpo de una función `plpgsql` al crearla, así que un nombre de columna equivocado sobrevive a
+los tipos, a las guardias y a las 620 pruebas — y revienta en el SQL Editor. Aplicando el
+instalador real, cada función se parsea contra un Postgres de carne y hueso y el error sale aquí.
+
+**620 pruebas · 11 guardias · 90 ataques.**
 
 ---
 

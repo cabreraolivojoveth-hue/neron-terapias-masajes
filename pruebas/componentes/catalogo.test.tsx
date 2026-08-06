@@ -102,7 +102,8 @@ const FICHA: FichaDeServicio = {
   precioHoyCentavos: 50000, color: null,
   requierePreparacion: true, preparacion: 'Llegar sin comer',
   diasDisponibles: '135', horaDesde: '09:00', horaHasta: '18:00',
-  activo: true, citasFuturas: 0, citasCompletadas: 0, historial: [],
+  activo: true, citasFuturas: 0, citasCompletadas: 0,
+  puedeVerHistorial: true, historial: [],
 };
 
 describe('un centro recien creado, sin un solo servicio', () => {

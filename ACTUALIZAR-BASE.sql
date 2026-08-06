@@ -2,17 +2,26 @@
 -- ACTUALIZAR LA BASE — pegar completo en Supabase → SQL Editor → Run
 -- =====================================================================
 --
--- QUE TRAE: lo que la base necesita para el bloque 3 (SERVICIOS) — la tabla
--- de categorias, las columnas nuevas del servicio, y las cuatro funciones que
--- hacen el trabajo pesado del lado del servidor.
+-- ESTE REEMPLAZA AL QUE FALLO. El anterior reventaba en
+-- `ficha_del_servicio` con "column a.creado_en does not exist": la bitacora
+-- guarda `ocurrido_en`, no `creado_en`. Ya esta corregido, y ahora se prueba
+-- contra un Postgres de verdad antes de mandartelo.
+--
+-- QUE TRAE:
+--   1. El catalogo — la tabla de categorias, las columnas nuevas del
+--      servicio y las cinco funciones que lo sostienen.
+--   2. La agenda — la duracion de una cita sale de la CITA, no del catalogo
+--      de hoy.
+--   3. Tres llaves foraneas corregidas — un `on delete set null` que no se
+--      podia ejecutar.
 --
 -- ES SEGURO CORRERLO LAS VECES QUE HAGA FALTA. No borra nada, no reescribe
--- ningun dato y no toca una sola fila existente: solo crea una tabla nueva
--- (que nace vacia), agrega columnas que pueden quedarse vacias, y crea o
--- reemplaza funciones. Si ya lo corriste, correrlo otra vez no cambia nada.
+-- ningun dato y no toca una sola fila existente: crea una tabla nueva (que
+-- nace vacia), agrega columnas que pueden quedarse vacias, y crea o reemplaza
+-- funciones y restricciones. Si lo corres dos veces no cambia nada.
 --
--- SI NO CORRISTE EL ANTERIOR, corre este de todos modos: son bloques
--- independientes. El de Clientes y Agenda sigue en el historial del chat.
+-- SI YA CORRISTE EL DE CLIENTES, este va encima sin problema. Si no, tambien:
+-- son bloques independientes.
 --
 -- EL ARCHIVO COMPLETO Y CON TODAS LAS EXPLICACIONES sigue siendo
 -- INSTALAR-EN-TERAPIAS.sql. Este es solo el pedazo nuevo, para no tener que
@@ -23,6 +32,10 @@
 
 -- =====================================================================
 -- 1 · EL CATALOGO — categorias, servicios y cursos
+-- =====================================================================
+
+-- =====================================================================
+-- EL CATALOGO — categorias, servicios y cursos
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -104,7 +117,11 @@ alter table servicio add constraint servicio_categoria_mismo_negocio
   foreign key (negocio_id, categoria_id) references categoria (negocio_id, id)
   -- Si alguien archiva la categoria, el servicio se queda SIN categoria, no
   -- desaparece. Nadie deberia tener que reasignar treinta servicios a mano.
-  on delete set null;
+  -- `set null (columna)` y NO `set null` a secas. La llave es COMPUESTA: un
+  -- `set null` pelon vacia las DOS columnas, y `negocio_id` no acepta nulos —
+  -- asi que el borrado revienta y la fila de la izquierda no se puede borrar
+  -- nunca. Se nombra la columna que si se debe vaciar.
+  on delete set null (categoria_id);
 
 alter table servicio drop constraint if exists servicio_promocion_coherente;
 alter table servicio add constraint servicio_promocion_coherente check (
@@ -285,16 +302,29 @@ as $$
       select count(*) from cita v
       where v.servicio_id = s.id and not v.eliminado and v.estado = 'completada'
     ),
+    -- SI ESTA PERSONA PUEDE VER LA BITACORA.
+    --
+    -- La regla de fila de `auditoria` solo la entrega a quien tiene
+    -- `verAuditoria`. Sin este dato, una recepcionista recibiria una lista
+    -- vacia y la pantalla le diria "todavia no hay cambios registrados" —
+    -- que es mentira: los hay, simplemente no son para sus ojos. Una pantalla
+    -- que confunde "no puedes verlo" con "no existe" enseña a desconfiar de
+    -- todo lo demas que dice.
+    'puedeVerHistorial', app.tiene_permiso(s.negocio_id, 'verAuditoria'),
     -- El historial sale de la bitacora que ya existe. No hay una segunda.
+    --
+    -- La columna de tiempo se llama `ocurrido_en`, NO `creado_en`: la bitacora
+    -- guarda cuando PASO la cosa, que no siempre es cuando se pudo escribir el
+    -- renglon —una entrada que se reintenta con mala red se escribe despues—.
     'historial', coalesce((
       select jsonb_agg(jsonb_build_object(
-        'accion', a.accion, 'quien', a.usuario_nombre, 'cuando', a.creado_en,
+        'accion', a.accion, 'quien', a.usuario_nombre, 'cuando', a.ocurrido_en,
         'antes', a.antes, 'despues', a.despues
-      ) order by a.creado_en desc)
+      ) order by a.ocurrido_en desc)
       from (
         select * from auditoria
         where negocio_id = s.negocio_id and modulo = 'servicios' and entidad = s.id::text
-        order by creado_en desc limit 20
+        order by ocurrido_en desc limit 20
       ) a
     ), '[]'::jsonb)
   )
@@ -318,17 +348,21 @@ create or replace function public.guardar_servicio(
   p_categoria uuid,
   p_duracion int,
   p_precio bigint,
-  p_promo bigint,
-  p_promo_desde date,
-  p_promo_hasta date,
-  p_color text,
-  p_requiere_preparacion boolean,
-  p_preparacion text,
-  p_notas text,
-  p_dias text,
-  p_hora_desde time,
-  p_hora_hasta time,
-  p_activo boolean
+  -- De aqui para abajo todo es OPCIONAL, y por eso lleva valor por omision: un
+  -- servicio se da de alta con nombre, duracion y precio. Obligar a mandar
+  -- diecinueve argumentos para crear uno hace que cualquiera que llame a esta
+  -- funcion desde otro lado se equivoque de posicion en silencio.
+  p_promo bigint default null,
+  p_promo_desde date default null,
+  p_promo_hasta date default null,
+  p_color text default null,
+  p_requiere_preparacion boolean default false,
+  p_preparacion text default null,
+  p_notas text default null,
+  p_dias text default null,
+  p_hora_desde time default null,
+  p_hora_hasta time default null,
+  p_activo boolean default true
 )
 returns servicio
 language plpgsql
@@ -381,7 +415,9 @@ begin
     insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
                            entidad, antes, despues)
     values (p_negocio, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
-            coalesce(v_quien.rol, 'desconocido'), 'servicios', 'crear', v_s.id::text, null,
+            coalesce((select r.etiqueta from rol r
+                     where r.negocio_id = v_quien.negocio_id and r.id = v_quien.rol),
+                    v_quien.rol, 'desconocido'), 'servicios', 'crear', v_s.id::text, null,
             jsonb_build_object('nombre', v_s.nombre, 'precio', v_s.precio_centavos,
                                'duracion', v_s.duracion_min));
     return v_s;
@@ -411,7 +447,9 @@ begin
   insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
                          entidad, antes, despues)
   values (p_negocio, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
-          coalesce(v_quien.rol, 'desconocido'), 'servicios', 'editar', v_s.id::text, v_antes,
+          coalesce((select r.etiqueta from rol r
+                     where r.negocio_id = v_quien.negocio_id and r.id = v_quien.rol),
+                    v_quien.rol, 'desconocido'), 'servicios', 'editar', v_s.id::text, v_antes,
           jsonb_build_object('nombre', v_s.nombre, 'precio', v_s.precio_centavos,
                              'duracion', v_s.duracion_min, 'activo', v_s.activo,
                              'categoria', v_s.categoria_id, 'promo', v_s.precio_promocional_centavos));
@@ -433,6 +471,10 @@ comment on function public.guardar_servicio is
 --
 -- Ahora la duracion es la resta de las horas que la propia cita guarda. La
 -- historia se queda quieta.
+-- =====================================================================
+
+-- =====================================================================
+-- LA AGENDA
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -505,6 +547,59 @@ as $$
 $$;
 
 -- =====================================================================
+-- 3 · TRES LLAVES FORANEAS QUE NO SE PODIAN EJECUTAR
+--
+-- Las tres son COMPUESTAS —`(negocio_id, x_id)`— y las tres decian
+-- `on delete set null` a secas. Un `set null` pelon sobre una llave compuesta
+-- vacia LAS DOS columnas, y `negocio_id` no acepta nulos: el borrado revienta
+-- y la fila de la izquierda no se puede borrar nunca.
+--
+-- En la practica se notaba asi: dar de baja a una terapeuta, borrar una venta
+-- o borrar una categoria fallaba con un error de columna nula que no decia
+-- nada de la llave. Ahora se nombra la columna que si se debe vaciar.
+--
+-- Lo encontro un ataque nuevo, no una revision a ojo.
+-- =====================================================================
+
+alter table cita drop constraint if exists cita_profesional_mismo_negocio;
+alter table cita add constraint cita_profesional_mismo_negocio
+  foreign key (negocio_id, profesional_id) references membresia (negocio_id, id)
+  -- `set null (columna)` y NO `set null` a secas. La llave es COMPUESTA: un
+  -- `set null` pelon vacia las DOS columnas, y `negocio_id` no acepta nulos —
+  -- asi que el borrado revienta y la fila de la izquierda no se puede borrar
+  -- nunca. Se nombra la columna que si se debe vaciar.
+  on delete set null (profesional_id);
+
+alter table inscripcion drop constraint if exists inscripcion_venta_mismo_negocio;
+alter table inscripcion add constraint inscripcion_venta_mismo_negocio
+  foreign key (negocio_id, venta_id) references venta (negocio_id, id)
+  -- `set null (columna)` y NO `set null` a secas. La llave es COMPUESTA: un
+  -- `set null` pelon vacia las DOS columnas, y `negocio_id` no acepta nulos —
+  -- asi que el borrado revienta y la fila de la izquierda no se puede borrar
+  -- nunca. Se nombra la columna que si se debe vaciar.
+  on delete set null (venta_id);
+
+-- La columna del terapeuta asignado llego con el bloque de Clientes. Se
+-- vuelve a declarar por si este archivo se corre sin aquel: `if not exists`
+-- no toca nada cuando ya esta.
+alter table cliente add column if not exists profesional_id uuid;
+
+alter table cliente drop constraint if exists cliente_profesional_mismo_negocio;
+alter table cliente add constraint cliente_profesional_mismo_negocio
+  foreign key (negocio_id, profesional_id) references membresia (negocio_id, id)
+  -- Si esa persona deja el centro, sus clientes se quedan SIN asignar, no se
+  -- borran. `set null` y no `restrict`: nadie deberia tener que reasignar
+  -- doscientos expedientes a mano para poder dar de baja a alguien.
+  -- `set null (columna)` y NO `set null` a secas. La llave es COMPUESTA: un
+  -- `set null` pelon vacia las DOS columnas, y `negocio_id` no acepta nulos —
+  -- asi que el borrado revienta y la fila de la izquierda no se puede borrar
+  -- nunca. Se nombra la columna que si se debe vaciar.
+  on delete set null (profesional_id);
+
+-- =====================================================================
 -- LISTO. Si no salio ningun error en rojo, la base ya tiene todo lo que
 -- necesitan las pantallas de Servicios.
+--
+-- Esto se probo aplicandolo sobre un Postgres limpio, con la base instalada
+-- primero, y corriendo los 90 ataques encima. No es una lectura a ojo.
 -- =====================================================================

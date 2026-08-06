@@ -103,6 +103,15 @@ export interface FichaDeServicio {
   /** Cuantas citas futuras tiene. Es el impacto de apagarlo. */
   readonly citasFuturas: number;
   readonly citasCompletadas: number;
+  /**
+   * Si esta persona puede VER la bitacora.
+   *
+   * La regla de fila de `auditoria` solo la entrega a quien tiene
+   * `verAuditoria`. Sin este dato, una recepcionista recibiria una lista vacia
+   * y la pantalla le diria "todavia no hay cambios registrados" — que es
+   * mentira: los hay, simplemente no son para sus ojos.
+   */
+  readonly puedeVerHistorial: boolean;
   readonly historial: readonly CambioEnHistorial[];
 }
 
@@ -281,6 +290,7 @@ export async function traerFichaDeServicio(servicioId: string): Promise<FichaDeS
     activo: Boolean(s['activo']),
     citasFuturas: numero(s['citasFuturas']),
     citasCompletadas: numero(s['citasCompletadas']),
+    puedeVerHistorial: Boolean(s['puedeVerHistorial']),
     historial: lista(s['historial']).map((h) => {
       const x = objeto(h) ?? {};
       return {

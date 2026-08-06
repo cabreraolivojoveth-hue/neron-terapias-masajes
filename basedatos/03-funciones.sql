@@ -553,7 +553,9 @@ begin
   insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
                          entidad, antes, despues, motivo)
   values (v_cita.negocio_id, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
-          coalesce(v_quien.rol, 'desconocido'), 'agenda', 'reagendar', p_cita::text, v_antes,
+          coalesce((select r.etiqueta from rol r
+                     where r.negocio_id = v_quien.negocio_id and r.id = v_quien.rol),
+                    v_quien.rol, 'desconocido'), 'agenda', 'reagendar', p_cita::text, v_antes,
           jsonb_build_object('fecha', v_cita.fecha, 'horaInicio', v_cita.hora_inicio,
                              'profesionalId', v_cita.profesional_id),
           p_motivo);
@@ -622,7 +624,9 @@ begin
   insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
                          entidad, antes, despues, motivo)
   values (v_cita.negocio_id, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
-          coalesce(v_quien.rol, 'desconocido'), 'agenda', 'estado', p_cita::text,
+          coalesce((select r.etiqueta from rol r
+                     where r.negocio_id = v_quien.negocio_id and r.id = v_quien.rol),
+                    v_quien.rol, 'desconocido'), 'agenda', 'estado', p_cita::text,
           jsonb_build_object('estado', v_antes), jsonb_build_object('estado', p_estado), p_motivo);
 
   return v_cita;
