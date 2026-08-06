@@ -166,10 +166,10 @@ describe('ya dentro', () => {
 
   it('los modulos que no llegan lo DICEN, no inventan datos', async () => {
     // Al entrar se cae en Inicio, que ya esta construido. El que todavia no
-    // llega —Clientes— se abre desde el menu y tiene que decir la verdad en
+    // llega —Servicios— se abre desde el menu y tiene que decir la verdad en
     // vez de enseñar una tabla de mentiras.
     const { container } = conEstado('listo', ACCESO_DUENA);
-    await userEvent.click(screen.getByRole('button', { name: 'Clientes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Servicios' }));
     expect(screen.getByText(/vacía a propósito/i)).toBeDefined();
     expect(container.textContent).not.toContain('$4,850');
   });

@@ -401,6 +401,25 @@ function guardiaCapacidadesLleganAlPortero(): void {
  * consulta que ni siquiera se hace si nadie esta viendo Inicio.
  */
 function guardiaTodaOperacionRefrescaInicio(): void {
+  /**
+   * Tambien vale una LISTA CON NOMBRE, si esa lista de verdad lo declara.
+   *
+   * `LO_QUE_TOCA_UN_CLIENTE` es mas legible que repetir tres textos en cada
+   * llamada, y ademas evita el error de escribir mal uno. Pero la guardia no
+   * se lo cree: busca su definicion y comprueba que ahi dentro este el
+   * prefijo. Una guardia que acepta un nombre sin mirar que hay adentro deja
+   * de proteger en cuanto alguien cambia la lista.
+   */
+  const listasBuenas = new Set<string>();
+  for (const archivo of FUENTE) {
+    const limpio = sinComentarios(readFileSync(archivo, 'utf8'));
+    for (const m of limpio.matchAll(/export const ([A-Z_][A-Z0-9_]*)\s*=\s*\[([^\]]*)\]/g)) {
+      if (/PREFIJO_DE_INICIO|'inicio'|"inicio"/.test(m[2] ?? '')) listasBuenas.add(m[1]!);
+    }
+  }
+  const nombrada = listasBuenas.size > 0 ? [...listasBuenas].join('|') : '(?!)';
+  const acepta = new RegExp(`PREFIJO_DE_INICIO|'inicio'|"inicio"|${nombrada}`);
+
   for (const archivo of FUENTE) {
     const limpio = sinComentarios(readFileSync(archivo, 'utf8'));
     let desde = 0;
@@ -426,7 +445,7 @@ function guardiaTodaOperacionRefrescaInicio(): void {
       const llamada = limpio.slice(inicio, fin + 1);
       desde = fin + 1;
 
-      if (!/PREFIJO_DE_INICIO|'inicio'|"inicio"/.test(llamada)) {
+      if (!acepta.test(llamada)) {
         fallar(archivo, 'una operacion no refresca el tablero de Inicio',
           'Inicio y el buscador leen de todos los modulos y su cache cuelga del prefijo "inicio". ' +
           'Sin declararlo, guardar algo aqui deja el tablero mostrando el numero de antes — sin ' +

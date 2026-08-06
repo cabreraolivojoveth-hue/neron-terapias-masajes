@@ -196,7 +196,7 @@ historial.
 |---|---|
 | **0** ✅ | Arquitectura, esquema completo, reglas de acceso, operaciones, 55 ataques |
 | 1 | El armazón de la aplicación: sesión, marco, menú, rutas |
-| 2 | Clientes |
+| **2** ✅ | **Clientes** — el expediente comercial |
 | 3 | Servicios y Cursos |
 | 4 | Agenda |
 | 5 | Productos |

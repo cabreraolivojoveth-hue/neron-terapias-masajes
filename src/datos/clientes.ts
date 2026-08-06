@@ -1,0 +1,535 @@
+/**
+ * EL ACCESO A DATOS DE CLIENTES.
+ *
+ * `cliente` es LA FUENTE DE VERDAD de una persona: su nombre, su telefono, su
+ * correo, su cumpleaños. Ninguna otra tabla guarda una copia — la referencian
+ * por id y resuelven el nombre al leer. Por eso corregir un telefono aqui lo
+ * corrige a la vez en Agenda, en Ventas y en el buscador global, sin tocar
+ * cinco tablas.
+ *
+ * LO QUE NO ES DE CLIENTES NO SE GUARDA EN CLIENTES. Visitas, ultima visita,
+ * proxima cita, compras, adeudo y cursos NO son columnas: se cuentan en la
+ * base, desde citas, ventas, pagos e inscripciones. Un contador a mano se
+ * desincroniza a la primera cita cancelada, y a partir de ahi hay dos numeros
+ * y nadie sabe cual creer.
+ *
+ * LA LISTA SE BUSCA, SE FILTRA Y SE PAGINA EN LA BASE. Traerse la tabla entera
+ * y filtrar en el navegador funciona con veinte clientes y se cae con dos mil;
+ * y para pintar "ultima visita" habria que pedir el historial de cada renglon,
+ * que es el problema N+1 en su forma mas cara.
+ */
+
+import type { Fecha } from '@neron/base/utils';
+import { supabase } from '../supabase.js';
+import { aBase, deBase, reventar } from './fechas-de-la-base.js';
+import { PREFIJO_DE_INICIO } from './tablero.js';
+
+/* ------------------------------------------------------------------ */
+/* Las formas de datos                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Los tres estados, y ninguno se guarda en una columna.
+ *
+ * `archivado` sale de `eliminado`, que ya existia. `activo` e `inactivo` se
+ * deducen de la ultima cita completada contra el plazo que define la base
+ * (`app.meses_de_actividad`). Guardar un `estado` a mano obligaria a alguien a
+ * recorrer la tabla cada noche para apagarlo, y el dia que ese proceso falle,
+ * medio directorio diria "activo" sin serlo.
+ */
+export type EstadoDeCliente = 'activo' | 'inactivo' | 'archivado';
+
+export const ESTADOS_DE_CLIENTE: readonly { clave: EstadoDeCliente; etiqueta: string }[] = [
+  { clave: 'activo', etiqueta: 'Activo' },
+  { clave: 'inactivo', etiqueta: 'Inactivo' },
+  { clave: 'archivado', etiqueta: 'Archivado' },
+];
+
+export function etiquetaDeEstadoDeCliente(estado: string): string {
+  return ESTADOS_DE_CLIENTE.find((e) => e.clave === estado)?.etiqueta ?? estado;
+}
+
+export interface ClienteEnLista {
+  readonly id: string;
+  readonly nombre: string;
+  readonly telefono: string | null;
+  readonly correo: string | null;
+  readonly fechaNacimiento: Fecha | null;
+  readonly profesionalId: string | null;
+  readonly profesional: string | null;
+  readonly visitas: number;
+  readonly ultimaVisita: Fecha | null;
+  readonly estado: EstadoDeCliente;
+}
+
+export interface PaginaDeClientes {
+  /** Cuantos hay en total CON los filtros puestos, sin paginar. */
+  readonly total: number;
+  readonly filas: readonly ClienteEnLista[];
+}
+
+export interface CumpleanosProximo {
+  readonly id: string;
+  readonly nombre: string;
+  readonly fecha: Fecha;
+  /** Cuantos dias faltan. Cero es hoy. */
+  readonly enDias: number;
+}
+
+export interface ResumenDeClientes {
+  readonly total: number;
+  readonly activos: number;
+  readonly nuevosEsteMes: number;
+  readonly frecuentes: number;
+  readonly totalVisitas: number;
+  readonly citasProximas: number;
+  readonly serviciosContratados: number;
+  readonly comprasRealizadas: number;
+  readonly cursosInscritos: number;
+  /** Centavos enteros. */
+  readonly totalAdeudos: number;
+  readonly cumpleanos: readonly CumpleanosProximo[];
+}
+
+export interface ServicioRecibido {
+  readonly nombre: string;
+  readonly veces: number;
+}
+
+export interface ExpedienteDeCliente {
+  readonly id: string;
+  readonly nombre: string;
+  readonly telefono: string | null;
+  readonly correo: string | null;
+  readonly fechaNacimiento: Fecha | null;
+  readonly notas: string | null;
+  readonly clienteDesde: Fecha | null;
+  readonly archivado: boolean;
+  readonly profesionalId: string | null;
+  readonly profesional: string | null;
+  readonly visitas: number;
+  readonly canceladas: number;
+  readonly noAsistio: number;
+  readonly ultimaVisita: { readonly fecha: Fecha; readonly servicio: string } | null;
+  readonly proximaCita: {
+    readonly id: string;
+    readonly fecha: Fecha;
+    readonly hora: string;
+    readonly servicio: string;
+  } | null;
+  readonly compras: number;
+  readonly totalGastado: number;
+  readonly adeudo: number;
+  readonly cursos: number;
+  readonly servicios: readonly ServicioRecibido[];
+}
+
+export interface FiltrosDeClientes {
+  readonly busqueda?: string;
+  readonly estado?: EstadoDeCliente | '';
+  readonly profesionalId?: string;
+  /** El rango de visitas, ya resuelto en numeros. */
+  readonly visitasMin?: number | null;
+  readonly visitasMax?: number | null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Ordenar lo que contesta el servidor                                 */
+/* ------------------------------------------------------------------ */
+
+const numero = (v: unknown): number => {
+  const n = Number(v);
+  // NaN NUNCA sale de aqui: se propaga sin reventar y termina impreso.
+  return Number.isFinite(n) ? n : 0;
+};
+
+const texto = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
+const opcional = (v: unknown): string | null => (v === null || v === undefined || v === '' ? null : String(v));
+const fechaOpcional = (v: unknown): Fecha | null => (v === null || v === undefined ? null : deBase(v));
+const lista = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+
+export const RESUMEN_DE_CLIENTES_VACIO: ResumenDeClientes = {
+  total: 0,
+  activos: 0,
+  nuevosEsteMes: 0,
+  frecuentes: 0,
+  totalVisitas: 0,
+  citasProximas: 0,
+  serviciosContratados: 0,
+  comprasRealizadas: 0,
+  cursosInscritos: 0,
+  totalAdeudos: 0,
+  cumpleanos: [],
+};
+
+export function ordenarResumenDeClientes(crudo: unknown): ResumenDeClientes {
+  if (!crudo || typeof crudo !== 'object') return RESUMEN_DE_CLIENTES_VACIO;
+  const r = crudo as Record<string, unknown>;
+  return {
+    total: numero(r['total']),
+    activos: numero(r['activos']),
+    nuevosEsteMes: numero(r['nuevosEsteMes']),
+    frecuentes: numero(r['frecuentes']),
+    totalVisitas: numero(r['totalVisitas']),
+    citasProximas: numero(r['citasProximas']),
+    serviciosContratados: numero(r['serviciosContratados']),
+    comprasRealizadas: numero(r['comprasRealizadas']),
+    cursosInscritos: numero(r['cursosInscritos']),
+    totalAdeudos: numero(r['totalAdeudos']),
+    cumpleanos: lista(r['cumpleanos']).map((c) => {
+      const x = c as Record<string, unknown>;
+      return {
+        id: texto(x['id']),
+        nombre: texto(x['nombre']),
+        fecha: deBase(x['fecha']),
+        enDias: numero(x['enDias']),
+      };
+    }),
+  };
+}
+
+export function ordenarFila(crudo: unknown): ClienteEnLista {
+  const c = (crudo ?? {}) as Record<string, unknown>;
+  return {
+    id: texto(c['id']),
+    nombre: texto(c['nombre']),
+    telefono: opcional(c['telefono']),
+    correo: opcional(c['correo']),
+    fechaNacimiento: fechaOpcional(c['fechaNacimiento']),
+    profesionalId: opcional(c['profesionalId']),
+    profesional: opcional(c['profesional']),
+    visitas: numero(c['visitas']),
+    ultimaVisita: fechaOpcional(c['ultimaVisita']),
+    estado: (texto(c['estado']) || 'inactivo') as EstadoDeCliente,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Consultas                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * La llave incluye TODO lo que cambia el resultado.
+ *
+ * Si la pagina o un filtro faltaran aqui, cambiarlos mostraria lo que ya
+ * estaba guardado de la consulta anterior — y se veria como si el filtro no
+ * hiciera nada.
+ */
+export function llaveDeClientes(
+  negocio: string,
+  filtros: FiltrosDeClientes,
+  pagina: number,
+  porPagina: number,
+): string {
+  return [
+    'clientes', negocio,
+    filtros.busqueda ?? '',
+    filtros.estado ?? '',
+    filtros.profesionalId ?? '',
+    filtros.visitasMin ?? '',
+    filtros.visitasMax ?? '',
+    pagina, porPagina,
+  ].join(':');
+}
+
+export async function traerClientes(
+  negocio: string,
+  filtros: FiltrosDeClientes,
+  pagina: number,
+  porPagina: number,
+): Promise<PaginaDeClientes> {
+  const { data, error } = await supabase().rpc('clientes_del_centro', {
+    p_negocio: negocio,
+    p_busqueda: filtros.busqueda?.trim() || null,
+    p_estado: filtros.estado || null,
+    p_profesional: filtros.profesionalId || null,
+    p_visitas_min: filtros.visitasMin ?? null,
+    p_visitas_max: filtros.visitasMax ?? null,
+    p_pagina: pagina,
+    p_por_pagina: porPagina,
+  });
+  reventar(error, 'cargar los clientes');
+
+  const r = (data ?? {}) as Record<string, unknown>;
+  return { total: numero(r['total']), filas: lista(r['filas']).map(ordenarFila) };
+}
+
+export function llaveDelResumenDeClientes(negocio: string, dia: Fecha): string {
+  return `clientes:resumen:${negocio}:${dia}`;
+}
+
+export async function traerResumenDeClientes(
+  negocio: string,
+  dia: Fecha,
+): Promise<ResumenDeClientes> {
+  const { data, error } = await supabase().rpc('resumen_clientes', {
+    p_negocio: negocio,
+    p_hoy: aBase(dia),
+  });
+  reventar(error, 'cargar el resumen de clientes');
+  return ordenarResumenDeClientes(data);
+}
+
+export function llaveDelExpediente(clienteId: string): string {
+  return `clientes:expediente:${clienteId}`;
+}
+
+export async function traerExpediente(
+  clienteId: string,
+  dia: Fecha,
+): Promise<ExpedienteDeCliente | null> {
+  const { data, error } = await supabase().rpc('expediente_del_cliente', {
+    p_cliente: clienteId,
+    p_hoy: aBase(dia),
+  });
+  reventar(error, 'cargar el expediente');
+  if (!data || typeof data !== 'object') return null;
+
+  const c = data as Record<string, unknown>;
+  const sub = (v: unknown): Record<string, unknown> | null =>
+    v && typeof v === 'object' ? (v as Record<string, unknown>) : null;
+
+  const ultima = sub(c['ultimaVisita']);
+  const proxima = sub(c['proximaCita']);
+
+  return {
+    id: texto(c['id']),
+    nombre: texto(c['nombre']),
+    telefono: opcional(c['telefono']),
+    correo: opcional(c['correo']),
+    fechaNacimiento: fechaOpcional(c['fechaNacimiento']),
+    notas: opcional(c['notas']),
+    clienteDesde: c['clienteDesde'] ? deBase(String(c['clienteDesde']).slice(0, 10)) : null,
+    archivado: Boolean(c['archivado']),
+    profesionalId: opcional(c['profesionalId']),
+    profesional: opcional(c['profesional']),
+    visitas: numero(c['visitas']),
+    canceladas: numero(c['canceladas']),
+    noAsistio: numero(c['noAsistio']),
+    ultimaVisita: ultima
+      ? { fecha: deBase(ultima['fecha']), servicio: texto(ultima['servicio']) }
+      : null,
+    proximaCita: proxima
+      ? {
+          id: texto(proxima['id']),
+          fecha: deBase(proxima['fecha']),
+          hora: texto(proxima['hora']).slice(0, 5),
+          servicio: texto(proxima['servicio']),
+        }
+      : null,
+    compras: numero(c['compras']),
+    totalGastado: numero(c['totalGastado']),
+    adeudo: numero(c['adeudo']),
+    cursos: numero(c['cursos']),
+    servicios: lista(c['servicios']).map((s) => {
+      const x = s as Record<string, unknown>;
+      return { nombre: texto(x['nombre']), veces: numero(x['veces']) };
+    }),
+  };
+}
+
+/**
+ * Los recordatorios de SEGUIMIENTO: los que nacieron de un cliente.
+ *
+ * Se filtran por `entidad_tipo = 'cliente'`. No hay una lista de seguimientos
+ * guardada dentro de Clientes: son los mismos recordatorios del modulo
+ * Recordatorios, mirados por su origen.
+ */
+export function llaveDeSeguimientos(negocio: string): string {
+  return `clientes:seguimientos:${negocio}`;
+}
+
+export interface Seguimiento {
+  readonly id: string;
+  readonly titulo: string;
+  readonly detalle: string | null;
+  readonly fecha: Fecha;
+  readonly clienteId: string | null;
+}
+
+export async function traerSeguimientos(negocio: string, limite = 4): Promise<Seguimiento[]> {
+  const { data, error } = await supabase()
+    .from('recordatorio')
+    .select('id, titulo, detalle, fecha, entidad_id')
+    .eq('negocio_id', negocio)
+    .eq('eliminado', false)
+    .eq('estado', 'pendiente')
+    .eq('entidad_tipo', 'cliente')
+    .order('fecha', { ascending: true })
+    .limit(limite);
+  reventar(error, 'cargar los seguimientos');
+
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: texto(r['id']),
+    titulo: texto(r['titulo']),
+    detalle: opcional(r['detalle']),
+    fecha: deBase(r['fecha']),
+    clienteId: opcional(r['entidad_id']),
+  }));
+}
+
+/* ------------------------------------------------------------------ */
+/* Operaciones                                                         */
+/* ------------------------------------------------------------------ */
+
+export interface DatosDeCliente {
+  readonly nombre: string;
+  readonly telefono: string;
+  readonly correo: string;
+  readonly fechaNacimiento: string;
+  readonly notas: string;
+  readonly profesionalId: string;
+}
+
+/**
+ * Se NORMALIZA antes de guardar, y no es cosmetica.
+ *
+ * "  Ana  María " y "Ana María" son la misma persona; guardadas distinto, la
+ * busqueda encuentra una y no la otra, y alguien acaba dando de alta a la
+ * misma paciente dos veces. El correo va en minusculas por lo mismo: los
+ * servidores de correo no distinguen mayusculas, pero un `=` si.
+ *
+ * Un campo vacio se guarda como NULL, no como cadena vacia. Si no, "sin
+ * telefono" y "telefono en blanco" serian dos cosas distintas en la base y
+ * ninguna consulta las trataria igual.
+ */
+export function normalizar(datos: DatosDeCliente): {
+  nombre: string;
+  telefono: string | null;
+  correo: string | null;
+  fecha_nacimiento: string | null;
+  notas: string | null;
+  profesional_id: string | null;
+} {
+  const limpio = (v: string): string => v.trim().replace(/\s+/g, ' ');
+  return {
+    nombre: limpio(datos.nombre),
+    telefono: limpio(datos.telefono) || null,
+    correo: limpio(datos.correo).toLowerCase() || null,
+    fecha_nacimiento: datos.fechaNacimiento ? aBase(datos.fechaNacimiento) : null,
+    // Las notas conservan sus saltos de linea: solo se recorta lo de las
+    // orillas. Aplanarlas convertiria una lista en un parrafo.
+    notas: datos.notas.trim() || null,
+    profesional_id: datos.profesionalId || null,
+  };
+}
+
+export async function crearCliente(negocio: string, datos: DatosDeCliente): Promise<ClienteEnLista> {
+  const fila = normalizar(datos);
+  const { data, error } = await supabase()
+    .from('cliente')
+    .insert([{ negocio_id: negocio, ...fila }])
+    .select('id, nombre, telefono, correo');
+  reventar(error, 'dar de alta al cliente');
+
+  const creado = ((data ?? []) as Record<string, unknown>[])[0] ?? {};
+  return {
+    id: texto(creado['id']),
+    nombre: texto(creado['nombre']),
+    telefono: opcional(creado['telefono']),
+    correo: opcional(creado['correo']),
+    fechaNacimiento: null,
+    profesionalId: fila.profesional_id,
+    profesional: null,
+    visitas: 0,
+    ultimaVisita: null,
+    // Recien creado no tiene una sola visita: es INACTIVO, no activo. Decir
+    // "activo" seria el primer numero inventado del modulo.
+    estado: 'inactivo',
+  };
+}
+
+export async function editarCliente(
+  clienteId: string,
+  datos: DatosDeCliente,
+): Promise<void> {
+  const { error } = await supabase()
+    .from('cliente')
+    .update({ ...normalizar(datos), actualizado_en: new Date().toISOString() })
+    .eq('id', clienteId);
+  reventar(error, 'guardar los cambios del cliente');
+}
+
+/**
+ * ARCHIVAR, no borrar.
+ *
+ * Un expediente tiene citas, ventas, pagos, cursos y mensajes colgando. La
+ * base ya lo impide —las llaves foraneas son `on delete restrict`— pero la
+ * razon de fondo es otra: un expediente medico borrado de verdad es un
+ * problema legal, no un renglon menos.
+ *
+ * Se marca `eliminado`, la persona sale de la lista, y su historial queda
+ * intacto para los reportes y para volver a abrirlo.
+ */
+export async function archivarCliente(clienteId: string, archivar: boolean): Promise<void> {
+  const { error } = await supabase()
+    .from('cliente')
+    .update({ eliminado: archivar, actualizado_en: new Date().toISOString() })
+    .eq('id', clienteId);
+  reventar(error, archivar ? 'archivar al cliente' : 'reactivar al cliente');
+}
+
+/* ------------------------------------------------------------------ */
+/* Duplicados                                                          */
+/* ------------------------------------------------------------------ */
+
+export interface PosibleDuplicado {
+  readonly id: string;
+  readonly nombre: string;
+  readonly porque: 'telefono' | 'correo';
+}
+
+/**
+ * Busca a alguien que ya este dado de alta con ese telefono o ese correo.
+ *
+ * NO SE BLOQUEA POR NOMBRE. Dos personas se pueden llamar igual, y un centro
+ * chico tiene hermanas con el mismo apellido. El telefono y el correo si son
+ * identificadores: si coinciden, casi siempre es la misma persona capturada
+ * dos veces.
+ *
+ * Y se ADVIERTE, no se prohibe: a veces una madre da su telefono para la
+ * ficha de su hija. Quien captura decide, pero decide viendo la coincidencia
+ * en vez de enterarse tres meses despues con el historial partido en dos.
+ */
+export async function buscarPosibleDuplicado(
+  negocio: string,
+  telefono: string,
+  correo: string,
+  exceptoId = '',
+): Promise<PosibleDuplicado | null> {
+  const tel = telefono.trim().replace(/\s+/g, ' ');
+  const cor = correo.trim().toLowerCase();
+  if (!tel && !cor) return null;
+
+  const bd = supabase();
+  const buscar = async (columna: 'telefono' | 'correo', valor: string) => {
+    if (!valor) return null;
+    let consulta = bd
+      .from('cliente')
+      .select('id, nombre')
+      .eq('negocio_id', negocio)
+      .eq('eliminado', false)
+      .eq(columna, valor)
+      .limit(1);
+    // Al EDITAR, la persona coincide consigo misma. Sin esto, guardar sin
+    // cambiar nada avisaria de un duplicado que es ella.
+    if (exceptoId) consulta = consulta.neq('id', exceptoId);
+    const { data, error } = await consulta;
+    reventar(error, 'comprobar si ya existe ese cliente');
+    const encontrado = ((data ?? []) as Record<string, unknown>[])[0];
+    return encontrado
+      ? { id: texto(encontrado['id']), nombre: texto(encontrado['nombre']), porque: columna }
+      : null;
+  };
+
+  return (await buscar('telefono', tel)) ?? (await buscar('correo', cor));
+}
+
+/**
+ * Todo lo que hay que refrescar al tocar un cliente.
+ *
+ * Se exporta para que ningun modulo escriba la lista a mano y se le olvide
+ * una: el buscador global y el tablero cuelgan de `inicio:`, y la lista y el
+ * expediente de `clientes:`.
+ */
+export const LO_QUE_TOCA_UN_CLIENTE = ['clientes', PREFIJO_DE_INICIO] as const;

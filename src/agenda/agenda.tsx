@@ -19,7 +19,6 @@ import { PREFIJO_DE_INICIO } from '../datos/tablero.js';
 import {
   cambiarEstado,
   crearCita,
-  crearCliente,
   llaveDeCitas,
   reagendar,
   traerCitas,
@@ -35,6 +34,7 @@ import {
   type ProfesionalBreve,
   type ServicioBreve,
 } from '../datos/citas.js';
+import { crearCliente } from '../datos/clientes.js';
 import { useSesion } from '../identidad/sesion.js';
 import { ControlesDeAgenda } from './controles.js';
 import { ventanaDelDia } from './disposicion.js';
@@ -405,7 +405,20 @@ export function Agenda() {
           trabajando={guardar.trabajando || mover_.trabajando}
           error={guardar.error ?? mover_.error}
           onGuardar={(v) => void alGuardar(v)}
-          onCrearCliente={(datos) => altaCliente.ejecutar(negocio, datos)}
+          onCrearCliente={(datos) =>
+            /**
+             * El alta rapida guarda en CLIENTES, la tabla de verdad, con la
+             * misma funcion que usa el modulo Clientes — no hay un "cliente de
+             * agenda". Lo que aqui no se pregunta va vacio: cumpleaños, notas
+             * y terapeuta asignado se completan despues en su expediente.
+             */
+            altaCliente.ejecutar(negocio, {
+              ...datos,
+              fechaNacimiento: '',
+              notas: '',
+              profesionalId: '',
+            })
+          }
           onCerrar={() => setFormulario(null)}
         />
       ) : null}

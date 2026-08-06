@@ -207,6 +207,43 @@ consultar. Hay una prueba que escribe "Fernanda" de un tirón y comprueba que el
 Olvidarlo no revienta nada — solo deja el tablero mostrando el número de antes, con toda la cara
 de estar al día.
 
+**Bloque 2 — Clientes.** El expediente comercial de una persona.
+
+**Es la fuente de verdad de quién es alguien, y solo de eso.** Sus citas son de Agenda, sus
+compras de Ventas, su adeudo de Ventas menos Pagos, sus cursos de Inscripciones. Aquí se
+**consultan y se unen**. Por eso corregir un teléfono aquí lo corrige a la vez en la agenda, en
+el panel de una cita y en el buscador global — nadie guardó una copia.
+
+**Ninguna cifra está guardada.** "Visitas", "última visita", "total gastado" y "adeudo" se
+cuentan cada vez. Un contador a mano se desincroniza a la primera cita cancelada, y a partir de
+ahí hay dos números y nadie sabe cuál creer.
+
+**"Activo" y "frecuente" son reglas del negocio, no opiniones de una pantalla.** Viven en la base
+(`app.meses_de_actividad`, `app.visitas_para_ser_frecuente`) para que Reportes cuente lo mismo, y
+cada tarjeta **dice la regla que aplicó** en vez de dejar el número como un misterio.
+
+**La lista se busca, se filtra y se pagina en la base.** Bajar la tabla y filtrar en el navegador
+funciona con veinte clientes y se cae con dos mil; y para pintar "última visita" habría que pedir
+el historial de cada renglón —el problema N+1 en su forma más cara—. Aquí sale todo en una
+consulta.
+
+**Se avisa de un posible duplicado, no se prohíbe.** Si otro expediente ya tiene ese teléfono o
+ese correo, casi siempre es la misma persona capturada dos veces —y un historial partido en dos
+no se vuelve a juntar—. Pero a veces una madre da su teléfono para la ficha de su hija: quien
+captura decide, viendo la coincidencia. **No se compara por nombre**: dos personas se llaman
+igual.
+
+**Se archiva, no se borra.** Un expediente tiene citas, ventas y cursos colgando, y uno borrado
+de verdad es un problema legal. Sale de la lista y su historial queda intacto.
+
+**Los cumpleaños se calculan**, no se guardan como recordatorios. El 29 de febrero se corre al 28
+en los años que no son bisiestos: `make_date(2027, 2, 29)` revienta, y un solo paciente nacido en
+año bisiesto tumbaría el panel entero tres de cada cuatro años.
+
+**El terapeuta asignado y el que atendió una cita son cosas distintas.** Cambiar de terapeuta no
+reescribe quién dio las sesiones del año pasado — si lo hiciera, los reportes por terapeuta
+dejarían de significar nada.
+
 ### La orden única
 
 ```bash
@@ -217,7 +254,7 @@ npm run consistencia
 Tipos → guardias → pruebas → compilación → ataques. **Termina en verde o no se publica.** Sin
 base de datos configurada te lo dice fuerte en vez de pasar en verde fingiendo que comprobó algo.
 
-**401 pruebas · 11 guardias · 77 ataques.**
+**498 pruebas · 11 guardias · 77 ataques.**
 
 ---
 
@@ -229,7 +266,8 @@ base de datos configurada te lo dice fuerte en vez de pasar en verde fingiendo q
 | **1** ✅ | El armazón: sesión, marco, menú, rutas, identidad visual |
 | **4** ✅ | **Agenda** — día, semana, mes, sin choques de horario |
 | **8** ✅ | **Inicio** — el tablero, el buscador global y los avisos |
-| 2 | Clientes · 3 · Servicios y Cursos |
+| **2** ✅ | **Clientes** — el expediente comercial de cada persona |
+| 3 | Servicios y Cursos |
 | 5 | Productos · 6 · Ventas, Pagos y Caja · 7 · Gastos y Recordatorios |
 | 9 | Reportes · 10 · Configuración · 11 · Mensajes · 12 · Publicación |
 

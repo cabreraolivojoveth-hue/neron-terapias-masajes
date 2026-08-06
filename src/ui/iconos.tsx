@@ -41,7 +41,15 @@ export type NombreDeIcono =
   | 'lapiz'
   | 'volver'
   | 'prohibido'
-  | 'palomita';
+  | 'palomita'
+  | 'personas'
+  | 'estrella'
+  | 'corazon'
+  | 'pastel'
+  | 'cuadricula'
+  | 'renglones'
+  | 'archivar'
+  | 'puntos';
 
 /**
  * Todo en una rejilla de 24 y con trazo, no relleno.
@@ -95,6 +103,22 @@ const TRAZOS: Readonly<Record<NombreDeIcono, string[]>> = {
   volver: ['M20 12a8 8 0 1 1-2.6-5.9', 'M20 4v4h-4'],
   prohibido: ['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z', 'M5.5 5.5l13 13'],
   palomita: ['M20 6L9 17l-5-5'],
+  personas: [
+    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2',
+    'M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
+    'M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
+  ],
+  estrella: ['M12 2.8l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5L2.6 9.6l6.5-.9z'],
+  corazon: ['M12 20.5l-8-7.7a4.9 4.9 0 0 1 0-7 4.9 4.9 0 0 1 7 0l1 1 1-1a4.9 4.9 0 0 1 7 0 4.9 4.9 0 0 1 0 7z'],
+  pastel: [
+    'M4 20h16v-6a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3z',
+    'M8 11V8M12 11V7M16 11V8',
+    'M8 5.5V5M12 4.5V4M16 5.5V5',
+  ],
+  cuadricula: ['M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z'],
+  renglones: ['M4 6h16M4 12h16M4 18h16'],
+  archivar: ['M3 4h18v4H3z', 'M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8', 'M10 12h4'],
+  puntos: ['M12 5.5v.01M12 12v.01M12 18.5v.01'],
 };
 
 export function Icono({

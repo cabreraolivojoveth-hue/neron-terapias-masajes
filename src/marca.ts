@@ -69,7 +69,7 @@ export const MARCA_OSCURO: ColoresDeMarca = {
  * El icono en oscuro NO es el `sobreMarca` verde: es un neutro casi negro. El
  * verde oscuro de la marca sobre un cuadro violeta se ve sucio.
  */
-export type Categoria = 'citas' | 'ventas' | 'productos' | 'cursos';
+export type Categoria = 'citas' | 'ventas' | 'productos' | 'cursos' | 'visitas';
 
 export interface TonoDeCategoria {
   /** El cuadro del icono. Solido, como en el diseño. */
@@ -86,6 +86,7 @@ export const CATEGORIAS_CLARO: Readonly<Record<Categoria, TonoDeCategoria>> = {
   ventas: { tono: '#6b46c1', sobreTono: '#ffffff', tenue: '#efe9fb' },
   productos: { tono: '#b45309', sobreTono: '#ffffff', tenue: '#fbf0e2' },
   cursos: { tono: '#1d6fa5', sobreTono: '#ffffff', tenue: '#e6f1f8' },
+  visitas: { tono: '#0f766e', sobreTono: '#ffffff', tenue: '#e2f2f0' },
 };
 
 export const CATEGORIAS_OSCURO: Readonly<Record<Categoria, TonoDeCategoria>> = {
@@ -93,9 +94,12 @@ export const CATEGORIAS_OSCURO: Readonly<Record<Categoria, TonoDeCategoria>> = {
   ventas: { tono: '#c3a5f7', sobreTono: '#16150f', tenue: '#241c33' },
   productos: { tono: '#f2bd7a', sobreTono: '#16150f', tenue: '#31240f' },
   cursos: { tono: '#82c8ee', sobreTono: '#16150f', tenue: '#152a35' },
+  visitas: { tono: '#79d8cd', sobreTono: '#16150f', tenue: '#122b28' },
 };
 
-export const CATEGORIAS: readonly Categoria[] = ['citas', 'ventas', 'productos', 'cursos'];
+export const CATEGORIAS: readonly Categoria[] = [
+  'citas', 'ventas', 'productos', 'cursos', 'visitas',
+];
 
 /**
  * Las variables que hay que pegarle al documento.
