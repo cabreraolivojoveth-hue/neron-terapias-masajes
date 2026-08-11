@@ -321,7 +321,24 @@ export function piezas(): string {
 /* ================================================================ */
 /* LA TABLA                                                          */
 /* ================================================================ */
-.pz-tabla__marco { overflow-x: auto; min-width: 0; }
+/*
+ * EL MARCO SE MIDE A SI MISMO, no a la ventana.
+ *
+ * Una columna sobra o no segun lo ancha que sea LA TARJETA, no la pantalla: la
+ * misma tabla de movimientos tiene ochocientos treinta pixeles con el panel de
+ * caja abierto y mil doscientos sin el. Preguntandole a la ventana se
+ * escondian columnas que si cabian, y se dejaban puestas otras que no.
+ */
+.pz-tabla__marco { overflow-x: auto; min-width: 0; container-type: inline-size; }
+/*
+ * La columna que se retira primero cuando no cabe. Se marca la MENOS decisiva
+ * —quien capturo el movimiento, que ademas se ve al abrirlo— para que lo que
+ * quede sirva para decidir. Antes no se retiraba ninguna y el resultado era
+ * peor: la ultima columna salia cortada a la mitad contra el borde.
+ */
+@container (max-width: 940px) {
+  .pz-tabla__opcional { display: none; }
+}
 .pz-tabla { width: 100%; border-collapse: collapse; font-size: ${v('texto-chico')}; }
 .pz-tabla th {
   text-align: left;

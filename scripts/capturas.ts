@@ -107,7 +107,10 @@ async function principal(): Promise<void> {
 
     const quejas: string[] = [];
     pagina.on('console', (m) => {
-      if (m.type() === 'error') quejas.push(m.text());
+      // El icono de la pestaña no existe en la vitrina y no va a existir: el
+      // navegador lo pide solo y da un 404 en cada foto. Anotarlo entre las
+      // quejas hace que se ignoren TODAS, incluidas las que si importan.
+      if (m.type() === 'error' && !m.text().includes('favicon')) quejas.push(m.text());
     });
     pagina.on('pageerror', (e) => quejas.push(e.message));
 

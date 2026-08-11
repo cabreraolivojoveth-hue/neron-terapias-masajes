@@ -216,7 +216,7 @@ export function TablaDeMovimientos({
                 <th>Método de pago</th>
                 <th>Categoría</th>
                 <th className="pz-tabla__numero">Monto</th>
-                <th>Usuario</th>
+                <th className="pz-tabla__opcional">Usuario</th>
                 <th className="pz-tabla__acciones">Origen</th>
               </tr>
             </thead>
@@ -253,7 +253,11 @@ export function TablaDeMovimientos({
                   >
                     {comoSeEscribeElMonto(m)}
                   </td>
-                  <td>{m.usuario ?? <span className="tt-falta">—</span>}</td>
+                  {/* La cabecera y la celda llevan la MISMA marca: escondiendo
+                      solo una de las dos, la tabla se descuadra entera. */}
+                  <td className="pz-tabla__opcional">
+                    {m.usuario ?? <span className="tt-falta">—</span>}
+                  </td>
                   <td className="pz-tabla__acciones">
                     {/* NO HAY EDITAR NI BORRAR: la caja es un libro. Lo unico
                         que se ofrece es ir a la operacion que lo produjo. */}

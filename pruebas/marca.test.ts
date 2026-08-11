@@ -1,6 +1,7 @@
 import { contraste } from '@neron/base/ui';
 import { CLARO, OSCURO } from '@neron/base/ui';
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { cssDeMarca, LEMA, MARCA_CLARO, MARCA_OSCURO, NOMBRE_DEL_PRODUCTO } from '../src/marca.js';
 
 /** El minimo de la norma AA para texto normal. */
@@ -68,5 +69,31 @@ describe('el nombre del centro', () => {
   it('no esta vacio', () => {
     expect(NOMBRE_DEL_PRODUCTO.length).toBeGreaterThan(0);
     expect(LEMA.length).toBeGreaterThan(0);
+  });
+});
+
+describe('el icono de la pestaña', () => {
+  /*
+   * El unico color del producto que vive FUERA de este archivo: va incrustado
+   * en el HTML porque el navegador pide el icono antes de que exista una linea
+   * de JavaScript, asi que no puede salir de una variable.
+   *
+   * Que este fuera es justo el motivo de esta prueba: es el sitio donde el
+   * verde se quedaria desfasado sin que nadie lo notara —una pestaña de un
+   * verde y una pantalla de otro— porque ninguna guardia mira el HTML.
+   */
+  const paginas = ['index.html', 'pruebas-visuales/index.html'];
+
+  it('existe en las dos paginas', () => {
+    for (const p of paginas) {
+      expect(readFileSync(p, 'utf8'), `${p} no lleva icono`).toContain('rel="icon"');
+    }
+  });
+
+  it('y va del mismo verde que la marca', () => {
+    const verde = MARCA_CLARO.marca.replace('#', '%23');
+    for (const p of paginas) {
+      expect(readFileSync(p, 'utf8'), `${p} tiene otro verde`).toContain(verde);
+    }
   });
 });
