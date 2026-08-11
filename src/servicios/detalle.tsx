@@ -16,6 +16,7 @@ import { formatearMoneda } from '@neron/base/utils';
 import { useState, type ReactNode } from 'react';
 import type { FichaDeServicio } from '../datos/servicios.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
+import { Pista } from '../ui/pista.js';
 import { duracionEnPalabras } from '../ui/fechas-en-palabras.js';
 import { DIAS_DE_LA_SEMANA } from './formulario-de-servicio.js';
 
@@ -125,13 +126,7 @@ export function DetalleDeServicio({
   const puedeGestionar = permisos['gestionarCatalogo'] === true;
 
   if (!ficha && !cargando && !error) {
-    return (
-      <aside className="pz-tarjeta srv-detalle srv-detalle--vacio">
-        <p className="pz-vacio__texto">
-          Toca un servicio para ver su ficha, su historial de cambios y las acciones.
-        </p>
-      </aside>
-    );
+    return <Pista texto="Toca un servicio para ver su ficha, su historial de cambios y las acciones." icono="flor" />;
   }
 
   return (

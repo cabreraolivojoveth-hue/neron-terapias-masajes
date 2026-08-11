@@ -78,7 +78,7 @@ import { FICHA_VACIA, FichaDeCliente } from '../clientes/ficha.js';
 import { useSesion } from '../identidad/sesion.js';
 import { Icono } from '../ui/iconos.js';
 import { Carrito } from './carrito.js';
-import { AplicarDescuento, Cobro, PagoRapido } from './cobro.js';
+import { AplicarDescuento, Cobro } from './cobro.js';
 import { EstadisticasDelDia, UltimasDelDia } from './cifras-del-dia.js';
 import { DetalleDeVenta } from './detalle-de-venta.js';
 import { Cotizaciones, Historial } from './historial.js';
@@ -561,22 +561,6 @@ export function PuntoDeVenta() {
             />
 
             <div className="vta-dos">
-              <PagoRapido puesto={metodoPuesto} onEscoger={escogerMetodo} />
-              <AplicarDescuento
-                escrito={descuentoEscrito}
-                comoPorcentaje={descuentoEnPorcentaje}
-                subtotalCentavos={renglones.reduce(
-                  (s, r) => s + Math.max(0, r.precioCentavos * r.cantidad - r.descuentoCentavos),
-                  0,
-                )}
-                puede={puedeDescontar}
-                onEscrito={setDescuentoEscrito}
-                onComoPorcentaje={setDescuentoEnPorcentaje}
-                onAplicar={setDescuentoCentavos}
-              />
-            </div>
-
-            <div className="vta-dos">
               <UltimasDelDia
                 ventas={delDia.datos?.filas ?? []}
                 cargando={delDia.estado === 'cargando' && delDia.datos === null}
@@ -599,6 +583,22 @@ export function PuntoDeVenta() {
               puedeEditar={puedeCrearCliente}
               onEditar={() => ir('clientes', { intencion: `clientes:abrir:${clienteId}` })}
               onVerExpediente={() => ir('clientes', { intencion: `clientes:abrir:${clienteId}` })}
+            />
+            {/* EL DESCUENTO VA JUNTO AL TOTAL, no en la otra punta de la
+                pantalla. Estaba abajo a la derecha de la columna izquierda,
+                lejos de la cifra que modifica: se aplicaba un descuento y
+                habia que cruzar la pantalla para comprobar que si bajo. */}
+            <AplicarDescuento
+              escrito={descuentoEscrito}
+              comoPorcentaje={descuentoEnPorcentaje}
+              subtotalCentavos={renglones.reduce(
+                (s, r) => s + Math.max(0, r.precioCentavos * r.cantidad - r.descuentoCentavos),
+                0,
+              )}
+              puede={puedeDescontar}
+              onEscrito={setDescuentoEscrito}
+              onComoPorcentaje={setDescuentoEnPorcentaje}
+              onAplicar={setDescuentoCentavos}
             />
             <Cobro
               renglones={renglones}

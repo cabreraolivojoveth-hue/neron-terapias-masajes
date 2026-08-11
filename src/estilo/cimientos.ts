@@ -88,13 +88,28 @@ body {
   color: ${v('texto-suave')};
   font-size: ${v('texto-chico')};
 }
+/*
+ * EL TITULO DE UNA TARJETA. Y AQUI VA LA LECCION MAS CARA DEL REPASO VISUAL.
+ *
+ * Tenia flex-grow para que, dentro de la cabecera, empujara el enlace de "Ver
+ * todos" hasta la derecha. La cabecera es una FILA, asi que ahi crecer
+ * significa crecer a lo ancho — correcto.
+ *
+ * Pero muchas tarjetas llevan el titulo suelto, sin cabecera, y una tarjeta es
+ * una COLUMNA: ahi crecer significa crecer a lo ALTO. El titulo de "Ultimas
+ * ventas del dia" medía ciento sesenta y dos pixeles de alto, se comia todo el
+ * hueco sobrante de la tarjeta y empujaba la lista hasta el fondo. Esa —y no
+ * el diseño— es la mitad del "hay mucho espacio en blanco en ventas".
+ *
+ * Crecer es cosa del sitio donde esta, no del texto. Se movio a la regla
+ * ".pz-cabecera .tt-tarjeta", que es el unico lugar donde hace falta.
+ */
 .tt-tarjeta {
   margin: 0;
   font-size: ${v('texto-normal')};
   font-weight: ${v('peso-fuerte')};
   color: ${v('texto')};
   letter-spacing: -0.01em;
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

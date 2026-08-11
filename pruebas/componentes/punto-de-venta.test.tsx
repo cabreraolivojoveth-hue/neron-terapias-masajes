@@ -259,8 +259,14 @@ describe('el pago mixto', () => {
   it('sale con DOS renglones, no con un metodo "mixto"', async () => {
     render(<PuntoDeVenta />);
     await meterAlCarrito();
-    // El boton "Mixto" del panel de la derecha abre el reparto.
-    await userEvent.click(screen.getAllByRole('button', { name: /^Mixto$/ })[1]!);
+    /*
+     * "getByRole" y no "getAllByRole()[1]": ahora hay UN solo boton "Mixto" en
+     * toda la pantalla. Habia dos —una tarjeta de "metodo de pago rapido" con
+     * los mismos cuatro botones que el panel de cobro, llamando a la misma
+     * funcion— y se quito: dos juegos identicos del mismo control confunden a
+     * quien cobra. Si alguien lo vuelve a duplicar, esta linea revienta.
+     */
+    await userEvent.click(screen.getByRole('button', { name: /^Mixto$/ }));
     const reparto = screen.getByLabelText(/agregar forma de pago/i);
     await userEvent.click(
       (await screen.findAllByRole('button', { name: /^Tarjeta$/ })).find((b) =>

@@ -45,6 +45,26 @@ export function piezas(): string {
   gap: ${v('espacio-3')};
   min-width: 0;
 }
+/* AQUI —y solo aqui— el titulo crece: la cabecera es una fila, y crecer es lo
+   que empuja el "Ver todos" hasta la derecha. Puesto en el propio titulo, en
+   una tarjeta (que es una columna) crecia a lo ALTO y hundia el contenido. */
+.pz-cabecera .tt-tarjeta { flex: 1; }
+/*
+ * Y CUANDO NO CABEN LOS DOS, se envuelve — no se corta el titulo.
+ *
+ * En el panel de trescientos cuarenta pixeles de Clientes, "Recordatorios de
+ * seguimiento" salia como "Recordatorios de segui…" para dejarle sitio a un
+ * boton de "Ver todos" que igual cabia debajo. El titulo dice de que es la
+ * tarjeta: es lo ultimo que se recorta.
+ */
+.pz-cabecera { flex-wrap: wrap; }
+.pz-cabecera .tt-tarjeta {
+  flex: 1 1 60%;
+  /* En dos lineas, no con puntos suspensivos: "Recordatorios de seguimiento"
+     partido es legible; "Recordatorios de segui…" parece un error. */
+  white-space: normal;
+  overflow: visible;
+}
 
 /* El enlace de la esquina de una tarjeta: "Ver todos", "Ver calendario". */
 .pz-enlace {
@@ -320,6 +340,15 @@ export function piezas(): string {
 .pz-tabla tbody tr { transition: background ${v('movimiento-curva')} ${v('movimiento-instantaneo')}; }
 .pz-tabla tbody tr:hover { background: ${v('superficie-tenue')}; }
 .pz-tabla tbody tr:last-child td { border-bottom: none; }
+/*
+ * UN RENGLON DENTRO DE UNA CELDA NO VUELVE A PONER SU AIRE.
+ *
+ * La celda ya trae doce pixeles arriba y abajo, y el renglon otros doce: las
+ * filas de Clientes medían ochenta y siete pixeles de alto por sumar dos veces
+ * el mismo margen. Seis clientes ocupaban lo que deberian ocupar nueve, y la
+ * tabla se veia inflada sin que nada estuviera "mal" en ninguno de los dos.
+ */
+.pz-tabla td > .pz-renglon { padding-top: 0; padding-bottom: 0; }
 .pz-tabla__numero { text-align: right; font-variant-numeric: ${v('cifra-numeros')}; white-space: nowrap; }
 .pz-tabla__acciones { width: 56px; text-align: right; }
 .pz-tabla__fila--marcada { background: ${v('marca-tenue')}; }
@@ -407,7 +436,25 @@ export function piezas(): string {
 /* ================================================================ */
 /* BUSCADOR                                                          */
 /* ================================================================ */
-.pz-buscador { position: relative; display: flex; align-items: center; flex: 1 1 220px; min-width: 0; }
+/*
+ * LA MISMA TRAMPA QUE EL TITULO, y por eso va explicada dos veces.
+ *
+ * Tenia "flex: 1 1 220px" para ocupar lo que sobre en una barra de filtros. En
+ * una FILA, ese 220px es el ancho de partida — correcto. En una COLUMNA es el
+ * ALTO: el buscador de cliente de Ventas medía doscientos veinte pixeles de
+ * alto con un campo de cuarenta y dos flotando en medio.
+ *
+ * Con "flex: 1 1 auto" el tamaño de partida lo pone el contenido, que en fila
+ * sigue creciendo hasta llenar y en columna mide lo que mide el campo. El
+ * minimo de 220 se conserva como ancho, que es donde de verdad importaba.
+ */
+.pz-buscador {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: min(220px, 100%);
+}
 .pz-buscador__lupa {
   position: absolute; left: ${v('espacio-3')};
   display: flex; color: ${v('texto-tenue')}; pointer-events: none;
@@ -435,19 +482,30 @@ export function piezas(): string {
 /* ================================================================ */
 /* ESTADOS: vacio, cargando, error                                   */
 /* ================================================================ */
+/*
+ * EL ESTADO VACIO ES UNA NOTA, NO UNA PANTALLA.
+ *
+ * Con el aire de "espacio-8" arriba y abajo, "todavia no hay nada en el
+ * carrito" ocupaba doscientos pixeles en medio de Ventas. Un hueco asi se lee
+ * como que falta algo por cargar, no como una explicacion — y era parte del
+ * blanco de sobra que se reclamo.
+ */
 .pz-vacio {
   display: flex; flex-direction: column; align-items: center; gap: ${v('espacio-3')};
-  padding: ${v('espacio-8')} ${v('espacio-4')};
+  padding: ${v('espacio-5')} ${v('espacio-4')};
   text-align: center;
 }
-.pz-vacio--chico { padding: ${v('espacio-5')} ${v('espacio-3')}; }
+.pz-vacio--chico { padding: ${v('espacio-3')} ${v('espacio-3')}; gap: ${v('espacio-2')}; }
+/* El de una pantalla entera si respira: ahi el hueco ES la pantalla. */
+.pz-vacio--pantalla { padding: ${v('espacio-8')} ${v('espacio-4')}; }
 .pz-vacio__icono {
   display: flex; align-items: center; justify-content: center;
-  width: 56px; height: 56px;
+  width: 52px; height: 52px;
   border-radius: ${c('radio-pastilla')};
   background: ${v('superficie-tenue')};
   color: ${v('texto-tenue')};
 }
+.pz-vacio--chico .pz-vacio__icono { width: 44px; height: 44px; }
 .pz-vacio__titulo { margin: 0; font-weight: ${v('peso-fuerte')}; color: ${v('texto')}; }
 .pz-vacio__texto {
   margin: 0; color: ${v('texto-suave')}; font-size: ${v('texto-chico')};
@@ -534,7 +592,31 @@ export function piezas(): string {
 }
 @media (min-width: 1180px) {
   .pz-cuerpo { grid-template-columns: minmax(0, 1fr) 340px; }
+  /*
+   * SIN NADA ESCOGIDO, LA LISTA SE LLEVA TODO.
+   *
+   * Reservar la columna de la ficha para una sola frase le quitaba
+   * trescientos cuarenta pixeles a la tabla, y en Cursos las columnas ya no
+   * cabian: el precio salia cortado. La rejilla se entera sola de que lo que
+   * hay a la derecha es una pista y no una ficha; los cinco modulos no tienen
+   * que avisar de nada.
+   */
+  .pz-cuerpo:has(> .pz-pista) { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* La tira que sustituye a la ficha vacia. */
+.pz-pista {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: ${v('espacio-3')};
+  padding: ${v('espacio-3')} ${v('espacio-4')};
+  border: 1px dashed ${c('borde-tarjeta')};
+  border-radius: ${c('radio-control')};
+  background: ${v('superficie-tenue')};
+  color: ${v('texto-suave')};
+  font-size: ${v('texto-chico')};
+  min-width: 0;
+}
+.pz-pista__icono { flex: none; display: flex; color: ${v('texto-tenue')}; }
 .pz-columna { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
 
 /* Dos o tres tarjetas lado a lado que se apilan solas. */

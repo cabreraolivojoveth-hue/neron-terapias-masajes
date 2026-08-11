@@ -99,40 +99,17 @@ export function descuentoEscrito(
   return Math.min(bruto, subtotalCentavos);
 }
 
-/* ------------------------------------------------------------------ */
-/* Los cuatro botones grandes, debajo de la tabla                      */
-/* ------------------------------------------------------------------ */
-
-export function PagoRapido({
-  puesto,
-  onEscoger,
-}: {
-  readonly puesto: string;
-  onEscoger(clave: string): void;
-}) {
-  return (
-    <section className="pz-tarjeta" aria-labelledby="vta-rapido-titulo">
-      <h3 className="tt-tarjeta" id="vta-rapido-titulo">
-        Método de pago rápido
-      </h3>
-      <div className="vta-metodos__botones" role="group" aria-label="Método de pago rápido">
-        {BOTONES_DE_PAGO.map((b) => (
-          <button
-            key={b.clave}
-            type="button"
-            className={`vta-metodo vta-metodo--${b.clave}${
-              puesto === b.clave ? ' vta-metodo--puesto' : ''
-            }`}
-            aria-pressed={puesto === b.clave}
-            onClick={() => onEscoger(b.clave)}
-          >
-            <Icono nombre={b.icono} lado={16} /> {b.etiqueta}
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}
+/*
+ * AQUI ESTABA "METODO DE PAGO RAPIDO" Y SE QUITO A PROPOSITO.
+ *
+ * Era una tarjeta con los mismos cuatro botones que ya tiene el panel de
+ * cobro, llamando a la MISMA funcion. Dos juegos identicos del mismo control
+ * en una sola pantalla: quien lo ve no sabe si son dos cosas distintas, y de
+ * paso ocupaban una fila entera de la columna izquierda.
+ *
+ * El metodo de pago pertenece a donde se cierra la venta, que es el panel de
+ * la derecha. Ahi sigue estando, entero, y no se perdio nada.
+ */
 
 /* ------------------------------------------------------------------ */
 /* Aplicar descuento                                                   */

@@ -96,11 +96,23 @@ export function PanelDeCita({
   onCerrar,
 }: PropiedadesDelPanel) {
   if (!cita) {
+    /*
+     * La columna NO se quita, al reves que en los modulos de lista: sin ella,
+     * una cita de una hora pasa a medir mil pixeles de ancho para decir un
+     * nombre y un servicio. Lo que cambia es lo que se pinta —un estado vacio
+     * con su icono, no una frase suelta dentro de una caja—, que es lo que
+     * hace que se lea como algo terminado y no como algo que falta.
+     */
     return (
-      <aside className="agenda-panel agenda-panel--vacio">
-        <p className="agenda-panel__pista">
-          Toca una cita para ver los datos del paciente, su historial y las acciones.
-        </p>
+      <aside className="pz-tarjeta agenda-panel agenda-panel--vacio">
+        <div className="pz-vacio pz-vacio--chico">
+          <span className="pz-vacio__icono" aria-hidden="true">
+            <Icono nombre="calendario" lado={26} />
+          </span>
+          <p className="pz-vacio__texto">
+            Toca una cita para ver los datos del paciente, su historial y las acciones.
+          </p>
+        </div>
       </aside>
     );
   }

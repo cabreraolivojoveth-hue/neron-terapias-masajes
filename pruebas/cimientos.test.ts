@@ -84,3 +84,28 @@ describe('la tipografia de pantalla vive en un solo lugar', () => {
     expect(css).toMatch(/\.tt-dato\s*\{[^}]*font-variant-numeric/s);
   });
 });
+
+describe('crecer es cosa del sitio, no del texto', () => {
+  it('el titulo de tarjeta NO crece por su cuenta', () => {
+    /*
+     * La trampa mas cara del repaso visual. Con "flex: 1" el titulo empujaba
+     * el "Ver todos" a la derecha dentro de la cabecera —que es una fila— pero
+     * dentro de una tarjeta —que es una columna— crecia a lo ALTO: el titulo
+     * de "Ultimas ventas del dia" medía ciento sesenta y dos pixeles y hundia
+     * la lista hasta el fondo de la tarjeta.
+     *
+     * Crecer se declara donde hace falta (.pz-cabecera .tt-tarjeta), no aqui.
+     */
+    const bloque = css.match(/\.tt-tarjeta\s*\{[^}]*\}/s)?.[0] ?? '';
+    expect(bloque).not.toBe('');
+    expect(bloque).not.toMatch(/flex(-grow)?\s*:/);
+  });
+
+  it('ninguna clase de tipografia se pone a crecer', () => {
+    // Un texto que crece dentro de una columna deja un hueco que nadie
+    // relaciona con la hoja de estilos, y se acaba culpando al diseño.
+    for (const bloque of css.match(/\.tt-[a-z-]+\s*\{[^}]*\}/gs) ?? []) {
+      expect(bloque, `un .tt- no puede crecer solo: ${bloque}`).not.toMatch(/flex-grow\s*:\s*[1-9]/);
+    }
+  });
+});

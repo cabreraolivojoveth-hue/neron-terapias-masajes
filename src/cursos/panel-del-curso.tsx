@@ -22,6 +22,7 @@ import type {
 import { ocupacionDe } from '../datos/cursos.js';
 import { fechaConMes } from '../ui/fechas-en-palabras.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
+import { Pista } from '../ui/pista.js';
 import { Alumnos } from './alumnos.js';
 import { Material } from './material.js';
 import { Sesiones } from './sesiones.js';
@@ -146,13 +147,7 @@ export function PanelDelCurso({
   const puedeGestionar = permisos['gestionarCatalogo'] === true;
 
   if (!ficha && !cargando && !error) {
-    return (
-      <aside className="pz-tarjeta srv-detalle srv-detalle--vacio">
-        <p className="pz-vacio__texto">
-          Toca un curso para ver su ficha, sus alumnos, sus sesiones y su material.
-        </p>
-      </aside>
-    );
+    return <Pista texto="Toca un curso para ver su ficha, sus alumnos, sus sesiones y su material." icono="birrete" />;
   }
 
   return (

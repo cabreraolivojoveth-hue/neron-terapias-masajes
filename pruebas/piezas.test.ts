@@ -119,3 +119,22 @@ describe('la pestaña puesta', () => {
     expect(css).toContain('.pz-pestana--puesta::after');
   });
 });
+
+describe('nada mide su ALTO con una medida pensada para el ancho', () => {
+  it('el buscador no lleva un flex-basis en pixeles', () => {
+    /*
+     * Tenia "flex: 1 1 220px". En una barra de filtros —una fila— ese 220 es
+     * el ancho de partida. En una columna es el ALTO: el buscador de cliente
+     * de Ventas medía doscientos veinte pixeles con un campo de cuarenta y dos
+     * flotando en medio, y era medio hueco del "espacio en blanco en ventas".
+     */
+    const bloque = css.match(/\.pz-buscador\s*\{[^}]*\}/s)?.[0] ?? '';
+    expect(bloque).not.toBe('');
+    expect(bloque).not.toMatch(/flex\s*:[^;]*\d+px/);
+    expect(bloque).not.toMatch(/flex-basis\s*:\s*\d+px/);
+  });
+
+  it('el titulo crece solo dentro de la cabecera, que es una fila', () => {
+    expect(css).toMatch(/\.pz-cabecera\s+\.tt-tarjeta\s*\{[^}]*flex:\s*1/s);
+  });
+});

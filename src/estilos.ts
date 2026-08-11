@@ -357,6 +357,18 @@ function loQueTodaviaEsDeUnModulo(): string {
   gap: ${v('espacio-4')};
   align-items: start;
 }
+/*
+ * AQUI LA COLUMNA SE QUEDA, al reves que en los modulos de lista.
+ *
+ * Se probo quitarla cuando no hay cita escogida y se vio en la captura por que
+ * no: una cita de una hora pasaba a medir mil ciento cincuenta pixeles de
+ * ancho para decir un nombre y un servicio. Una agenda de dia necesita una
+ * columna angosta, no toda la pantalla — a diferencia de una tabla de siete
+ * columnas, que necesita justo lo contrario.
+ *
+ * Lo que si cambia es lo que se pinta ahi: antes una frase suelta en una caja,
+ * ahora un estado vacio con su icono, que se lee como algo terminado.
+ */
 @media (max-width: 1100px) {
   /*
    * En tableta el panel baja DEBAJO del calendario en vez de comprimirlo.
@@ -457,14 +469,18 @@ function loQueTodaviaEsDeUnModulo(): string {
 
 /* El estado se distingue por color Y por palabra: la pastilla siempre lleva
    el nombre escrito, para quien no distingue los tonos. */
+/* Tintada y SIN MARCO, igual que la pastilla compartida. Con borde, la misma
+   palabra —"Confirmada"— se dibujaba de dos maneras segun la pantalla en la
+   que salia. */
 .agenda-cita__estado {
   flex: none;
   font-size: ${v('texto-micro')};
-  padding: 3px ${v('espacio-2')};
-  border-radius: ${v('radio-redondo')};
+  font-weight: ${v('peso-medio')};
+  padding: 3px ${v('espacio-3')};
+  border-radius: ${c('radio-pastilla')};
   white-space: nowrap;
   background: ${v('superficie-elevada')};
-  border: 1px solid ${v('borde-suave')};
+  border: none;
 }
 .agenda-cita--compacta .agenda-cita__estado {
   background: transparent; border: none; padding: 0;
@@ -485,11 +501,19 @@ function loQueTodaviaEsDeUnModulo(): string {
 
 /* Las pastillas de estado, iguales en el bloque, en el panel y en la leyenda:
    un mismo estado no puede verse de dos colores en la misma pantalla. */
-.agenda-estado--pendiente { color: ${v('advertencia')}; border-color: ${v('advertencia')}; }
-.agenda-estado--confirmada { color: ${v('exito')}; border-color: ${v('exito')}; }
-.agenda-estado--completada { color: ${v('cat-ventas')}; border-color: ${v('cat-ventas')}; }
-.agenda-estado--cancelada { color: ${v('peligro')}; border-color: ${v('peligro')}; }
-.agenda-estado--no_asistio { color: ${v('texto-suave')}; border-color: ${v('borde')}; }
+/*
+ * SOLO EL COLOR DE LA LETRA: el fondo lo pone la pastilla y es BLANCO.
+ *
+ * Se probo tintarla como la pastilla compartida y en la captura se vio el
+ * problema: el bloque de la cita ya esta tintado del mismo tono, asi que la
+ * pastilla desaparecia dentro de el y "Confirmada" quedaba como texto suelto.
+ * Sobre fondo tintado, lo que resalta es el blanco.
+ */
+.agenda-estado--pendiente { color: ${v('advertencia')}; }
+.agenda-estado--confirmada { color: ${v('exito')}; }
+.agenda-estado--completada { color: ${v('cat-ventas')}; }
+.agenda-estado--cancelada { color: ${v('peligro')}; }
+.agenda-estado--no_asistio { color: ${v('texto-suave')}; }
 
 .agenda-estado-texto--pendiente { color: ${v('advertencia')}; }
 .agenda-estado-texto--confirmada { color: ${v('exito')}; }
@@ -1164,6 +1188,19 @@ function loQueTodaviaEsDeUnModulo(): string {
  */
 .cli { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
 
+/*
+ * CINCO CIFRAS EN UNA FILA, no cuatro y una huerfana.
+ *
+ * La rejilla compartida pide doscientos treinta pixeles por cifra: en la
+ * tarjeta de "Resumen general" caben cuatro, y la quinta se quedaba sola con
+ * tres huecos al lado. Aqui se piden cinco pistas iguales mientras haya ancho,
+ * y cuando no lo hay se reparten en tres y en dos, que tambien cuadra.
+ */
+.cli-resumen__cifras { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+@media (min-width: 1240px) {
+  .cli-resumen__cifras { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
 .cli-encabezado {
   display: flex; align-items: flex-start; gap: ${v('espacio-3')};
   flex-wrap: wrap; min-width: 0;
@@ -1672,11 +1709,19 @@ function loQueTodaviaEsDeUnModulo(): string {
   color: ${v('texto-suave')}; font-size: ${v('texto-micro')};
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch;
 }
+/*
+ * LA CATEGORIA ES UNA PASTILLA, COMO EL ESTADO — no una con marco propio.
+ *
+ * Tenia borde y fondo blanco mientras la pastilla de estado va tintada y sin
+ * marco. En la misma fila de una tabla se veian dos cosas del mismo tamaño
+ * dibujadas de dos maneras, y esa clase de descuido es la que hace que una
+ * pantalla se sienta armada a pedazos.
+ */
 .srv-categoria {
   display: inline-block;
-  padding: 3px ${v('espacio-2')};
-  border: 1px solid ${v('borde')}; border-radius: ${v('radio-redondo')};
-  background: ${v('superficie')};
+  padding: 3px ${v('espacio-3')};
+  border: none; border-radius: ${c('radio-pastilla')};
+  background: ${v('superficie-tenue')};
   color: ${v('texto-suave')};
   font-size: ${v('texto-micro')};
   white-space: nowrap; max-width: 20ch;
@@ -2159,10 +2204,17 @@ function loQueTodaviaEsDeUnModulo(): string {
   display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0;
 }
 
-/* Dos tarjetas lado a lado que en pantalla chica se apilan solas. */
+/*
+ * Dos tarjetas lado a lado que en pantalla chica se apilan solas.
+ *
+ * "align-items: start" NO es un detalle: sin el, la tarjeta corta se estira al
+ * alto de su vecina y le queda un pie de blanco que no significa nada. Es la
+ * version en pequeño del reclamo del espacio en blanco.
+ */
 .vta-dos {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: ${v('espacio-4')}; min-width: 0;
+  align-items: start;
 }
 
 /* ---------------------------------------------------------------- */
@@ -2336,9 +2388,23 @@ function loQueTodaviaEsDeUnModulo(): string {
   flex: none; font-variant-numeric: ${v('cifra-numeros')}; font-weight: ${v('peso-medio')};
 }
 
+/*
+ * TRES COSAS ARRIBA Y EL BOTON ABAJO, DE LADO A LADO.
+ *
+ * En fila envuelta, "Aplicar" caia solo en la segunda linea y se quedaba a
+ * media anchura, colgando: en el panel de trescientos cuarenta pixeles no
+ * caben las cuatro piezas seguidas. Puesto en rejilla, la segunda linea es a
+ * proposito y el boton ocupa el ancho entero, que ademas es mas facil de
+ * apretar en una tableta.
+ */
 .vta-descuento-general {
-  display: flex; align-items: center; gap: ${v('espacio-2')}; flex-wrap: wrap; min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: ${v('espacio-2')};
+  min-width: 0;
 }
+.vta-descuento-general > .pz-boton { grid-column: 1 / -1; width: 100%; }
 .vta-descuento__signo {
   flex: none; min-width: 34px; min-height: 40px;
   display: inline-flex; align-items: center; justify-content: center;
@@ -2391,11 +2457,26 @@ function loQueTodaviaEsDeUnModulo(): string {
 /* ---------------------------------------------------------------- */
 /* Las cifras y las ultimas ventas del dia                           */
 /* ---------------------------------------------------------------- */
+/*
+ * CUATRO CIFRAS EN UNA TARJETA DE CUATROCIENTOS PIXELES, no las cuatro grandes
+ * de Inicio. Con el cuadro de icono de 48 y el aire de la tarjeta ancha, tres
+ * columnas de ciento veintitres pixeles cortaban "$1,900.00" por la mitad.
+ *
+ * Dos por dos, y la cifra en version apretada: el icono baja a 34, el aire a la
+ * mitad y el numero a tamaño de dato. Se sigue leyendo de un vistazo y ya no se
+ * sale de su caja.
+ */
 .vta-cifras {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: ${v('espacio-2')}; min-width: 0;
 }
-.vta-cifra { padding: ${v('espacio-3')}; }
+.vta-cifra { padding: ${v('espacio-3')}; gap: ${v('espacio-3')}; }
+.vta-cifra .pz-cifra__icono { width: 34px; height: 34px; border-radius: 10px; }
+.vta-cifra .pz-cifra__valor { font-size: ${v('texto-grande')}; }
+.vta-cifra .pz-cifra__pie {
+  font-variant-numeric: ${v('cifra-numeros')};
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 .vta-ultimas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .vta-ultima { border-bottom: 1px solid ${v('borde-suave')}; }

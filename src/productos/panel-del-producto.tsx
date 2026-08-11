@@ -16,6 +16,7 @@ import { useState, type ReactNode } from 'react';
 import type { DatosDeAjuste, FichaDeProducto, ProveedorEnLista } from '../datos/productos.js';
 import { COMO_SE_DICE_EL_STOCK, margenDe } from '../datos/productos.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
+import { Pista } from '../ui/pista.js';
 import { Movimientos } from './movimientos.js';
 import { Proveedores } from './proveedores.js';
 
@@ -103,13 +104,7 @@ export function PanelDelProducto({
   const puedeGestionar = permisos['gestionarInventario'] === true;
 
   if (!ficha && !cargando && !error) {
-    return (
-      <aside className="pz-tarjeta srv-detalle srv-detalle--vacio">
-        <p className="pz-vacio__texto">
-          Toca un producto para ver su ficha, sus movimientos, sus ventas y sus proveedores.
-        </p>
-      </aside>
-    );
+    return <Pista texto="Toca un producto para ver su ficha, sus movimientos, sus ventas y sus proveedores." icono="paquete" />;
   }
 
   const margen = ficha ? margenDe(ficha.precioCentavos, ficha.costoCentavos) : null;

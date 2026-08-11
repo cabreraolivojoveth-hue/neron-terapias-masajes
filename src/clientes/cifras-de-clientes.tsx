@@ -194,7 +194,10 @@ export function ResumenGeneral({ resumen }: { readonly resumen: ResumenDeCliente
       <h3 className="tt-tarjeta" id="cli-resumen-titulo">
         Resumen general
       </h3>
-      <div className="pz-cifras pz-cifras">
+      {/* Cinco cifras, y por eso "cli-resumen__cifras" y no la rejilla de
+          siempre: con el minimo de doscientos treinta caben cuatro y la quinta
+          se quedaba sola en una fila, con tres huecos al lado. */}
+      <div className="pz-cifras cli-resumen__cifras">
         {cifrasDelPie(resumen).map((c) => (
           <Tarjeta key={c.clave} c={c} />
         ))}
