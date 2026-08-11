@@ -48,15 +48,19 @@ describe('a donde lleva cada una', () => {
     expect(por('reportes')?.modulo).toBe('reportes');
   });
 
-  it('registrar un pago va a VENTAS, no a Caja', () => {
+  it('registrar un pago abre COBRAR, no el cajón', () => {
     /**
      * Un pago pertenece a una venta: la caja se mueve sola cuando esa venta se
-     * cobra. Un ingreso capturado suelto en caja dejaria de poder rastrearse
+     * cobra. Un ingreso capturado suelto en el cajon dejaria de poder rastrearse
      * hasta la operacion que lo produjo, y ahi se acaba la auditoria.
+     *
+     * El modulo es "caja" desde que se unio con Ventas, pero el RECADO sigue
+     * siendo de "ventas": es el punto de venta quien lo consume, y por eso cae
+     * en la pestaña de cobrar y no en la del cajon.
      */
     const pago = accionesRapidas(TODO).find((a) => a.clave === 'pago');
-    expect(pago?.modulo).toBe('ventas');
-    expect(pago?.modulo).not.toBe('caja');
+    expect(pago?.modulo).toBe('caja');
+    expect(pago?.intencion).toBe('ventas:nueva');
   });
 
   it('lleva el recado de QUE hacer al llegar', async () => {

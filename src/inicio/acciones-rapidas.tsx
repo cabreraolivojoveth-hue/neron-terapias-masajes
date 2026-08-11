@@ -42,7 +42,9 @@ const TODAS: readonly AccionRapida[] = [
     clave: 'venta',
     etiqueta: 'Nueva venta',
     icono: 'bolsa',
-    modulo: 'ventas',
+    // El modulo es "caja" desde que se unio con Ventas; el recado sigue siendo
+    // de "ventas" porque es el punto de venta quien lo consume.
+    modulo: 'caja',
     intencion: 'ventas:nueva',
     capacidad: 'cobrar',
   },
@@ -66,12 +68,12 @@ const TODAS: readonly AccionRapida[] = [
     clave: 'pago',
     etiqueta: 'Registrar pago',
     icono: 'recibo',
-    modulo: 'ventas',
-    // Va a VENTAS, no a Caja. Un pago pertenece a una venta: la caja se mueve
-    // sola cuando esa venta se cobra. Un ingreso capturado suelto en caja
+    modulo: 'caja',
+    // Abre COBRAR, no el cajon. Un pago pertenece a una venta: la caja se mueve
+    // sola cuando esa venta se cobra. Un ingreso capturado suelto en el cajon
     // dejaria de poder rastrearse hasta la operacion que lo produjo, y ahi se
     // acaba la posibilidad de auditarla.
-    intencion: 'ventas:pago',
+    intencion: 'ventas:nueva',
     capacidad: 'cobrar',
   },
   {

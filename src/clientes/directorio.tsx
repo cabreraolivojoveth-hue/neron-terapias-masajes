@@ -189,15 +189,25 @@ export function Directorio() {
       return;
     }
 
-    const destinos: Readonly<Record<string, { modulo: string; accion: string }>> = {
+    /*
+     * A DONDE SE VA, Y EN NOMBRE DE QUIEN SE DEJA EL RECADO. No siempre es lo
+     * mismo, y desde que Ventas y Caja se unieron hay un caso donde difiere:
+     * cobrar vive en el modulo "caja", pero el recado lo consume el punto de
+     * venta, que escucha por "ventas". Con un solo campo, el recado llegaba con
+     * un nombre que nadie lee y el carrito se abria vacio — sin fallar y sin
+     * avisar, que es lo peor que podia pasar.
+     */
+    const destinos: Readonly<
+      Record<string, { modulo: string; nombre?: string; accion: string }>
+    > = {
       cita: { modulo: 'agenda', accion: 'nueva' },
-      venta: { modulo: 'ventas', accion: 'nueva' },
+      venta: { modulo: 'caja', nombre: 'ventas', accion: 'nueva' },
       mensaje: { modulo: 'mensajes', accion: 'escribir' },
       recordatorio: { modulo: 'recordatorios', accion: 'nuevo' },
       curso: { modulo: 'cursos', accion: 'inscribir' },
     };
     const d = destinos[clave];
-    if (d) ir(d.modulo, { intencion: `${d.modulo}:${d.accion}:${c.id}` });
+    if (d) ir(d.modulo, { intencion: `${d.nombre ?? d.modulo}:${d.accion}:${c.id}` });
   }
 
   const cargandoLista = lista.estado === 'cargando' && lista.datos === null;

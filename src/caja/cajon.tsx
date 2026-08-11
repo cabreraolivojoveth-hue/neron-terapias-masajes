@@ -91,7 +91,20 @@ export function bajarArchivo(nombre: string, contenido: string): boolean {
   return true;
 }
 
-export function Cajon() {
+export interface PropiedadesDelCajon {
+  /**
+   * Puesto por el Mostrador, que ya pinta el encabezado de la pantalla. Sin esto
+   * saldrian dos titulos "Caja", uno debajo del otro.
+   */
+  readonly sinEncabezado?: boolean;
+  /**
+   * Que enseñar. "corte" abre el cierre en cuanto se entra a esa pestaña: es lo
+   * que se va a hacer ahi y no tiene sentido pedir otro toque para llegar.
+   */
+  readonly vista?: 'cajon' | 'corte';
+}
+
+export function Cajon({ sinEncabezado = false, vista = 'cajon' }: PropiedadesDelCajon = {}) {
   const { acceso } = useSesion();
   const { ir } = useNavegacion();
 
@@ -186,7 +199,23 @@ export function Cajon() {
     if (!recado) return;
     if (recado.accion === 'abrir') setAbriendo(true);
     else if (recado.accion === 'historial') setHistorialAbierto(true);
+    else if (recado.accion === 'ingreso') setMoviendo('ingreso');
+    else if (recado.accion === 'retiro') setMoviendo('egreso');
+    else if (recado.accion === 'corte' || recado.accion === 'cerrar') setCortando(true);
   }, []);
+
+  /**
+   * LA PESTAÑA "CORTE" ABRE EL CIERRE SOLA.
+   *
+   * Es lo unico que se hace ahi. Pedir un toque mas —entrar a la pestaña y
+   * despues buscar "Cerrar caja"— es un paso de mas justo en el momento del dia
+   * en que la persona tiene mas prisa por irse.
+   *
+   * Solo cuando ya llego la caja: sin ella el dialogo no tiene que cuadrar.
+   */
+  useEffect(() => {
+    if (vista === 'corte' && caja.datos) setCortando(true);
+  }, [vista, caja.datos]);
 
   const cargandoCaja = caja.estado === 'cargando' && caja.datos === null;
   const laCaja = caja.datos;
@@ -206,14 +235,26 @@ export function Cajon() {
   }
 
   return (
-    <div className="cli srv caja mv-pantalla">
+    /* Dentro del Mostrador es el cuerpo de una pestaña, no una pantalla: sin
+       "mv-pantalla" no vuelve a animar la entrada encima de la del padre. */
+    <div className={sinEncabezado ? 'caja' : 'cli srv caja mv-pantalla'}>
+      {/*
+        DENTRO DEL MOSTRADOR SE VA EL TITULO, PERO NO LAS ACCIONES.
+
+        El titulo lo pinta el padre. Los tres botones —historial, reportes,
+        abrir caja— NO son del titulo: son del cajon, y esconderlos junto con el
+        encabezado los habria dejado inalcanzables. Sin el bloque de texto al
+        lado, la fila se acomoda sola a la derecha.
+      */}
       <header className="pz-encabezado">
+        {sinEncabezado ? null : (
         <div className="pz-encabezado__texto">
           <h2 className="tt-pagina">Caja</h2>
           <p className="tt-lema">
             Administra tu caja y controla los movimientos de efectivo
           </p>
         </div>
+        )}
         <div className="pz-encabezado__acciones">
           <button
             type="button"
@@ -319,7 +360,7 @@ export function Cajon() {
                 onFiltros={() => setFiltrosAbiertos((a) => !a)}
                 onPagina={setPagina}
                 // La venta se abre en VENTAS, que es donde se administra.
-                onAbrirVenta={(id) => ir('ventas', { intencion: `ventas:abrir:${id}` })}
+                onAbrirVenta={(id) => ir('caja', { intencion: `ventas:abrir:${id}` })}
                 onReintentar={movimientos.recargar}
               />
             </div>

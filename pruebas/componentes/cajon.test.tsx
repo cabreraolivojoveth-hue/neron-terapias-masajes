@@ -205,7 +205,7 @@ describe('con caja abierta', () => {
     expect(await screen.findByText(/el corte está en el historial/i)).toBeTruthy();
   });
 
-  it('un movimiento de venta lleva a VENTAS, no abre nada aqui', async () => {
+  it('un movimiento de venta lleva a la pestaña del historial, sin salir del módulo', async () => {
     datos.movimientos = {
       total: 1,
       filas: [{
@@ -218,7 +218,12 @@ describe('con caja abierta', () => {
     render(<Cajon />);
     await screen.findByRole('heading', { name: 'Resumen del turno' });
     await userEvent.click(await screen.findByLabelText(/ver la venta de Venta V-00001/i));
-    expect(navegacion.ir).toHaveBeenCalledWith('ventas', { intencion: 'ventas:abrir:v1' });
+    /*
+     * Se queda en "caja" —que ahora es el mostrador entero— y el recado sigue
+     * siendo de "ventas" porque es el punto de venta quien lo lee. Antes esto
+     * sacaba a la persona del modulo para ver su propia venta.
+     */
+    expect(navegacion.ir).toHaveBeenCalledWith('caja', { intencion: 'ventas:abrir:v1' });
   });
 
   it('sin permiso de finanzas se ve el resumen pero NO se mueve nada', async () => {

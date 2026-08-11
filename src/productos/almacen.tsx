@@ -311,7 +311,7 @@ export function Almacen() {
           onDesligar={(id) => void desligado.ejecutar(id)}
           onNuevoProveedor={() => setNuevoProveedor('')}
           // La venta se abre en VENTAS, que es donde se administra.
-          onAbrirVenta={(ventaId) => ir('ventas', { intencion: `ventas:abrir:${ventaId}` })}
+          onAbrirVenta={(ventaId) => ir('caja', { intencion: `ventas:abrir:${ventaId}` })}
         />
       </div>
 

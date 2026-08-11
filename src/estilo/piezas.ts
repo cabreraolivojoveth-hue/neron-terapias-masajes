@@ -631,6 +631,16 @@ export function piezas(): string {
   min-width: 0;
   max-width: 100%;
 }
+/*
+ * EL BUSCADOR DE UNA CABECERA NO SE COME EL RENGLON.
+ *
+ * Suelto crece con "flex: 1 1 auto" —correcto en una barra de filtros, donde
+ * tiene que llenar lo que sobre— pero en la fila de acciones se tragaba todo el
+ * hueco libre y empujaba el boton principal a un segundo renglon: en Caja,
+ * "Nueva venta" salia debajo de todo lo demas con el renglon de arriba medio
+ * vacio. Con un tope se reparte el sitio y los tres caben.
+ */
+.pz-encabezado__acciones .pz-buscador { flex: 0 1 320px; }
 
 /* Cuerpo con panel lateral: la lista toma lo que sobra. */
 .pz-cuerpo {

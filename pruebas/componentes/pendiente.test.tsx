@@ -23,7 +23,9 @@ describe('un modulo que todavia no llega', () => {
   it('DICE que esta vacia a proposito', () => {
     // Es la diferencia entre "todavia no lo hacemos" y "esta roto". Sin esta
     // linea, quien la abre no sabe cual de las dos es.
-    render(<Pendiente modulo="ventas" />);
+    // "ventas" ya no es un modulo: se fusiono con Caja. Se usa uno que de
+    // verdad sigue pendiente.
+    render(<Pendiente modulo="mensajes" />);
     expect(screen.getByText(/vacía a propósito/i)).toBeDefined();
   });
 

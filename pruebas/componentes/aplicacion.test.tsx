@@ -129,7 +129,7 @@ describe('ya dentro', () => {
     }
   });
 
-  it('la recepcionista NO ve Caja ni Gastos ni Reportes', () => {
+  it('la recepcionista ve Caja —ahi cobra— pero NO Gastos ni Reportes', () => {
     conEstado('listo', {
       ...ACCESO_DUENA,
       nombre: 'Recepción',
@@ -139,7 +139,12 @@ describe('ya dentro', () => {
       permisos: { gestionarClientes: true, gestionarAgenda: true, cobrar: true },
     });
     expect(screen.getAllByText('Agenda').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Caja')).toBeNull();
+    /*
+     * Caja SI le aparece, y es lo correcto desde que se unio con Ventas: cobrar
+     * vive adentro. Lo que no ve son las pestañas del cajon y del corte —eso lo
+     * vigila mostrador.test.tsx— ni los modulos de dinero que no le tocan.
+     */
+    expect(screen.getAllByText('Caja').length).toBeGreaterThan(0);
     expect(screen.queryByText('Gastos')).toBeNull();
     expect(screen.queryByText('Reportes')).toBeNull();
   });

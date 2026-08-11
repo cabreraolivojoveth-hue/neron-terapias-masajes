@@ -40,7 +40,7 @@ export interface ModuloDelProducto {
    * reglas de la base de datos: aunque alguien escriba la direccion a mano,
    * la base no le entrega nada. Esconder el boton es cortesia, no seguridad.
    */
-  readonly capacidad: string | null;
+  readonly capacidad: string | readonly string[] | null;
   /**
    * El dibujo del menu.
    *
@@ -108,20 +108,25 @@ export const MODULOS: readonly ModuloDelProducto[] = [
     promesa: 'Aceites, inciensos y velas. Existencias, costo, precio y el aviso de cuando se acaban.',
   },
   {
-    id: 'ventas',
-    etiqueta: 'Ventas',
-    icono: 'carrito',
-    capacidad: 'cobrar',
-    bloque: 6,
-    promesa: 'Cobrar servicios, productos y cursos. El ticket y su forma de pago.',
-  },
-  {
     id: 'caja',
     etiqueta: 'Caja',
     icono: 'cajon',
-    capacidad: 'verFinanzas',
+    /*
+     * DOS CAPACIDADES, PORQUE AQUI TRABAJAN DOS PERSONAS DISTINTAS.
+     *
+     * Al unir Ventas con Caja, este modulo se quedo con los dos trabajos: cobrar
+     * y cuadrar el cajon. Si pidiera solo `verFinanzas` —como pedia cuando solo
+     * era el cajon— la cajera que puede cobrar pero no ve finanzas se quedaria
+     * SIN LA PANTALLA DE COBRAR, o sea sin poder trabajar. Y si pidiera solo
+     * `cobrar`, quien lleva las cuentas sin atender el mostrador perderia el
+     * corte.
+     *
+     * Con las dos, entra quien pueda cualquiera de las dos cosas, y adentro cada
+     * quien ve solo sus pestañas (ver `mostrador.tsx`).
+     */
+    capacidad: ['cobrar', 'verFinanzas'],
     bloque: 6,
-    promesa: 'El dinero que entra y sale, con la operacion que lo produjo. No se edita: se agrega.',
+    promesa: 'Cobrar, y el dinero que entra y sale con la operacion que lo produjo.',
   },
   {
     id: 'gastos',
@@ -189,13 +194,30 @@ export const MODULOS: readonly ModuloDelProducto[] = [
  */
 export const GRUPOS = [
   { id: 'atencion', etiqueta: 'Atención', modulos: ['agenda', 'clientes', 'servicios', 'cursos'] },
-  { id: 'dinero', etiqueta: 'Dinero', modulos: ['productos', 'ventas', 'caja', 'gastos'] },
+  { id: 'dinero', etiqueta: 'Dinero', modulos: ['productos', 'caja', 'gastos'] },
   { id: 'centro', etiqueta: 'El centro', modulos: ['reportes', 'mensajes', 'recordatorios', 'configuracion'] },
 ] as const;
 
+/**
+ * Si esta persona alcanza la capacidad que pide un modulo.
+ *
+ * Una LISTA significa "cualquiera de estas", no "todas": un modulo que sirve a
+ * dos trabajos —como Caja, donde se cobra y se cuadra el cajon— tiene que
+ * abrirse para quien pueda hacer alguno de los dos. Exigir las dos dejaria a la
+ * cajera sin poder cobrar por no ver finanzas.
+ */
+export function puedeVerlo(
+  capacidad: string | readonly string[] | null,
+  permisos: Readonly<Record<string, boolean>>,
+): boolean {
+  if (capacidad === null) return true;
+  if (typeof capacidad === 'string') return permisos[capacidad] === true;
+  return capacidad.some((c) => permisos[c] === true);
+}
+
 /** Los modulos que esta persona puede ver, segun sus permisos reales. */
 export function modulosVisibles(permisos: Readonly<Record<string, boolean>>): string[] {
-  return MODULOS.filter((m) => m.capacidad === null || permisos[m.capacidad] === true).map((m) => m.id);
+  return MODULOS.filter((m) => puedeVerlo(m.capacidad, permisos)).map((m) => m.id);
 }
 
 export function moduloPorId(id: string): ModuloDelProducto | null {

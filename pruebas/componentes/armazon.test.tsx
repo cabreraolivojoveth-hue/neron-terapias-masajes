@@ -84,10 +84,12 @@ describe('la barra lateral', () => {
   });
 
   it('marca el modulo activo, y solo uno', () => {
-    const { container } = pintar({}, '/ventas');
+    // "/ventas" ya no existe: cobrar es una pestaña de Caja desde que los dos
+    // modulos se unieron.
+    const { container } = pintar({}, '/productos');
     const activos = container.querySelectorAll('.arm-enlace--activo');
     expect(activos.length).toBe(1);
-    expect(activos[0]?.textContent).toContain('Ventas');
+    expect(activos[0]?.textContent).toContain('Productos');
   });
 
   it('el activo se anuncia tambien a los lectores de pantalla', () => {

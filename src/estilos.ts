@@ -2180,6 +2180,72 @@ function loQueTodaviaEsDeUnModulo(): string {
 
 .caja-acciones { display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
 
+/*
+ * ENTRAR Y SACAR DINERO SON OPUESTOS, y en gris se leian igual. En un mostrador
+ * con prisa, apretar "retiro" creyendo que era "ingreso" descuadra el corte y
+ * despues nadie sabe por que. El color va en el borde y en el icono; la palabra
+ * sigue ahi, que es lo que lee quien no distingue los tonos.
+ */
+.caja-accion--entra { border-color: ${v('exito')}; color: ${v('exito')}; }
+.caja-accion--entra:hover:not(:disabled) { background: ${v('exito-tenue')}; }
+.caja-accion--sale { border-color: ${v('advertencia')}; color: ${v('advertencia')}; }
+.caja-accion--sale:hover:not(:disabled) { background: ${v('advertencia-tenue')}; }
+
+/* ---------------------------------------------------------------- */
+/* LA TARJETA DE "CAJA ACTUAL"                                       */
+/* ---------------------------------------------------------------- */
+/*
+ * Antes eran cuatro tarjetas de cifra sueltas y la identidad del turno estaba en
+ * la columna de la derecha. Las cuatro cifras son UNA cuenta
+ * —inicial + entro − salio = en el cajon— y sueltas se leian como cuatro cosas
+ * sin relacion. Juntas, la cuenta se lee de corrido.
+ */
+.caja-actual {
+  /* EN FILA, Y HAY QUE DECIRLO: "pz-tarjeta" es una columna, asi que sin esta
+     linea la identidad y las cifras se apilaban y "align-items: center" las
+     centraba a lo ancho, dejando medio metro de blanco a la izquierda. */
+  display: flex; flex-direction: row; flex-wrap: wrap; align-items: center;
+  gap: ${v('espacio-4')} ${v('espacio-6')};
+  min-width: 0;
+}
+/*
+ * La identidad NO crece con "flex: 1": en una columna eso mide alto (la trampa
+ * que ya se pago tres veces). Crece por ancho minimo y se envuelve cuando no
+ * cabe, que es lo que hace falta.
+ */
+.caja-actual__quien {
+  display: flex; flex-direction: column; gap: 2px;
+  flex: 1 1 auto; min-width: min(220px, 100%);
+}
+.caja-actual__nombre { font-size: ${v('texto-titulo')}; }
+
+.caja-actual__cifras {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: ${v('espacio-4')};
+  flex: 2 1 auto; min-width: min(320px, 100%);
+}
+.caja-actual__cifra {
+  display: flex; align-items: flex-start; gap: ${v('espacio-3')};
+  padding: ${v('espacio-3')};
+  border-radius: ${c('radio-control')};
+  min-width: 0;
+}
+/* La ultima va marcada: es la que se compara con lo que se cuenta al cerrar. */
+.caja-actual__cifra--marcada { background: ${v('marca-tenue')}; }
+.caja-actual__cifra--marcada .caja-actual__valor { color: ${v('marca')}; }
+.caja-actual__valor { font-size: ${v('texto-grande')}; }
+
+/* El consejo: callado a proposito, para no competir con las cifras. */
+.caja-consejo {
+  display: flex; align-items: flex-start; gap: ${v('espacio-3')};
+  padding: ${v('espacio-4')};
+  border: 1px dashed ${c('borde-tarjeta')};
+  border-radius: ${c('radio-tarjeta')};
+  background: ${v('superficie-tenue')};
+  min-width: 0;
+}
+.caja-consejo p { margin: 0; }
+
 /* ---------------------------------------------------------------- */
 /* El anillo de formas de pago                                       */
 /* ---------------------------------------------------------------- */

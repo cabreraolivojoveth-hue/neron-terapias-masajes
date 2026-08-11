@@ -29,12 +29,22 @@ describe('el registro es la unica lista', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('los doce del diseño estan', () => {
+  it('los doce del diseño estan, y "ventas" ya no es uno', () => {
+    /**
+     * Eran doce. Ventas y Caja se unieron en uno solo —el mostrador— porque quien
+     * los usa es UNA persona parada en el mostrador todo el dia, y saltar de
+     * pantalla para cobrar y luego cuadrar el efectivo era su trabajo entero.
+     * Cobrar es ahora una pestaña de Caja.
+     */
     const ids = MODULOS.map((m) => m.id);
     for (const esperado of ['inicio','agenda','clientes','servicios','cursos','productos',
-                            'ventas','caja','gastos','recordatorios','reportes','configuracion']) {
+                            'caja','gastos','recordatorios','reportes','configuracion']) {
       expect(ids, esperado).toContain(esperado);
     }
+    expect(ids).toContain('mensajes');
+    expect(ids).not.toContain('ventas');
+    // Eran trece. Ventas se fusiono con Caja: cobrar es una de sus pestañas.
+    expect(ids).toHaveLength(12);
   });
 
   it('todo modulo agrupado existe, y todo modulo existe en un grupo', () => {
@@ -66,16 +76,38 @@ describe('los permisos deciden que se ve', () => {
     expect(visibles).toContain('recordatorios');
   });
 
-  it('la recepcionista sin finanzas NO ve Caja, Gastos ni Reportes', () => {
+  it('la recepcionista sin finanzas SI ve Caja —para cobrar— pero no Gastos ni Reportes', () => {
+    /**
+     * ES EL CASO QUE MAS FACIL SE ROMPIA AL UNIR LOS DOS MODULOS.
+     *
+     * Cuando Caja era solo el cajon pedia `verFinanzas`, y estaba bien. Ahora
+     * adentro tambien se COBRA, asi que si siguiera pidiendo solo eso, la
+     * recepcionista se quedaria sin la pantalla de cobrar — o sea, sin poder
+     * trabajar. Por eso el modulo declara las dos capacidades y entra quien
+     * pueda cualquiera de las dos.
+     *
+     * Lo que NO ve son las pestañas del cajon y del corte: eso lo vigila
+     * `pruebas/componentes/mostrador.test.tsx`.
+     */
     const visibles = modulosVisibles({
       gestionarClientes: true, gestionarAgenda: true, cobrar: true, verFinanzas: false,
     });
     expect(visibles).toContain('agenda');
     expect(visibles).toContain('clientes');
-    expect(visibles).toContain('ventas');
-    expect(visibles).not.toContain('caja');
+    expect(visibles).toContain('caja');
     expect(visibles).not.toContain('gastos');
     expect(visibles).not.toContain('reportes');
+  });
+
+  it('quien lleva las cuentas sin atender el mostrador tambien ve Caja', () => {
+    const visibles = modulosVisibles({ verFinanzas: true });
+    expect(visibles).toContain('caja');
+    expect(visibles).toContain('gastos');
+  });
+
+  it('quien no puede cobrar NI ver finanzas no ve Caja', () => {
+    const visibles = modulosVisibles({ gestionarAgenda: true });
+    expect(visibles).not.toContain('caja');
   });
 
   it('un permiso ausente NO cuenta como concedido', () => {

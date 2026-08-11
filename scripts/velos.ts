@@ -46,17 +46,34 @@ const ALTO = 1024;
  * fallo, pero un boton que se renombro y deja de comprobarse SI lo es, y por
  * eso se cuenta al final cuantos se revisaron de verdad.
  */
-const LO_QUE_SE_ABRE: readonly { modulo: string; botones: readonly string[] }[] = [
+const LO_QUE_SE_ABRE: readonly {
+  modulo: string;
+  botones: readonly string[];
+  /** Una pestaña que hay que abrir primero para llegar a esos botones. */
+  pestana?: string;
+}[] = [
   { modulo: 'inicio', botones: [] },
   { modulo: 'agenda', botones: ['Nueva cita'] },
   { modulo: 'clientes', botones: ['Nuevo cliente'] },
   { modulo: 'servicios', botones: ['Categorías', 'Nuevo servicio'] },
   { modulo: 'cursos', botones: ['Categorías', 'Nuevo curso'] },
   { modulo: 'productos', botones: ['Categorías', 'Nuevo producto'] },
-  /* En Ventas, "Nueva cotizacion" NO abre nada: limpia el carrito y cambia de
-     pestaña. Lo que se abre encima es el alta de cliente desde el mostrador. */
-  { modulo: 'ventas', botones: ['Nuevo cliente'] },
-  { modulo: 'caja', botones: ['Registrar ingreso', 'Registrar retiro', 'Cerrar caja'] },
+  /*
+   * CAJA SON DOS ENTRADAS PORQUE AHORA ES UNA SOLA PANTALLA CON PESTAÑAS.
+   *
+   * Al unir Ventas con Caja, el cobro y el cajon dejaron de ser dos modulos: los
+   * dialogos del cajon quedaron detras de su pestaña. Sin abrirla primero, este
+   * chequeo no los encontraba, los saltaba todos, y —lo peor— habria salido en
+   * verde sin haber mirado ni uno. De ahi la pestaña previa.
+   *
+   * "Nueva cotizacion" no esta en la lista: no abre nada, solo limpia el carrito
+   * y cambia de pestaña.
+   */
+  { modulo: 'caja', botones: ['Nuevo cliente'] },
+  {
+    modulo: 'caja', pestana: 'El cajón',
+    botones: ['Registrar ingreso', 'Registrar retiro', 'Cerrar caja'],
+  },
 ];
 
 /** Lo mas oscuro que se le permite a un velo. Mas que esto borra lo de atras. */
@@ -217,12 +234,24 @@ async function principal(): Promise<void> {
       deviceScaleFactor: 1,
     });
 
-    for (const { modulo, botones } of cuales) {
+    for (const { modulo, botones, pestana } of cuales) {
       for (const boton of botones) {
         // Se recarga entre cada uno: un modal que quedo abierto le cambia el
         // resultado al siguiente, y ese falso verde es peor que no revisar.
         await pagina.goto(direccionDelModulo(PUERTO, modulo), { waitUntil: 'networkidle' });
         await pagina.waitForTimeout(900);
+
+        // Si lo que se abre vive detras de una pestaña, se abre primero.
+        if (pestana) {
+          try {
+            await pagina.getByRole('tab', { name: pestana }).first().click({ timeout: 3000 });
+            await pagina.waitForTimeout(600);
+          } catch {
+            console.log(`  · ${modulo}: no se encontro la pestaña "${pestana}"`);
+            saltados += 1;
+            continue;
+          }
+        }
 
         const destino = pagina.getByRole('button', { name: boton }).first();
         try {
@@ -233,9 +262,10 @@ async function principal(): Promise<void> {
           continue;
         }
         await pagina.waitForTimeout(600);
-        await revisarUnVelo(pagina, `${modulo} → "${boton}"`);
+        const donde = pestana ? `${modulo}/${pestana} → "${boton}"` : `${modulo} → "${boton}"`;
+        await revisarUnVelo(pagina, donde);
         revisados += 1;
-        console.log(`  · ${modulo} → "${boton}"`);
+        console.log(`  · ${donde}`);
       }
     }
 

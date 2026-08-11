@@ -71,6 +71,40 @@ no porque falte código.
 Esto no es preferencia: `guardias/fronteras.ts` revienta la publicación si se cuela
 un dato de ejemplo. La guardia y esta regla dicen lo mismo.
 
+## 4.b Caja y Ventas son UN módulo: el mostrador
+
+Eran dos entradas del menú, y quien las usa es **una persona parada en el
+mostrador todo el día**. Cobrar estaba en Ventas y el cajón en Caja, así que
+atender a alguien y luego cuadrar el efectivo obligaba a saltar de pantalla en
+pantalla para hacer un solo trabajo. Ahora es **`caja`**, con seis pestañas:
+
+`Cobrar · Ventas del día · Historial · Cotizaciones · El cajón · Corte de caja`
+
+- **Cobrar es la que abre.** Es donde se pasa el día.
+- Las cuatro primeras piden `cobrar`; las dos últimas `verFinanzas`. **Se filtran,
+  no se apagan**: quien solo cobra no ve el cajón ni el corte.
+- Por eso el módulo declara **dos capacidades** (`['cobrar', 'verFinanzas']`) y
+  entra quien pueda cualquiera de las dos. Con una sola, la recepcionista se
+  quedaba sin poder cobrar.
+- `mostrador.tsx` **no reimplementa nada**: monta `PuntoDeVenta` y `Cajon` y les
+  pone un encabezado y una barra únicos. Los dos aceptan `sinEncabezado`.
+- **La llave del cuerpo es quién pinta, no la pestaña.** Con la pestaña como
+  llave, pasar a "Ventas del día" y volver tiraba el carrito a medio armar.
+- **Lo que NO se unió es el corte**, y no se podía: Ventas sabe cuánto se cobró y
+  el cajón cuánto hay físicamente. Compararlos es lo único que detecta que falta
+  dinero.
+
+**Los recados conservan su espacio de nombres:** `ventas:` lo consume el punto de
+venta y `caja:` el cajón. El nombre dice **quién lo consume**, no de qué menú
+salió — y por eso unir los módulos no obligó a tocar ni un lector. Quien navegue
+aquí va a `caja` con el recado del consumidor: `ir('caja', { intencion: 'ventas:nueva' })`.
+
+**Y el recado se ESPIA, no se consume** (`espiarIntencion`). El Mostrador necesita
+la acción para escoger la pestaña y el hijo el recado entero. React monta de abajo
+hacia arriba, así que si el padre lo consumiera, el hijo lo leería vacío: "Nueva
+venta" desde un expediente abriría la pestaña correcta **con el carrito en
+blanco**, sin fallar y sin avisar.
+
 ## 5. Las conexiones entre módulos son parte del encargo
 
 Un módulo suelto no sirve. Agenda necesita Clientes, Ventas necesita Productos y

@@ -96,7 +96,7 @@ export function tarjetasDeInicio(
       valor: resumen ? resumen.ventasHoy : null,
       moneda: true,
       anterior: resumen ? resumen.ventasAyer : null,
-      ir: { modulo: 'ventas', parametros: { periodo: 'hoy' } },
+      ir: { modulo: 'caja', parametros: { periodo: 'hoy' } },
     });
   }
 

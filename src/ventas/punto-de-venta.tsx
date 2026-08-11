@@ -139,7 +139,29 @@ export function diasAntes(fecha: Fecha, dias: number): Fecha {
   return `${dd}/${mm}/${t.getUTCFullYear()}`;
 }
 
-export function PuntoDeVenta() {
+export interface PropiedadesDelPuntoDeVenta {
+  /**
+   * Puesto por el Mostrador, que ya pinta el encabezado y la barra de pestañas
+   * de la pantalla entera. Sin esto saldrian DOS titulos y DOS barras, una
+   * debajo de la otra.
+   */
+  readonly sinEncabezado?: boolean;
+  /** Cual seccion enseñar. Cuando la manda el padre, el padre es el dueño. */
+  readonly pestana?: string;
+  /**
+   * Para avisarle al padre que aqui adentro hizo falta cambiar de seccion —al
+   * guardar una cotizacion, o al leer un recado que pide abrir una venta. Sin
+   * esto, la barra de arriba se quedaria marcando una pestaña y el contenido
+   * enseñando otra.
+   */
+  onPestana?: (pestana: string) => void;
+}
+
+export function PuntoDeVenta({
+  sinEncabezado = false,
+  pestana: pestanaDeArriba,
+  onPestana,
+}: PropiedadesDelPuntoDeVenta = {}) {
   const { acceso } = useSesion();
   const { ir } = useNavegacion();
 
@@ -157,7 +179,23 @@ export function PuntoDeVenta() {
 
   /* --- La pestaña y la venta abierta -------------------------------- */
 
-  const [pestana, setPestana] = useState('nueva');
+  /**
+   * LA PESTAÑA PUEDE SER DE AQUI O DE ARRIBA, y funciona igual en los dos casos.
+   *
+   * Suelto —como se uso hasta ahora— este componente manda su seccion. Dentro
+   * del Mostrador la manda el padre, porque la barra de pestañas es una sola
+   * para el cobro y para el cajon. `setPestana` sirve para las dos: si hay padre
+   * le avisa, y si no se lo guarda. Asi las veinte llamadas a `setPestana` que
+   * ya habia siguen valiendo sin tocarlas — que es lo que evito reescribir
+   * seiscientas lineas al unir Ventas con Caja.
+   */
+  const [pestanaPropia, setPestanaPropia] = useState('nueva');
+  const laManadaArriba = pestanaDeArriba !== undefined;
+  const pestana = laManadaArriba ? pestanaDeArriba : pestanaPropia;
+  const setPestana = (p: string): void => {
+    if (onPestana) onPestana(p);
+    if (!laManadaArriba) setPestanaPropia(p);
+  };
   const [abierta, setAbierta] = useState<string | null>(null);
 
   /* --- El carrito --------------------------------------------------- */
@@ -414,12 +452,23 @@ export function PuntoDeVenta() {
   const listaDeLaPestana = pestana === 'dia' ? delDiaFiltrado : historial;
 
   return (
-    <div className="cli srv vta mv-pantalla">
+    /* Dentro del Mostrador no es una pantalla: es el cuerpo de una pestaña. Sin
+       "mv-pantalla" no vuelve a animar la entrada encima de la del padre. */
+    <div className={sinEncabezado ? 'vta' : 'cli srv vta mv-pantalla'}>
+      {/*
+        DENTRO DEL MOSTRADOR SE VA EL TITULO, PERO NO LAS ACCIONES.
+
+        El titulo lo pinta el padre. El buscador de ventas y los dos botones si
+        son de aqui, y esconderlos junto con el encabezado los habria dejado
+        inalcanzables. Sin el bloque de texto al lado, la fila se acomoda sola.
+      */}
       <header className="pz-encabezado">
+        {sinEncabezado ? null : (
         <div className="pz-encabezado__texto">
           <h2 className="tt-pagina">Ventas</h2>
           <p className="tt-lema">Registra ventas de servicios, productos y cursos</p>
         </div>
+        )}
         <div className="pz-encabezado__acciones">
           <button
             type="button"
@@ -461,6 +510,9 @@ export function PuntoDeVenta() {
         </div>
       </header>
 
+      {/* La barra tambien es del padre cuando hay padre: seis pestañas arriba y
+          cuatro aqui debajo serian dos barras diciendo cosas distintas. */}
+      {sinEncabezado ? null : (
       <div className="pz-pestanas" role="tablist" aria-label="Secciones de Ventas">
         {PESTANAS.map((p) => (
           <button
@@ -475,6 +527,7 @@ export function PuntoDeVenta() {
           </button>
         ))}
       </div>
+      )}
 
       {/* LA CONFIRMACION DE QUE SI QUEDO. Sin ella, la pantalla se vacia y
           quien cobro no sabe si paso o si perdio la captura. */}
