@@ -116,6 +116,17 @@ export function MovimientosDelDia({
       <p className="tt-secundario">
         El total es el neto: lo que entró menos lo que salió, con todas las formas de pago.
       </p>
+      {/*
+        SE DICE DE DONDE VIENE CADA RENGLON, y esta linea no es un adorno.
+        Mirando la pantalla no habia forma de saber que las ventas se anotan
+        SOLAS —la base las mete en la misma operacion que cobra— y Caja parecia
+        un modulo que repetia lo de Ventas. Solo se captura a mano lo que no es
+        una venta: poner cambio, sacar efectivo para pagar algo.
+      */}
+      <p className="tt-secundario">
+        Las ventas se anotan solas al cobrarlas en Ventas. Aquí solo se captura a mano lo
+        que no es una venta.
+      </p>
     </section>
   );
 }

@@ -2183,8 +2183,24 @@ function loQueTodaviaEsDeUnModulo(): string {
 /* ---------------------------------------------------------------- */
 /* El anillo de formas de pago                                       */
 /* ---------------------------------------------------------------- */
+/*
+ * EL PASTEL LLENA SU TARJETA, y esto es la segunda mitad de un arreglo que a
+ * medias quedo peor que antes.
+ *
+ * El par "Metodos de pago" y "Movimientos de la caja" va lado a lado, y el
+ * segundo es bastante mas alto. Con las tarjetas de alto natural quedaban 190
+ * pixeles de blanco DEBAJO del pastel; al igualarlas, el blanco se metio DENTRO
+ * de su tarjeta — el mismo hueco, movido de sitio. Un hueco tiene que ser aire,
+ * no espacio que sobro porque algo no lleno su caja.
+ *
+ * Asi que el contenido crece con la tarjeta y se centra: lo que sobra se
+ * reparte arriba y abajo del pastel y se lee como aire alrededor de una
+ * grafica, que es lo que de verdad es.
+ */
 .caja-pastel {
   display: flex; flex-wrap: wrap; align-items: center; gap: ${v('espacio-4')}; min-width: 0;
+  flex: 1;
+  justify-content: center;
 }
 .caja-anillo { position: relative; flex: none; width: 150px; height: 150px; }
 .caja-anillo svg { width: 100%; height: 100%; }

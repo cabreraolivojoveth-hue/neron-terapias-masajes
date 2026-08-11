@@ -278,7 +278,16 @@ export function Cajon() {
 
           <div className="pz-cuerpo">
             <div className="caja-columna">
-              <div className="vta-dos">
+              {/*
+                LA PIEZA COMPARTIDA, y no la de Ventas prestada.
+
+                Estaba con "vta-dos", que lleva "align-items: start": la tarjeta
+                mas corta del par no se estiraba y debajo de "Metodos de pago"
+                quedaban 190 pixeles de blanco contra la de al lado. "pz-dos"
+                estira las dos al mismo alto, que es lo que un par de tarjetas
+                lado a lado tiene que hacer — un hueco asi no es aire, es sobra.
+              */}
+              <div className="pz-dos">
                 <MetodosDePago
                   metodos={resumen.datos?.metodos ?? []}
                   totalCentavos={resumen.datos?.totalEntradasCentavos ?? 0}
