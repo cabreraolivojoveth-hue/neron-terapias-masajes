@@ -804,7 +804,23 @@ export function piezas(): string {
 /* Un campo con su etiqueta encima. */
 .pz-campo { display: flex; flex-direction: column; gap: ${v('espacio-1')}; min-width: 0; }
 .pz-campo--bloque { width: 100%; }
-.pz-campo select, .pz-campo input[type='date'] {
+/*
+ * LOS SELECTORES SE VISTEN AQUI, Y SE APUNTAN POR ETIQUETA A PROPOSITO.
+ *
+ * Hay veintisiete en trece pantallas —"Todas las categorias", "10 por pagina",
+ * "Metodo de pago"— y salian con la flecha y el marco que dibuja el SISTEMA
+ * OPERATIVO: gris, cuadrada, distinta en cada maquina, y sin ninguna relacion
+ * con el resto del Centro. Al lado de un boton del diseño se notaba que eran de
+ * otro juego.
+ *
+ * Se apuntan como "select" y no con una clase para no depender de que veintisiete
+ * sitios se acuerden de ponerla — y para que el proximo que se escriba salga bien
+ * sin que nadie haga nada. Agenda, por ejemplo, envuelve los suyos en su propia
+ * clase y aun asi quedan iguales que los demas.
+ */
+.pz-campo select,
+.pz-campo input[type='date'],
+select {
   min-height: 42px;
   padding: 0 ${v('espacio-3')};
   border: 1px solid ${c('borde-tarjeta')};
@@ -813,10 +829,60 @@ export function piezas(): string {
   color: ${v('texto')};
   font-family: ${v('familia')};
   font-size: ${v('texto-chico')};
+  transition: border-color ${v('movimiento-curva')} ${v('movimiento-instantaneo')},
+              box-shadow ${v('movimiento-curva')} ${v('movimiento-instantaneo')},
+              background ${v('movimiento-curva')} ${v('movimiento-instantaneo')};
 }
-.pz-campo select:focus-visible, .pz-campo input:focus-visible {
-  outline: ${v('foco')}; outline-offset: 2px;
+
+/*
+ * LA FLECHA SE DIBUJA CON DOS DEGRADADOS, no con una imagen.
+ *
+ * Un SVG incrustado tendria que llevar su color escrito dentro, y en este
+ * proyecto los colores salen de los tokens — ademas de que un color fijo se ve
+ * mal en el tema oscuro. Dos degradados en angulo forman la punta y toman
+ * "currentColor", asi que la flecha cambia de color con el texto: se aclara
+ * cuando el selector esta apagado y se pone del color de la marca al enfocarlo.
+ */
+/*
+ * El selector de la flecha REPITE ".pz-campo select" a proposito. La regla de
+ * arriba usa la forma corta "background", que de paso pone "background-image:
+ * none" — y con ".pz-campo select" gana en especificidad a un "select" pelon.
+ * Resultado: la flecha desaparecia justo en los veintidos selectores que SI
+ * estan dentro de un campo. Se vio en la captura: cajas correctas y sin punta.
+ */
+.pz-campo select, select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  /*
+   * La punta va SUAVE, no a todo color: es una pista de que se puede abrir, no
+   * un dato. A todo color competia con el texto de al lado, que es lo que de
+   * verdad hay que leer. Y se separa 15px del borde para no pegarse a la letra.
+   */
+  background-image:
+    linear-gradient(45deg, transparent 50%, color-mix(in srgb, currentColor 50%, transparent) 50%),
+    linear-gradient(135deg, color-mix(in srgb, currentColor 50%, transparent) 50%, transparent 50%);
+  background-position:
+    calc(100% - 19px) calc(50% - 1px),
+    calc(100% - 15px) calc(50% - 1px);
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  cursor: pointer;
 }
+@media (hover: hover) {
+  .pz-campo select:hover:not(:disabled),
+  select:hover:not(:disabled) { background-color: ${v('superficie-tenue')}; }
+}
+/* Enfocado se marca con el color de la marca Y con un halo, igual que el
+   buscador: el sistema operativo dibuja el suyo distinto en cada maquina. */
+select:focus-visible,
+.pz-campo input[type='date']:focus-visible {
+  outline: none;
+  border-color: ${v('marca')};
+  box-shadow: 0 0 0 3px ${v('marca-tenue')};
+}
+select:disabled { opacity: 0.5; cursor: default; }
+
 .pz-campo--corto select { min-height: 36px; font-size: ${v('texto-micro')}; }
 
 /* El boton que solo lleva un icono: menu de acciones, quitar, cerrar. */

@@ -2,7 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { estilosDelProducto } from '../src/estilos.js';
 import { cimientos } from '../src/estilo/cimientos.js';
 
-const css = estilosDelProducto();
+/**
+ * SE MIRA LA HOJA SIN COMENTARIOS, y esta linea existe porque la prueba me
+ * grito en falso.
+ *
+ * El buscador de declaraciones encontro la palabra "color:" DENTRO de un
+ * comentario —"a todo color: es una pista de que se puede abrir"— y acuso a un
+ * texto en prosa de ser un color escrito a mano. Es exactamente la leccion que
+ * las guardias ya tenian escrita: una guardia que se cree los comentarios grita
+ * en falso, y una guardia que grita en falso se termina apagando.
+ */
+const css = estilosDelProducto().replace(/\/\*[\s\S]*?\*\//g, '');
 
 describe('los estilos del producto no traen colores propios', () => {
   it('ni un color escrito a mano', () => {
