@@ -180,7 +180,7 @@ function Tarjeta({ c }: { readonly c: Cifra }) {
 
 export function CifrasDeArriba({ resumen }: { readonly resumen: ResumenDeClientes | null }) {
   return (
-    <section className="pz-cifras" aria-label="Resumen de clientes">
+    <section className="pz-cifras mv-escalonado" aria-label="Resumen de clientes">
       {cifrasDeArriba(resumen).map((c) => (
         <Tarjeta key={c.clave} c={c} />
       ))}
@@ -197,7 +197,7 @@ export function ResumenGeneral({ resumen }: { readonly resumen: ResumenDeCliente
       {/* Cinco cifras, y por eso "cli-resumen__cifras" y no la rejilla de
           siempre: con el minimo de doscientos treinta caben cuatro y la quinta
           se quedaba sola en una fila, con tres huecos al lado. */}
-      <div className="pz-cifras cli-resumen__cifras">
+      <div className="pz-cifras cli-resumen__cifras mv-escalonado">
         {cifrasDelPie(resumen).map((c) => (
           <Tarjeta key={c.clave} c={c} />
         ))}

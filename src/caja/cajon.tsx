@@ -206,7 +206,7 @@ export function Cajon() {
   }
 
   return (
-    <div className="cli srv caja">
+    <div className="cli srv caja mv-pantalla">
       <header className="pz-encabezado">
         <div className="pz-encabezado__texto">
           <h2 className="tt-pagina">Caja</h2>

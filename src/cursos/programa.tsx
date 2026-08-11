@@ -286,7 +286,7 @@ export function Programa() {
     bajaDeMaterial.error;
 
   return (
-    <div className="cli srv cur">
+    <div className="cli srv cur mv-pantalla">
       <header className="pz-encabezado">
         <div className="pz-encabezado__texto">
           <h2 className="tt-pagina">Cursos</h2>

@@ -76,7 +76,7 @@ export function cifrasDeInventario(r: ResumenDeProductos | null): CifraDeInventa
 
 export function CifrasDeInventario({ resumen }: { readonly resumen: ResumenDeProductos | null }) {
   return (
-    <section className="pz-cifras" aria-label="Resumen del inventario">
+    <section className="pz-cifras mv-escalonado" aria-label="Resumen del inventario">
       {cifrasDeInventario(resumen).map((c) => (
         <div key={c.clave} className={`pz-cifra pz-cifra--${c.categoria}`}>
           <span className="pz-cifra__icono" aria-hidden="true">

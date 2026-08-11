@@ -577,9 +577,21 @@ export function piezas(): string {
   display: flex; align-items: flex-start; gap: ${v('espacio-4')};
   flex-wrap: wrap; min-width: 0;
 }
-.pz-encabezado__texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pz-encabezado__texto { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+/*
+ * LA FILA DE ACCIONES TIENE QUE PODER ENCOGER. Con "flex: none" medía lo que
+ * midieran sus botones y en un telefono se salia ciento ochenta pixeles por la
+ * derecha: la pagina ENTERA se corria de lado, que es el defecto que mas se
+ * siente y el que mas veces vuelve.
+ *
+ * El "max-width" no sobra: sin el, el minimo del buscador de adentro empuja al
+ * contenedor por encima de su sitio aunque pueda envolver.
+ */
 .pz-encabezado__acciones {
-  display: flex; align-items: center; gap: ${v('espacio-2')}; flex-wrap: wrap; flex: none;
+  display: flex; align-items: center; gap: ${v('espacio-2')}; flex-wrap: wrap;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Cuerpo con panel lateral: la lista toma lo que sobra. */

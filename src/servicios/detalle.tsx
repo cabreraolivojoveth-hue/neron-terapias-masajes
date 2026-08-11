@@ -130,7 +130,7 @@ export function DetalleDeServicio({
   }
 
   return (
-    <aside className="pz-tarjeta srv-detalle" aria-label="Detalle del servicio">
+    <aside className="pz-tarjeta srv-detalle mv-panel" aria-label="Detalle del servicio">
       <header className="pz-cabecera">
         <h3 className="tt-tarjeta">Detalle del servicio</h3>
         <button

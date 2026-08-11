@@ -65,7 +65,7 @@ export function Proveedores({
           precio, para poder comparar.
         </p>
       ) : (
-        <ul className="pz-lista">
+        <ul className="pz-lista mv-escalonado">
           {ficha.proveedores.map((p) => (
             <li key={p.id} className="pz-renglon pz-renglon--quieto">
               <span className="pz-ficha" aria-hidden="true">

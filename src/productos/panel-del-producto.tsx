@@ -110,7 +110,7 @@ export function PanelDelProducto({
   const margen = ficha ? margenDe(ficha.precioCentavos, ficha.costoCentavos) : null;
 
   return (
-    <aside className="pz-tarjeta srv-detalle" aria-label="Detalle del producto">
+    <aside className="pz-tarjeta srv-detalle mv-panel" aria-label="Detalle del producto">
       <header className="pz-cabecera">
         <h3 className="tt-tarjeta">Detalle del producto</h3>
         <button

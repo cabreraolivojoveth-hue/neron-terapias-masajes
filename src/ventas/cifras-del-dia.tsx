@@ -99,7 +99,7 @@ export function EstadisticasDelDia({
         </button>
       </header>
 
-      <div className="vta-cifras">
+      <div className="vta-cifras mv-escalonado">
         {cifrasDelDia(resumen).map((c) => (
           <div key={c.clave} className={`pz-cifra pz-cifra--${c.categoria} vta-cifra`}>
             <span className="pz-cifra__icono" aria-hidden="true">
@@ -165,7 +165,7 @@ export function UltimasDelDia({
       ) : ventas.length === 0 ? (
         <p className="pz-vacio__texto">No hay ventas registradas hoy.</p>
       ) : (
-        <ul className="vta-ultimas">
+        <ul className="vta-ultimas mv-escalonado">
           {ventas.slice(0, 5).map((v) => (
             <li key={v.id} className="vta-ultima">
               <button type="button" className="vta-ultima__abrir" onClick={() => onAbrir(v.id)}>

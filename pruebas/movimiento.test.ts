@@ -80,3 +80,61 @@ describe('ni un color escrito a mano', () => {
     expect(css).not.toMatch(/\brgba?\(/);
   });
 });
+
+describe('lo que se mueve, y lo que a proposito no', () => {
+  it('todo lo que anima se declara con nombre', () => {
+    // Se declaran con nombre para poder apagarlas TODAS de un golpe en el
+    // bloque de prefers-reduced-motion, sin acordarse regla por regla.
+    const nombres = [...css.matchAll(/@keyframes\s+([a-z-]+)/g)].map((m) => m[1]!);
+    for (const usada of [...css.matchAll(/animation:\s*([a-z-]+)/g)].map((m) => m[1]!)) {
+      expect(nombres, `se anima "${usada}" y no esta declarada`).toContain(usada);
+    }
+  });
+
+  it('las duraciones salen de los tokens, no escritas a mano', () => {
+    /*
+     * Una animacion de medio segundo se disfruta las tres primeras veces y
+     * estorba las otras doscientas del dia. El limite no se vigila numero por
+     * numero: se vigila que NINGUNA duracion se escriba suelta, porque asi la
+     * unica forma de alargar algo es mover el token — y ahi se piensa dos
+     * veces.
+     *
+     * La unica excepcion es el latido del punto de aviso, que no es una
+     * entrada sino un aviso que se repite.
+     */
+    for (const [decl] of css.matchAll(/animation:[^;]+;/g)) {
+      if (decl.includes('mv-late')) continue;
+      expect(decl, `duracion escrita a mano: ${decl.trim()}`).toMatch(/var\(--neron-movimiento-/);
+    }
+  });
+
+  it('el ultimo escalon del escalonado no se hace esperar', () => {
+    // Si el octavo renglon entrara medio segundo despues del primero, la lista
+    // se sentiria lenta en vez de viva.
+    const esperas = [...css.matchAll(/animation-delay:\s*(\d+)ms/g)].map((m) => Number(m[1]));
+    expect(esperas.length).toBeGreaterThan(4);
+    expect(Math.max(...esperas)).toBeLessThanOrEqual(300);
+  });
+
+  it('el escalonado no pasa de ocho pasos', () => {
+    // Mas alla, el ultimo renglon tarda tanto que se siente lento en vez de
+    // vivo. El octavo y los siguientes comparten el mismo retraso.
+    expect(css).toContain('.mv-escalonado > *:nth-child(n+8)');
+  });
+
+  it('se apaga TODO para quien pide menos movimiento', () => {
+    const apagado = css.match(/@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\}\s*\}/)?.[0] ?? '';
+    expect(apagado).toContain('animation-duration: 0.001ms !important');
+    expect(apagado).toContain('transition-duration: 0.001ms !important');
+    // El selector universal: si se listaran las clases una por una, la
+    // siguiente que se agregue se quedaria fuera y nadie lo notaria.
+    expect(apagado).toMatch(/\*,\s*\*::before,\s*\*::after/);
+  });
+
+  it('levantar solo se ofrece donde hay puntero', () => {
+    // En una tableta no hay "pasar por encima": la tarjeta se quedaria
+    // levantada despues de tocarla.
+    const conPuntero = css.match(/@media \(hover: hover\)\s*\{[\s\S]*?\n\}/g)?.join('\n') ?? '';
+    expect(conPuntero).toContain('.mv-levanta:hover');
+  });
+});

@@ -60,6 +60,13 @@ export function movimiento(): string {
   50%      { transform: scale(1.12); }
 }
 
+/* La rayita del renglon activo del menu. Crece desde el centro, que es de
+   donde parece que sale. */
+@keyframes mv-rayita {
+  from { transform: translateY(-50%) scaleY(0); }
+  to   { transform: translateY(-50%) scaleY(1); }
+}
+
 /* ---------------------------------------------------------------- */
 /* ENTRADAS                                                          */
 /* ---------------------------------------------------------------- */
@@ -108,6 +115,36 @@ export function movimiento(): string {
               color ${v('movimiento-curva')} ${v('movimiento-instantaneo')};
 }
 .pz-renglon:hover .pz-renglon__flecha { transform: translateX(3px); color: ${v('marca')}; }
+
+/*
+ * El boton principal se levanta: es el que cierra la operacion en cada
+ * pantalla —cobrar, guardar, dar de alta— y tiene que sentirse el mas firme de
+ * todos. Al apretarlo baja del todo, que es lo que confirma el toque en una
+ * tableta donde no hay puntero.
+ */
+@media (hover: hover) {
+  .pz-boton--principal:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: ${c('sombra-alta')};
+  }
+}
+.pz-boton--principal:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
+
+/* El cuadro de icono de una tarjeta que SI se puede tocar crece con ella. */
+@media (hover: hover) {
+  .mv-levanta .pz-cifra__icono, .mv-levanta .pz-ficha {
+    transition: transform ${v('movimiento-curva')} ${v('movimiento-instantaneo')};
+  }
+  .mv-levanta:hover .pz-cifra__icono, .mv-levanta:hover .pz-ficha { transform: scale(1.06); }
+}
+
+/*
+ * LAS PESTAÑAS Y LOS SEGMENTOS ya traen su transicion; lo que faltaba era el
+ * contenido que cambia debajo. Al cambiar de pestaña, lo nuevo entra subiendo:
+ * sin eso, la pantalla se sustituye de golpe y hay que releerla entera para
+ * saber que cambio.
+ */
+.mv-cambia { animation: mv-sube ${v('movimiento-instantaneo')} ${v('movimiento-curva')} both; }
 
 /* ---------------------------------------------------------------- */
 /* PANELES Y DIALOGOS                                                */

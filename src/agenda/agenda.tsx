@@ -238,7 +238,7 @@ export function Agenda() {
   };
 
   return (
-    <div className="agenda">
+    <div className="agenda mv-pantalla">
       <header className="agenda-encabezado">
         <span className="agenda-encabezado__icono" aria-hidden="true">
           <Icono nombre="calendario" lado={26} />

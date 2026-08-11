@@ -72,19 +72,40 @@ export function armadura(): string {
 }
 .arm-enlace:hover { background: ${v('superficie-tenue')}; color: ${v('texto')}; }
 .arm-enlace:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
-.arm-enlace__icono { flex: none; display: flex; color: ${v('texto-tenue')}; transition: color ${v('movimiento-curva')} ${v('movimiento-instantaneo')}; }
-.arm-enlace:hover .arm-enlace__icono { color: ${v('texto-suave')}; }
+.arm-enlace__icono {
+  flex: none; display: flex; color: ${v('texto-tenue')};
+  transition: color ${v('movimiento-curva')} ${v('movimiento-instantaneo')},
+              transform ${v('movimiento-curva')} ${v('movimiento-instantaneo')};
+}
+.arm-enlace:hover .arm-enlace__icono { color: ${v('texto-suave')}; transform: scale(1.1); }
 .arm-enlace__texto { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* El activo: fondo tintado Y color de marca. Solo el color no alcanza cuando
    la pantalla se ve con sol encima, que es como se ve la del mostrador. */
 .arm-enlace--activo {
+  position: relative;
   background: ${v('marca-tenue')};
   color: ${v('marca')};
   font-weight: ${v('peso-fuerte')};
 }
+/*
+ * LA RAYITA DE LA IZQUIERDA CRECE al llegar. Es lo unico del menu que se mueve
+ * al cambiar de modulo, y basta: dice a donde se fue el foco sin que nada
+ * salte de sitio. Un menu que se reacomoda al navegar obliga a volver a
+ * buscar cada renglon.
+ */
+.arm-enlace--activo::before {
+  content: '';
+  position: absolute; left: 0; top: 50%;
+  width: 3px; height: 60%;
+  border-radius: ${c('radio-pastilla')};
+  background: ${v('marca')};
+  transform: translateY(-50%) scaleY(0);
+  animation: mv-rayita ${v('movimiento-normal')} ${v('movimiento-curva')} both;
+}
 .arm-enlace--activo .arm-enlace__icono { color: ${v('marca')}; }
 .arm-enlace--activo:hover { background: ${v('marca-tenue')}; color: ${v('marca')}; }
+.arm-enlace--activo:hover .arm-enlace__icono { transform: none; }
 
 /* ---------------------------------------------------------------- */
 /* EL PIE DE LA BARRA: la cuenta y el soporte                        */

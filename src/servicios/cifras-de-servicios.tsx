@@ -94,7 +94,7 @@ export function cifrasDeServicios(r: ResumenDeServicios | null): CifraDeServicio
 
 export function CifrasDeServicios({ resumen }: { readonly resumen: ResumenDeServicios | null }) {
   return (
-    <section className="pz-cifras" aria-label="Resumen del catálogo">
+    <section className="pz-cifras mv-escalonado" aria-label="Resumen del catálogo">
       {cifrasDeServicios(resumen).map((c) => (
         <div key={c.clave} className={`pz-cifra pz-cifra--${c.categoria}`}>
           <span className="pz-cifra__icono" aria-hidden="true">

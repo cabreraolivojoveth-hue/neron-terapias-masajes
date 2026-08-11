@@ -414,7 +414,7 @@ export function PuntoDeVenta() {
   const listaDeLaPestana = pestana === 'dia' ? delDiaFiltrado : historial;
 
   return (
-    <div className="cli srv vta">
+    <div className="cli srv vta mv-pantalla">
       <header className="pz-encabezado">
         <div className="pz-encabezado__texto">
           <h2 className="tt-pagina">Ventas</h2>
@@ -501,6 +501,13 @@ export function PuntoDeVenta() {
         </div>
       ) : null}
 
+      {/*
+        LA LLAVE ES LA PESTAÑA, y por eso lo de abajo se vuelve a montar al
+        cambiarla: es lo que hace que la entrada se dispare sola. Sin ella,
+        React reaprovecha los nodos, la animacion no se repite y la pantalla se
+        sustituye de golpe — hay que releerla entera para saber que cambio.
+      */}
+      <div className="mv-cambia" key={pestana}>
       {pestana === 'nueva' ? (
         <div className="pz-cuerpo">
           <div className="vta-columna">
@@ -667,6 +674,7 @@ export function PuntoDeVenta() {
           />
         </div>
       )}
+      </div>
 
       {/* DAR DE ALTA USA LA FICHA DE CLIENTES, no un formulario propio: si
           fueran dos, uno se quedaria sin la comprobacion de duplicados. */}

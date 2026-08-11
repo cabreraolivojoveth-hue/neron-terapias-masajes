@@ -151,7 +151,7 @@ export function PanelDelCurso({
   }
 
   return (
-    <aside className="pz-tarjeta srv-detalle" aria-label="Detalle del curso">
+    <aside className="pz-tarjeta srv-detalle mv-panel" aria-label="Detalle del curso">
       <header className="pz-cabecera">
         <h3 className="tt-tarjeta">Detalle del curso</h3>
         <button

@@ -199,7 +199,7 @@ export function Directorio() {
   const cargandoLista = lista.estado === 'cargando' && lista.datos === null;
 
   return (
-    <div className="cli">
+    <div className="cli mv-pantalla">
       <header className="pz-encabezado">
         <div className="pz-encabezado__texto">
           <h2 className="tt-pagina">Clientes</h2>

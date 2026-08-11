@@ -236,7 +236,7 @@ export function Catalogo() {
   const enFicha = ficha.datos;
 
   return (
-    <div className="cli srv">
+    <div className="cli srv mv-pantalla">
       <header className="pz-encabezado">
         <div className="pz-encabezado__texto">
           <h2 className="tt-pagina">Servicios</h2>

@@ -101,7 +101,7 @@ export function AdministrarCategorias({
             ninguna.
           </p>
         ) : (
-          <ul className="pz-lista">
+          <ul className="pz-lista mv-escalonado">
             {categorias.map((c) => (
               <li key={c.id} className="pz-renglon pz-renglon--quieto">
                 <span

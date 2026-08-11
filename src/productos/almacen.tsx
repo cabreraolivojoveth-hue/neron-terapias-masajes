@@ -218,7 +218,7 @@ export function Almacen() {
   const errorEnPanel = ajuste.error ?? ligado.error ?? desligado.error;
 
   return (
-    <div className="cli srv prd">
+    <div className="cli srv prd mv-pantalla">
       <header className="pz-encabezado">
         <div className="pz-encabezado__texto">
           <h2 className="tt-pagina">Productos</h2>

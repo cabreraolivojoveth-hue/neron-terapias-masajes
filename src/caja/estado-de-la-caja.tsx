@@ -133,7 +133,7 @@ export function EstadoDeLaCaja({
           <h3 className="tt-tarjeta" id="caja-acciones-titulo">
             Acciones rápidas
           </h3>
-          <div className="caja-acciones">
+          <div className="caja-acciones mv-escalonado">
             <button type="button" className="pz-boton pz-boton--ancho" onClick={onIngreso}>
               <Icono nombre="mas" lado={16} /> Registrar ingreso
             </button>
@@ -180,7 +180,7 @@ export function CifrasDeLaCaja({ caja }: { readonly caja: CajaAbierta }) {
   ];
 
   return (
-    <section className="pz-cifras" aria-label="Cifras de la caja">
+    <section className="pz-cifras mv-escalonado" aria-label="Cifras de la caja">
       {cifras.map((c) => (
         <div key={c.clave} className={`pz-cifra pz-cifra--${c.categoria}`}>
           <span className="pz-cifra__icono" aria-hidden="true">

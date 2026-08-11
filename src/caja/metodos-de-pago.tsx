@@ -124,7 +124,7 @@ export function MetodosDePago({
           </div>
 
           {/* LA LISTA NO ES DECORACION: es la version legible del dibujo. */}
-          <ul className="caja-leyenda">
+          <ul className="caja-leyenda mv-escalonado">
             {rebanadas.map((r) => (
               <li key={r.metodo} className="caja-leyenda__renglon">
                 <span

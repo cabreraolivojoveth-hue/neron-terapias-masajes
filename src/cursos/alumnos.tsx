@@ -204,7 +204,7 @@ export function Alumnos({
                 : 'Escribe un nombre para buscarlo en tu lista de clientes.'}
             </p>
           ) : (
-            <ul className="pz-lista">
+            <ul className="pz-lista mv-escalonado">
               {clientes.map((c) => (
                 <li key={c.id} className="pz-renglon pz-renglon--quieto">
                   <span className="pz-inicial" aria-hidden="true">

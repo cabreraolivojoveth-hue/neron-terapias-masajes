@@ -93,7 +93,7 @@ export function cifrasDeCursos(r: ResumenDeCursos | null): CifraDeCurso[] {
 
 export function CifrasDeCursos({ resumen }: { readonly resumen: ResumenDeCursos | null }) {
   return (
-    <section className="pz-cifras" aria-label="Resumen de cursos">
+    <section className="pz-cifras mv-escalonado" aria-label="Resumen de cursos">
       {cifrasDeCursos(resumen).map((c) => (
         <div key={c.clave} className={`pz-cifra pz-cifra--${c.categoria}`}>
           <span className="pz-cifra__icono" aria-hidden="true">

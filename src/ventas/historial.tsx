@@ -244,7 +244,7 @@ export function Cotizaciones({
           </p>
         </div>
       ) : (
-        <ul className="pz-lista">
+        <ul className="pz-lista mv-escalonado">
           {cotizaciones.map((c) => (
             <li key={c.id} className="pz-renglon pz-renglon--quieto">
               <span className="pz-ficha" aria-hidden="true">

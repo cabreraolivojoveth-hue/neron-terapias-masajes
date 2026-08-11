@@ -126,7 +126,7 @@ export function PanelDeCita({
    */
   if (cita.tipo === 'sesion') {
     return (
-      <aside className="agenda-panel" aria-label="Sesión de curso seleccionada">
+      <aside className="agenda-panel mv-panel" aria-label="Sesión de curso seleccionada">
         <div className="agenda-panel__barra">
           <span className="agenda-panel__titulo">Sesión de curso</span>
           <span className="agenda-panel__estado agenda-estado--curso">Curso</span>
@@ -182,7 +182,7 @@ export function PanelDeCita({
   const terminada = cita.estado === 'completada' || cita.estado === 'cancelada';
 
   return (
-    <aside className="agenda-panel" aria-label="Cita seleccionada">
+    <aside className="agenda-panel mv-panel" aria-label="Cita seleccionada">
       <div className="agenda-panel__barra">
         <span className="agenda-panel__titulo">Cita seleccionada</span>
         <span className={`agenda-panel__estado agenda-estado--${cita.estado}`}>
