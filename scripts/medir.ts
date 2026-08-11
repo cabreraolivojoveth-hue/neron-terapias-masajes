@@ -13,27 +13,13 @@
  * la hoja de estilos, porque casi siempre el culpable es la HERENCIA.
  */
 
-import { spawn, type ChildProcess } from 'node:child_process';
-import { join } from 'node:path';
 import { chromium } from 'playwright';
+import { rutaDelNavegador } from './navegador.js';
+import { direccionDelModulo, levantarLaVitrina } from './servidor-de-la-vitrina.js';
 
-const RAIZ = join(import.meta.dirname, '..');
 const PUERTO = 5198;
 const ANCHO = 1536;
 const ALTO = 1024;
-
-async function esperarAlServidor(intentos = 60): Promise<void> {
-  for (let i = 0; i < intentos; i += 1) {
-    try {
-      const r = await fetch(`http://localhost:${PUERTO}/pruebas-visuales/index.html`);
-      if (r.ok) return;
-    } catch {
-      /* todavia no levanta */
-    }
-    await new Promise((s) => setTimeout(s, 500));
-  }
-  throw new Error('La vitrina no levanto.');
-}
 
 async function principal(): Promise<void> {
   const [modulo, ...selectores] = process.argv.slice(2);
@@ -42,25 +28,15 @@ async function principal(): Promise<void> {
     process.exit(1);
   }
 
-  const servidor: ChildProcess = spawn(
-    'npx',
-    ['vite', '--config', 'pruebas-visuales/vite.config.ts', '--port', String(PUERTO)],
-    { cwd: RAIZ, stdio: 'ignore' },
-  );
+  const servidor = await levantarLaVitrina(PUERTO);
 
   try {
-    await esperarAlServidor();
-    const navegador = await chromium.launch({
-      executablePath: process.env['CHROMIUM'] ?? '/opt/pw-browsers/chromium',
-    });
+    const navegador = await chromium.launch({ executablePath: rutaDelNavegador() });
     const pagina = await navegador.newPage({
       viewport: { width: ANCHO, height: ALTO },
       deviceScaleFactor: 1,
     });
-    await pagina.goto(
-      `http://localhost:${PUERTO}/pruebas-visuales/index.html?modulo=${modulo}`,
-      { waitUntil: 'networkidle' },
-    );
+    await pagina.goto(direccionDelModulo(PUERTO, modulo), { waitUntil: 'networkidle' });
     await pagina.waitForTimeout(900);
 
     for (const selector of selectores) {

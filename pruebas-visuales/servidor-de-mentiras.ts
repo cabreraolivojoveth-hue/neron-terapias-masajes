@@ -216,7 +216,51 @@ const RESPUESTAS: Readonly<Record<string, unknown>> = {
     total: 6, activos: 4, nuevosDelMes: 2, frecuentes: 3,
     visitasParaSerFrecuente: 5, cumpleanos: [],
   },
-  expediente_del_cliente: null,
+  /*
+   * EL EXPEDIENTE TIENE QUE CONTESTAR ALGO, o media pantalla de Clientes no se
+   * puede fotografiar.
+   *
+   * Estaba en `null` y el efecto era peor que no tener foto: la columna de en
+   * medio se quedaba con siluetas grises latiendo para siempre. Ese hallazgo
+   * destapo un fallo del producto —el expediente no distinguia "cargando" de
+   * "no llego nada"— que se corrigio en `expediente.tsx`.
+   *
+   * Contesta SIEMPRE el mismo, sin mirar el id que le pidieron: lo que se
+   * compara con el diseño es la forma de la ficha, no de quien es.
+   */
+  expediente_del_cliente: {
+    id: uuid(200),
+    nombre: PERSONAS[0],
+    telefono: '646 100 2000',
+    correo: 'contacto0@ejemplo.mx',
+    fechaNacimiento: '1990-03-15',
+    notas:
+      'Prefiere sesiones por la mañana y camilla baja. Trae su propia toalla.\n' +
+      'Le sienta bien el aroma de lavanda; el de eucalipto le da tos.',
+    clienteDesde: enDias(-540),
+    archivado: false,
+    profesionalId: uuid(900),
+    profesional: 'Quien atiende',
+    visitas: 12,
+    canceladas: 1,
+    noAsistio: 0,
+    ultimaVisita: { fecha: enDias(-9), servicio: 'Terapia de Relajación' },
+    proximaCita: {
+      id: uuid(810),
+      fecha: enDias(4),
+      hora: '10:00:00',
+      servicio: 'Alineación Energética',
+    },
+    compras: 7,
+    totalGastado: 625000,
+    adeudo: 0,
+    cursos: 2,
+    servicios: [
+      { nombre: 'Terapia de Relajación', veces: 6 },
+      { nombre: 'Alineación Energética', veces: 4 },
+      { nombre: 'Masaje Descontracturante', veces: 2 },
+    ],
+  },
   historial_del_cliente: { completadas: 0, canceladas: 0, noAsistio: 0, ultima: null, proxima: null },
 
   /* --- Servicios y Cursos ---------------------------------------- */

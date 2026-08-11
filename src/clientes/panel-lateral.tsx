@@ -1,11 +1,13 @@
 /**
- * EL PANEL DE LA DERECHA: filtros rapidos, seguimientos y cumpleaños.
+ * LOS FILTROS DE LA LISTA Y EL PANEL DE APOYO DE CLIENTES.
  *
- * LOS TRES CONSULTAN, NINGUNO GUARDA.
+ * Aqui viven dos cosas que antes eran una sola tarjeta pegada a la derecha, y
+ * se separaron porque no se usan en el mismo momento: los filtros hacen falta
+ * SIEMPRE —tambien con un expediente abierto— y el panel de apoyo solo tiene
+ * sentido MIENTRAS no se esta leyendo a nadie. Cada una explica su motivo
+ * arriba de su funcion.
  *
- * · Los filtros son los MISMOS que la barra de la lista, no otros: si fueran
- *   dos juegos de filtros, poner uno en cada lado dejaria la pantalla
- *   mostrando algo que no cuadra con ninguno de los dos.
+ * LOS DOS CONSULTAN, NINGUNO GUARDA.
  *
  * · Los seguimientos son los recordatorios del modulo Recordatorios cuyo
  *   origen es un cliente. No hay una lista de seguimientos guardada aqui: seria
@@ -53,98 +55,122 @@ export function cuandoEsElCumple(enDias: number): string {
   return `En ${enDias} días`;
 }
 
-export interface PropiedadesDelPanel {
+export interface PropiedadesDeLosFiltros {
   readonly estado: string;
   readonly profesionalId: string;
   readonly rango: string;
   readonly profesionales: readonly ProfesionalBreve[];
-  readonly seguimientos: readonly Seguimiento[];
-  readonly cargandoSeguimientos: boolean;
-  readonly cumpleanos: readonly CumpleanosProximo[];
-  readonly cargandoCumpleanos: boolean;
   onEstado(estado: string): void;
   onProfesional(id: string): void;
   onRango(clave: string): void;
   onLimpiar(): void;
+}
+
+/**
+ * LOS FILTROS VIVEN EN UN SOLO SITIO, y ese sitio es la cabecera de la
+ * pantalla — no la columna de la derecha.
+ *
+ * Estaban en el panel lateral, que ahora solo aparece cuando NO se esta leyendo
+ * a nadie: con un expediente abierto no habia forma de filtrar la lista sin
+ * cerrarlo primero. Y ponerlos en los dos lados era peor: dos juegos de
+ * controles para los mismos tres filtros, cada uno con su propio estado, es
+ * como se acaba con una pantalla que enseña algo que no cuadra con ninguno.
+ *
+ * Se despliegan al apretar "Filtrar", como en el diseño. Tres selectores
+ * puestos siempre ocupan un renglon entero para algo que se usa de vez en
+ * cuando.
+ */
+export function FiltrosRapidos({
+  estado,
+  profesionalId,
+  rango,
+  profesionales,
+  onEstado,
+  onProfesional,
+  onRango,
+  onLimpiar,
+}: PropiedadesDeLosFiltros) {
+  const hayFiltros = Boolean(estado || profesionalId || rango);
+
+  return (
+    <div className="pz-filtros" role="group" aria-label="Filtros de la lista">
+      <label className="pz-campo">
+        <span className="tt-etiqueta">Estado del cliente</span>
+        <select value={estado} onChange={(e) => onEstado(e.target.value)}>
+          <option value="">Todos</option>
+          {ESTADOS_DE_CLIENTE.map((e) => (
+            <option key={e.clave} value={e.clave}>
+              {e.etiqueta}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="pz-campo">
+        <span className="tt-etiqueta">Terapeuta asignado</span>
+        <select value={profesionalId} onChange={(e) => onProfesional(e.target.value)}>
+          <option value="">Todos</option>
+          {profesionales.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nombre}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="pz-campo">
+        <span className="tt-etiqueta">Rango de visitas</span>
+        <select value={rango} onChange={(e) => onRango(e.target.value)}>
+          {RANGOS_DE_VISITAS.map((r) => (
+            <option key={r.clave} value={r.clave}>
+              {r.etiqueta}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <button type="button" className="pz-boton" onClick={onLimpiar} disabled={!hayFiltros}>
+        <Icono nombre="volver" lado={15} /> Limpiar filtros
+      </button>
+    </div>
+  );
+}
+
+export interface PropiedadesDelPanel {
+  readonly seguimientos: readonly Seguimiento[];
+  readonly cargandoSeguimientos: boolean;
+  readonly cumpleanos: readonly CumpleanosProximo[];
+  readonly cargandoCumpleanos: boolean;
   onVerRecordatorios(): void;
   onAbrirSeguimiento(s: Seguimiento): void;
   onVerCumpleanos(): void;
   onAbrirCliente(id: string): void;
 }
 
+/**
+ * Lo que se enseña en la columna de apoyo MIENTRAS NO se lee a nadie.
+ *
+ * Es la respuesta al hueco: sin cliente escogido, esa columna quedaba vacia y
+ * la pantalla se veia a medio cargar. Aqui va lo que de verdad sirve para
+ * decidir a quien abrir — a quien hay que darle seguimiento y quien cumple
+ * años esta semana.
+ */
 export function PanelLateral({
-  estado,
-  profesionalId,
-  rango,
-  profesionales,
   seguimientos,
   cargandoSeguimientos,
   cumpleanos,
   cargandoCumpleanos,
-  onEstado,
-  onProfesional,
-  onRango,
-  onLimpiar,
   onVerRecordatorios,
   onAbrirSeguimiento,
   onVerCumpleanos,
   onAbrirCliente,
 }: PropiedadesDelPanel) {
-  const hayFiltros = Boolean(estado || profesionalId || rango);
-
+  /* Devuelve sus tarjetas SUELTAS, sin envoltorio: la columna la arma quien lo
+     llama, que es quien sabe si abajo va algo mas. Con su propio "pz-apoyo"
+     adentro quedaban dos columnas anidadas y el aire se contaba dos veces. */
   return (
-    <div className="cli-lateral">
-      <section className="pz-tarjeta" aria-labelledby="cli-filtros-titulo">
-        <h3 className="tt-tarjeta" id="cli-filtros-titulo">
-          Filtros rápidos
-        </h3>
-
-        <label className="pz-campo pz-campo--bloque">
-          <span className="tt-etiqueta">Estado del cliente</span>
-          <select value={estado} onChange={(e) => onEstado(e.target.value)}>
-            <option value="">Todos</option>
-            {ESTADOS_DE_CLIENTE.map((e) => (
-              <option key={e.clave} value={e.clave}>
-                {e.etiqueta}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="pz-campo pz-campo--bloque">
-          <span className="tt-etiqueta">Terapeuta asignado</span>
-          <select value={profesionalId} onChange={(e) => onProfesional(e.target.value)}>
-            <option value="">Todos</option>
-            {profesionales.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="pz-campo pz-campo--bloque">
-          <span className="tt-etiqueta">Rango de visitas</span>
-          <select value={rango} onChange={(e) => onRango(e.target.value)}>
-            {RANGOS_DE_VISITAS.map((r) => (
-              <option key={r.clave} value={r.clave}>
-                {r.etiqueta}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <button
-          type="button"
-          className="pz-boton pz-boton--ancho"
-          onClick={onLimpiar}
-          disabled={!hayFiltros}
-        >
-          <Icono nombre="volver" lado={15} /> Limpiar filtros
-        </button>
-      </section>
-
-      <section className="pz-tarjeta" aria-labelledby="cli-seguimientos-titulo">
+    <>
+      <section className="pz-tarjeta pz-tarjeta--apretada" aria-labelledby="cli-seguimientos-titulo">
         <header className="pz-cabecera">
           <h3 className="tt-tarjeta" id="cli-seguimientos-titulo">
             Recordatorios de seguimiento
@@ -162,25 +188,25 @@ export function PanelLateral({
         ) : seguimientos.length === 0 ? (
           <div className="pz-vacio pz-vacio--chico">
             <span className="pz-vacio__icono" aria-hidden="true">
-              <Icono nombre="campana" lado={30} />
+              <Icono nombre="campana" lado={22} />
             </span>
             <p className="pz-vacio__titulo">No hay recordatorios</p>
             <p className="pz-vacio__texto">No tienes seguimientos pendientes</p>
           </div>
         ) : (
-          <ul className="cli-lateral__lista">
+          <ul className="pz-lista">
             {seguimientos.map((s) => (
               <li key={s.id}>
                 <button
                   type="button"
-                  className="cli-lateral__renglon"
+                  className="pz-renglon"
                   onClick={() => onAbrirSeguimiento(s)}
                 >
-                  <span className="cli-lateral__texto">
-                    <span className="cli-lateral__titulo">{s.titulo}</span>
-                    <span className="cli-lateral__nota">{s.detalle ?? s.fecha}</span>
+                  <span className="pz-renglon__cuerpo">
+                    <span className="pz-renglon__titulo">{s.titulo}</span>
+                    <span className="pz-renglon__pie">{s.detalle ?? s.fecha}</span>
                   </span>
-                  <span className="cli-lateral__flecha" aria-hidden="true">
+                  <span className="pz-renglon__flecha" aria-hidden="true">
                     <Icono nombre="flecha" lado={15} />
                   </span>
                 </button>
@@ -190,7 +216,7 @@ export function PanelLateral({
         )}
       </section>
 
-      <section className="pz-tarjeta" aria-labelledby="cli-cumples-titulo">
+      <section className="pz-tarjeta pz-tarjeta--apretada" aria-labelledby="cli-cumples-titulo">
         <header className="pz-cabecera">
           <h3 className="tt-tarjeta" id="cli-cumples-titulo">
             Cumpleaños próximos
@@ -208,27 +234,27 @@ export function PanelLateral({
         ) : cumpleanos.length === 0 ? (
           <div className="pz-vacio pz-vacio--chico">
             <span className="pz-vacio__icono" aria-hidden="true">
-              <Icono nombre="pastel" lado={30} />
+              <Icono nombre="pastel" lado={22} />
             </span>
             <p className="pz-vacio__titulo">No hay cumpleaños próximos</p>
             <p className="pz-vacio__texto">Los cumpleaños aparecerán aquí</p>
           </div>
         ) : (
-          <ul className="cli-lateral__lista">
+          <ul className="pz-lista">
             {cumpleanos.map((c) => (
               <li key={c.id}>
                 <button
                   type="button"
-                  className="cli-lateral__renglon"
+                  className="pz-renglon"
                   onClick={() => onAbrirCliente(c.id)}
                 >
-                  <span className="cli-lateral__texto">
-                    <span className="cli-lateral__titulo">{c.nombre}</span>
-                    <span className="cli-lateral__nota">
+                  <span className="pz-renglon__cuerpo">
+                    <span className="pz-renglon__titulo">{c.nombre}</span>
+                    <span className="pz-renglon__pie">
                       {cuandoEsElCumple(c.enDias)} · {c.fecha}
                     </span>
                   </span>
-                  <span className="cli-lateral__flecha" aria-hidden="true">
+                  <span className="pz-renglon__flecha" aria-hidden="true">
                     <Icono nombre="flecha" lado={15} />
                   </span>
                 </button>
@@ -237,6 +263,6 @@ export function PanelLateral({
           </ul>
         )}
       </section>
-    </div>
+    </>
   );
 }

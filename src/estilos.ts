@@ -1182,479 +1182,125 @@ function loQueTodaviaEsDeUnModulo(): string {
 /* CLIENTES                                                         */
 /* ================================================================ */
 /*
- * Todo va en rejillas que se reacomodan solas y cada hijo lleva su
- * "min-width: 0". Sin eso, un correo largo estira su columna, la rejilla
- * crece, y aparece scroll horizontal en TODA la aplicacion.
+ * LO POCO QUE QUEDA AQUI ES LA MEDIDA DEL ARREGLO.
+ *
+ * Esta seccion tenia noventa y ocho clases: su propia tarjeta, su propia
+ * cifra, su propio boton, su propia tabla, su propio buscador, su propia
+ * paginacion, su propio vacio y su propio error. Todas eran copias de las
+ * piezas compartidas con dos pixeles de diferencia — el error mas caro del
+ * proyecto, escrito una vez mas.
+ *
+ * Ochenta y ocho ya no las usaba NADIE: los componentes se pasaron a "pz-" y el
+ * CSS se quedo aqui, esperando a que alguien lo copiara para el modulo
+ * siguiente. Un estilo muerto no es peso muerto, es una trampa: se ve
+ * razonable, compila, y el dia que se reusa vuelve a partir el sistema en dos.
+ *
+ * Lo que sobrevive es SOLO lo que un directorio tiene y las otras siete
+ * pantallas no.
  */
 .cli { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
 
+/* ---------------------------------------------------------------- */
+/* EL INDICE DE LA IZQUIERDA                                         */
+/* ---------------------------------------------------------------- */
 /*
- * CINCO CIFRAS EN UNA FILA, no cuatro y una huerfana.
- *
- * La rejilla compartida pide doscientos treinta pixeles por cifra: en la
- * tarjeta de "Resumen general" caben cuatro, y la quinta se quedaba sola con
- * tres huecos al lado. Aqui se piden cinco pistas iguales mientras haya ancho,
- * y cuando no lo hay se reparten en tres y en dos, que tambien cuadra.
+ * Es una lista, no una tabla, y por eso la tarjeta aprieta su aire: en una
+ * columna de trescientos pixeles cada uno que se va en margen es uno que le
+ * falta al nombre. Se pega arriba al desplazar para que el indice siga a la
+ * vista mientras se lee un expediente largo.
  */
-.cli-resumen__cifras { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-@media (min-width: 1240px) {
-  .cli-resumen__cifras { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-}
-
-.cli-encabezado {
-  display: flex; align-items: flex-start; gap: ${v('espacio-3')};
-  flex-wrap: wrap; min-width: 0;
-}
-.cli-encabezado__texto { flex: 1; min-width: 0; }
-.cli-encabezado__titulo { margin: 0; font-size: ${v('texto-titulo-grande')}; font-weight: ${v('peso-fuerte')}; }
-.cli-encabezado__lema { margin: 0; color: ${v('texto-suave')}; font-size: ${v('texto-chico')}; }
-
-/* ---------------------------------------------------------------- */
-/* Botones propios del modulo                                        */
-/* ---------------------------------------------------------------- */
-.cli-boton-principal {
-  display: inline-flex; align-items: center; justify-content: center; gap: ${v('espacio-2')};
-  min-height: 44px; flex: none;
-  padding: 0 ${v('espacio-4')};
-  border: none; border-radius: ${v('radio-sistema')};
-  background: ${v('marca')}; color: ${v('sobre-marca')};
-  font-family: ${v('familia')}; font-size: ${v('texto-chico')}; font-weight: ${v('peso-fuerte')};
-  cursor: pointer;
-}
-.cli-boton-principal:hover { background: ${v('marca-fuerte')}; }
-.cli-boton-principal:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
-.cli-boton-suave {
-  display: inline-flex; align-items: center; justify-content: center; gap: ${v('espacio-1')};
-  min-height: 38px;
-  padding: 0 ${v('espacio-3')};
-  border: 1px solid ${v('borde')}; border-radius: ${v('radio-sistema')};
-  background: ${v('superficie')}; color: ${v('texto')};
-  font-family: ${v('familia')}; font-size: ${v('texto-micro')};
-  cursor: pointer;
-}
-.cli-boton-suave:hover:not(:disabled) { background: ${v('superficie-tenue')}; }
-.cli-boton-suave:disabled { opacity: 0.5; cursor: default; }
-.cli-boton-suave:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
-.cli-boton-suave--ancho { width: 100%; }
-
-/* ---------------------------------------------------------------- */
-/* Las cifras                                                        */
-/* ---------------------------------------------------------------- */
-.cli-cifras {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: ${v('espacio-3')};
-  min-width: 0;
-}
-.cli-cifra {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
+.cli-indice {
   gap: ${v('espacio-3')};
   padding: ${v('espacio-4')};
-  border: 1px solid ${v('borde-suave')};
-  border-radius: ${v('radio-tarjeta')};
-  background: ${v('superficie-elevada')};
-  box-shadow: ${v('sombra-sutil')};
-  min-width: 0;
 }
-.cli-cifra__icono {
-  width: 42px; height: 42px; flex: none;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: ${v('radio-sistema')};
-}
-.cli-cifra__texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.cli-cifra__etiqueta {
-  color: ${v('texto-suave')}; font-size: ${v('texto-chico')};
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.cli-cifra__valor {
-  font-size: ${v('texto-titulo')}; font-weight: ${v('peso-fuerte')};
-  font-variant-numeric: ${v('cifra-numeros')};
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-/* El hueco se reserva siempre: sin el, la fila brinca al terminar de cargar. */
-.cli-cifra__pie {
-  font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; min-height: 18px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-/* El tono va SOLO en el cuadro del icono. En el diseño el fondo de la tarjeta
-   es blanco; teñir las cinco haria una pantalla de colores sin jerarquia. */
-.cli-cifra--citas .cli-cifra__icono { background: ${v('cat-citas-tenue')}; color: ${v('cat-citas')}; }
-.cli-cifra--ventas .cli-cifra__icono { background: ${v('cat-ventas-tenue')}; color: ${v('cat-ventas')}; }
-.cli-cifra--productos .cli-cifra__icono { background: ${v('cat-productos-tenue')}; color: ${v('cat-productos')}; }
-.cli-cifra--cursos .cli-cifra__icono { background: ${v('cat-cursos-tenue')}; color: ${v('cat-cursos')}; }
-.cli-cifra--visitas .cli-cifra__icono { background: ${v('cat-visitas-tenue')}; color: ${v('cat-visitas')}; }
-.cli-cifra--citas .cli-cifra__pie { color: ${v('cat-citas')}; }
-.cli-cifra--ventas .cli-cifra__pie { color: ${v('cat-ventas')}; }
-.cli-cifra--productos .cli-cifra__pie { color: ${v('cat-productos')}; }
-.cli-cifra--cursos .cli-cifra__pie { color: ${v('cat-cursos')}; }
-.cli-cifra--visitas .cli-cifra__pie { color: ${v('cat-visitas')}; }
-.cli-cifras--pie .cli-cifra { box-shadow: none; background: ${v('superficie')}; }
-
-/* ---------------------------------------------------------------- */
-/* El cuerpo: lista y panel                                          */
-/* ---------------------------------------------------------------- */
-.cli-cuerpo {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: ${v('espacio-4')};
-  align-items: start;
-  min-width: 0;
-}
-@media (min-width: 1180px) {
-  /* El panel es fijo y la lista toma lo que sobra. El minmax de cero a una
-     fraccion impide que un correo largo estire la columna. */
-  .cli-cuerpo { grid-template-columns: minmax(0, 1fr) 320px; }
+@media (min-width: 1100px) {
+  .cli-indice { position: sticky; top: ${v('espacio-4')}; }
 }
 
-.cli-panel {
-  display: flex; flex-direction: column; gap: ${v('espacio-3')};
-  padding: ${v('espacio-4')};
-  background: ${v('superficie-elevada')};
-  border: 1px solid ${v('borde-suave')};
-  border-radius: ${v('radio-tarjeta')};
-  box-shadow: ${v('sombra-sutil')};
-  min-width: 0;
-}
-.cli-panel__barra { display: flex; align-items: center; gap: ${v('espacio-2')}; min-width: 0; }
-.cli-panel__titulo {
-  margin: 0; font-size: ${v('texto-grande')}; font-weight: ${v('peso-fuerte')};
-  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.cli-panel__enlace {
-  flex: none; min-height: 32px; padding: 0 ${v('espacio-2')};
-  border: 1px solid ${v('borde-suave')}; border-radius: ${v('radio-sistema')};
-  background: ${v('superficie')}; color: ${v('marca')};
-  font-family: ${v('familia')}; font-size: ${v('texto-micro')};
-  cursor: pointer; white-space: nowrap;
-}
-.cli-panel__enlace:hover { background: ${v('superficie-tenue')}; }
-.cli-panel__enlace:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.cli-indice__fila { display: flex; align-items: center; min-width: 0; }
+.cli-indice__fila > .pz-renglon { flex: 1; min-width: 0; }
+.cli-indice__marca { flex: none; display: flex; align-items: center; padding-right: ${v('espacio-2')}; }
 
-/* ---------------------------------------------------------------- */
-/* Herramientas de la lista                                          */
-/* ---------------------------------------------------------------- */
-.cli-herramientas {
-  display: flex; flex-wrap: wrap; align-items: center; gap: ${v('espacio-2')};
-  min-width: 0;
+/*
+ * EL RENGLON QUE SE ESTA LEYENDO lleva fondo Y una rayita, igual que el modulo
+ * activo del menu. Solo el fondo no alcanza: en la tableta del mostrador, con
+ * sol encima, un tinte claro no se distingue del blanco.
+ */
+.cli-indice__renglon--puesto {
+  position: relative;
+  background: ${v('marca-tenue')};
 }
-.cli-buscador { position: relative; display: flex; align-items: center; flex: 1 1 200px; min-width: 0; }
-.cli-buscador__lupa {
-  position: absolute; left: ${v('espacio-3')};
-  display: flex; color: ${v('texto-tenue')};
-  /* No intercepta el clic: tocar la lupa tiene que enfocar el campo. */
-  pointer-events: none;
+.cli-indice__renglon--puesto .pz-renglon__titulo { color: ${v('marca')}; font-weight: ${v('peso-fuerte')}; }
+.cli-indice__renglon--puesto:hover { background: ${v('marca-tenue')}; }
+.cli-indice__renglon--puesto::before {
+  content: '';
+  position: absolute; left: 0; top: 50%;
+  width: 3px; height: 60%;
+  border-radius: ${c('radio-pastilla')};
+  background: ${v('marca')};
+  transform: translateY(-50%) scaleY(0);
+  animation: mv-rayita ${v('movimiento-normal')} ${v('movimiento-curva')} both;
 }
-.cli-buscador__campo {
-  width: 100%; min-width: 0; min-height: 40px;
-  padding-left: calc(${v('espacio-3')} + 16px + ${v('espacio-2')});
-  padding-right: ${v('espacio-3')};
-  border: 1px solid ${v('borde')}; border-radius: ${v('radio-sistema')};
-  background: ${v('superficie')}; color: ${v('texto')};
-  font-family: ${v('familia')}; font-size: ${v('texto-chico')};
-}
-.cli-buscador__campo:focus-visible { outline: ${v('foco')}; outline-offset: 1px; }
 
-.cli-campo { display: flex; flex-direction: column; gap: ${v('espacio-1')}; min-width: 0; }
-.cli-campo__etiqueta { font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
-.cli-campo select {
-  min-height: 40px; padding: 0 ${v('espacio-2')};
-  border: 1px solid ${v('borde')}; border-radius: ${v('radio-sistema')};
-  background: ${v('superficie')}; color: ${v('texto')};
-  font-family: ${v('familia')}; font-size: ${v('texto-chico')};
-  max-width: 100%;
-}
-.cli-campo select:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
-.cli-campo--bloque { width: 100%; }
-.cli-campo--corto select { min-height: 36px; font-size: ${v('texto-micro')}; }
-
-.cli-vistas { display: flex; gap: 2px; padding: 2px; background: ${v('superficie-tenue')}; border-radius: ${v('radio-sistema')}; flex: none; }
-.cli-vistas__boton {
-  min-width: 36px; min-height: 36px;
-  display: flex; align-items: center; justify-content: center;
-  border: none; border-radius: ${v('radio-chico')};
-  background: transparent; color: ${v('texto-suave')}; cursor: pointer;
-}
-.cli-vistas__boton--puesta {
-  background: ${v('superficie-elevada')}; color: ${v('marca')};
-  box-shadow: ${v('sombra-sutil')};
-}
-.cli-vistas__boton:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
-
+/* La barra de "tantos seleccionados", solo mientras se selecciona. */
 .cli-seleccion {
   display: flex; flex-wrap: wrap; align-items: center; gap: ${v('espacio-2')};
   padding: ${v('espacio-2')} ${v('espacio-3')};
   background: ${v('marca-tenue')};
-  border-radius: ${v('radio-sistema')};
-  font-size: ${v('texto-chico')};
-}
-
-/* ---------------------------------------------------------------- */
-/* La tabla                                                          */
-/* ---------------------------------------------------------------- */
-/* El scroll vive DENTRO de la tabla, nunca en la pagina. */
-.cli-tabla__marco { overflow-x: auto; min-width: 0; }
-.cli-tabla { width: 100%; border-collapse: collapse; font-size: ${v('texto-chico')}; }
-.cli-tabla th {
-  text-align: left; font-weight: ${v('peso-medio')}; color: ${v('texto-suave')};
+  border-radius: ${c('radio-control')};
   font-size: ${v('texto-micro')};
-  padding: ${v('espacio-2')} ${v('espacio-3')};
-  border-bottom: 1px solid ${v('borde-suave')};
-  white-space: nowrap;
+  color: ${v('marca')};
 }
-.cli-tabla td {
-  padding: ${v('espacio-2')} ${v('espacio-3')};
-  border-bottom: 1px solid ${v('borde-suave')};
-  vertical-align: middle;
-}
-.cli-tabla tr:last-child td { border-bottom: none; }
-.cli-tabla__fila--marcada { background: ${v('marca-tenue')}; }
-.cli-tabla__marca { width: 36px; }
-.cli-tabla__numero { text-align: right; font-variant-numeric: ${v('cifra-numeros')}; }
-.cli-tabla__acciones { width: 56px; text-align: right; }
+.cli-seleccion > span { flex: 1; min-width: 0; }
 
-.cli-persona {
-  display: flex; align-items: center; gap: ${v('espacio-3')};
-  background: transparent; border: none; padding: 0; cursor: pointer;
-  font-family: ${v('familia')}; font-size: ${v('texto-chico')}; color: ${v('texto')};
-  text-align: left; min-width: 0; max-width: 100%;
-}
-.cli-persona:focus-visible { outline: ${v('foco')}; outline-offset: 2px; border-radius: ${v('radio-sistema')}; }
-.cli-persona__inicial, .cli-carta__inicial {
-  width: 34px; height: 34px; flex: none;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: ${v('radio-redondo')};
-  background: ${v('marca-tenue')}; color: ${v('marca')};
-  font-size: ${v('texto-micro')}; font-weight: ${v('peso-fuerte')};
-}
-.cli-persona__nombre {
-  font-weight: ${v('peso-medio')}; min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.cli-contacto { display: flex; flex-direction: column; min-width: 0; }
-.cli-contacto__tel { font-variant-numeric: ${v('cifra-numeros')}; }
-.cli-contacto__correo {
-  color: ${v('texto-suave')}; font-size: ${v('texto-micro')};
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 22ch;
-}
-.cli-falta { color: ${v('texto-tenue')}; font-size: ${v('texto-micro')}; }
+/* ---------------------------------------------------------------- */
+/* EL EXPEDIENTE DE EN MEDIO                                         */
+/* ---------------------------------------------------------------- */
+/*
+ * El nombre de la persona es el titulo de la pantalla mientras esta abierta, y
+ * por eso pide su propio tamaño: con el de un titulo de tarjeta, la ficha no
+ * tenia sujeto — se leia como una tarjeta mas de las quince que hay alrededor.
+ */
+.cli-exp__nombre { font-size: ${v('texto-titulo')}; }
+.cli-exp__cuerpo { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
 
-/* El estado lleva color Y palabra. */
-.cli-estado {
-  display: inline-block;
-  font-size: ${v('texto-micro')};
-  padding: 3px ${v('espacio-2')};
-  border-radius: ${v('radio-redondo')};
-  border: 1px solid ${v('borde-suave')};
+/*
+ * LAS TARJETAS DE DENTRO NO LLEVAN SOMBRA NI FONDO PROPIO.
+ *
+ * Una tarjeta elevada dentro de otra tarjeta elevada se ve como un error de
+ * maquetacion: dos bordes y dos sombras a dos pixeles de distancia. Aqui solo
+ * separan secciones, asi que basta el borde tenue.
+ */
+.cli-exp__cuerpo > .pz-tarjeta {
+  box-shadow: none;
   background: ${v('superficie')};
-  white-space: nowrap;
-}
-.cli-estado--activo { color: ${v('exito')}; border-color: ${v('exito')}; }
-.cli-estado--inactivo { color: ${v('texto-suave')}; border-color: ${v('borde')}; }
-.cli-estado--archivado { color: ${v('advertencia')}; border-color: ${v('advertencia')}; }
-
-/* ---------------------------------------------------------------- */
-/* El menu de acciones                                               */
-/* ---------------------------------------------------------------- */
-.cli-menu { position: relative; display: inline-flex; }
-.cli-menu__boton {
-  min-width: 34px; min-height: 34px;
-  display: flex; align-items: center; justify-content: center;
-  border: 1px solid transparent; border-radius: ${v('radio-sistema')};
-  background: transparent; color: ${v('texto-suave')}; cursor: pointer;
-}
-.cli-menu__boton:hover { background: ${v('superficie-tenue')}; }
-.cli-menu__boton:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
-.cli-menu__panel {
-  position: absolute; top: calc(100% + 4px); right: 0;
-  /* Por encima del velo (40) y de la barra lateral (50) de la base: si
-     quedara debajo se veria el fondo oscurecerse y el menu no aparecer. */
-  z-index: 60;
-  min-width: 190px;
-  padding: ${v('espacio-1')};
-  background: ${v('superficie-elevada')};
-  border: 1px solid ${v('borde-suave')};
-  border-radius: ${v('radio-sistema')};
-  box-shadow: ${v('sombra-flotante')};
-  display: flex; flex-direction: column;
-}
-.cli-menu__opcion {
-  min-height: 38px; padding: 0 ${v('espacio-3')};
-  border: none; border-radius: ${v('radio-sistema')};
-  background: transparent; color: ${v('texto')};
-  font-family: ${v('familia')}; font-size: ${v('texto-chico')};
-  text-align: left; cursor: pointer; white-space: nowrap;
-}
-.cli-menu__opcion:hover { background: ${v('superficie-tenue')}; }
-.cli-menu__opcion:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
-
-/* ---------------------------------------------------------------- */
-/* La cuadricula                                                     */
-/* ---------------------------------------------------------------- */
-.cli-cuadricula {
-  list-style: none; margin: 0; padding: 0;
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: ${v('espacio-3')};
-}
-.cli-carta {
-  display: flex; flex-direction: column; align-items: flex-start; gap: ${v('espacio-1')};
-  width: 100%; min-width: 0;
-  padding: ${v('espacio-3')};
-  border: 1px solid ${v('borde-suave')}; border-radius: ${v('radio-tarjeta')};
-  background: ${v('superficie')};
-  font-family: ${v('familia')}; font-size: ${v('texto-chico')}; color: ${v('texto')};
-  text-align: left; cursor: pointer;
-}
-.cli-carta:hover { border-color: ${v('marca')}; }
-.cli-carta:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
-.cli-carta__nombre {
-  font-weight: ${v('peso-fuerte')}; min-width: 0; max-width: 100%;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.cli-carta__dato { color: ${v('texto-suave')}; font-size: ${v('texto-micro')}; }
-
-/* ---------------------------------------------------------------- */
-/* Pie y paginacion                                                  */
-/* ---------------------------------------------------------------- */
-.cli-pie {
-  display: flex; flex-wrap: wrap; align-items: center; gap: ${v('espacio-3')};
-  padding-top: ${v('espacio-3')};
-  border-top: 1px solid ${v('borde-suave')};
-  font-size: ${v('texto-micro')}; color: ${v('texto-suave')};
-}
-.cli-pie__cuenta { flex: 1; min-width: 0; }
-.cli-paginas { display: flex; align-items: center; gap: ${v('espacio-1')}; }
-.cli-paginas__boton {
-  min-width: 34px; min-height: 34px;
-  border: 1px solid ${v('borde-suave')}; border-radius: ${v('radio-sistema')};
-  background: ${v('superficie')}; color: ${v('texto')};
-  font-family: ${v('familia')}; cursor: pointer;
-}
-.cli-paginas__boton:disabled { opacity: 0.4; cursor: default; }
-.cli-paginas__boton:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
-.cli-paginas__actual { padding: 0 ${v('espacio-2')}; font-variant-numeric: ${v('cifra-numeros')}; }
-
-/* ---------------------------------------------------------------- */
-/* Vacio, error y cargando                                           */
-/* ---------------------------------------------------------------- */
-.cli-vacio {
-  display: flex; flex-direction: column; align-items: center; gap: ${v('espacio-2')};
-  padding: ${v('espacio-8')} ${v('espacio-4')};
-  text-align: center;
-}
-.cli-vacio--chico { padding: ${v('espacio-5')} ${v('espacio-3')}; }
-.cli-vacio__icono { color: ${v('borde')}; display: flex; }
-.cli-vacio__titulo { margin: 0; font-weight: ${v('peso-fuerte')}; color: ${v('texto')}; }
-.cli-vacio__texto { margin: 0; color: ${v('texto-suave')}; font-size: ${v('texto-chico')}; }
-.cli-error {
-  display: flex; flex-direction: column; align-items: flex-start; gap: ${v('espacio-2')};
-  padding: ${v('espacio-3')};
-  border-left: 3px solid ${v('peligro')};
-  background: ${v('peligro-tenue')};
-  border-radius: ${v('radio-sistema')};
-}
-.cli-error__que { margin: 0; font-size: ${v('texto-chico')}; }
-.cli-error__detalle {
-  margin: 0; font-size: ${v('texto-micro')}; color: ${v('texto-suave')};
-  overflow-wrap: anywhere;
-}
-.cli-cargando { display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
-.cli-cargando__renglon { height: 44px; }
-
-/* ---------------------------------------------------------------- */
-/* El panel de la derecha                                            */
-/* ---------------------------------------------------------------- */
-.cli-lateral { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
-.cli-lateral__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: ${v('espacio-1')}; }
-.cli-lateral__renglon {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center; gap: ${v('espacio-2')};
-  width: 100%; min-height: 48px;
-  padding: ${v('espacio-2')};
-  border: 1px solid ${v('borde-suave')}; border-radius: ${v('radio-sistema')};
-  background: ${v('superficie')};
-  font-family: ${v('familia')}; text-align: left; cursor: pointer;
-  color: ${v('texto')};
-}
-.cli-lateral__renglon:hover { background: ${v('superficie-tenue')}; }
-.cli-lateral__renglon:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
-.cli-lateral__texto { display: flex; flex-direction: column; min-width: 0; }
-.cli-lateral__titulo {
-  font-size: ${v('texto-chico')}; font-weight: ${v('peso-medio')};
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.cli-lateral__nota {
-  font-size: ${v('texto-micro')}; color: ${v('texto-suave')};
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.cli-lateral__flecha { color: ${v('texto-tenue')}; display: flex; flex: none; }
-
-/* ---------------------------------------------------------------- */
-/* La ficha                                                          */
-/* ---------------------------------------------------------------- */
-.cli-ficha { display: flex; flex-direction: column; gap: ${v('espacio-3')}; }
-.cli-ficha__par { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: ${v('espacio-3')}; }
-.cli-ficha__duplicado {
-  display: flex; flex-direction: column; align-items: flex-start; gap: ${v('espacio-2')};
-  padding: ${v('espacio-3')};
-  border-left: 3px solid ${v('advertencia')};
-  background: ${v('advertencia-tenue')};
-  border-radius: ${v('radio-sistema')};
-  font-size: ${v('texto-chico')};
-}
-.cli-ficha__duplicado p { margin: 0; }
-.cli-ficha__duplicado-nota { color: ${v('texto-suave')}; font-size: ${v('texto-micro')}; }
-.cli-ficha__mas {
-  align-self: flex-start;
-  background: transparent; border: none; padding: ${v('espacio-1')} 0;
-  color: ${v('marca')}; font-family: ${v('familia')}; font-size: ${v('texto-chico')};
-  cursor: pointer;
-}
-.cli-ficha__mas:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
-.cli-ficha__error {
-  margin: 0; color: ${v('peligro')}; font-size: ${v('texto-chico')};
-  border-left: 3px solid ${v('peligro')}; background: ${v('peligro-tenue')};
-  padding: ${v('espacio-2')} ${v('espacio-3')}; border-radius: ${v('radio-sistema')};
-}
-.cli-ficha__pie { display: flex; justify-content: flex-end; gap: ${v('espacio-2')}; flex-wrap: wrap; }
-
-/* ---------------------------------------------------------------- */
-/* El expediente                                                     */
-/* ---------------------------------------------------------------- */
-.cli-exp { display: flex; flex-direction: column; gap: ${v('espacio-3')}; min-width: 0; }
-.cli-exp__barra { display: flex; }
-.cli-exp__renglon {
-  display: grid; grid-template-columns: auto minmax(0, 1fr);
-  gap: ${v('espacio-3')}; align-items: start;
-  padding-top: ${v('espacio-3')};
-  border-top: 1px solid ${v('borde-suave')};
-}
-.cli-exp__renglon-icono { display: flex; flex: none; color: ${v('texto-tenue')}; padding-top: 2px; }
-.cli-exp__renglon-cuerpo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.cli-exp__etiqueta { font-size: ${v('texto-micro')}; color: ${v('texto-tenue')}; }
-.cli-exp__valor { font-size: ${v('texto-chico')}; color: ${v('texto')}; overflow-wrap: anywhere; }
-.cli-exp__secundario { color: ${v('texto-suave')}; font-size: ${v('texto-micro')}; }
-.cli-exp__adeudo { color: ${v('peligro')}; font-size: ${v('texto-micro')}; font-weight: ${v('peso-fuerte')}; }
-.cli-exp__enlace { color: ${v('marca')}; overflow-wrap: anywhere; }
-.cli-exp__notas { white-space: pre-wrap; overflow-wrap: anywhere; }
-.cli-exp__cuentas { display: flex; flex-wrap: wrap; gap: ${v('espacio-4')}; }
-.cli-exp__cuenta { display: flex; flex-direction: column; }
-.cli-exp__cuenta-numero { font-size: ${v('texto-grande')}; font-weight: ${v('peso-fuerte')}; font-variant-numeric: ${v('cifra-numeros')}; }
-.cli-exp__cuenta-que { font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
-.cli-exp__servicios { list-style: none; margin: 0; padding: 0; }
-.cli-exp__acciones {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: ${v('espacio-2')};
-  padding-top: ${v('espacio-3')};
-  border-top: 1px solid ${v('borde-suave')};
 }
 
-/* En celular la tabla se aprieta: se van las columnas que no deciden nada. */
-@media (max-width: 640px) {
-  .cli-tabla__acciones, .cli-tabla th:nth-child(4), .cli-tabla td:nth-child(4) { display: none; }
-  .cli-contacto__correo { display: none; }
-}
+/*
+ * LA FICHA VACIA SE ESTIRA HASTA LO QUE MIDA EL INDICE, no hasta un numero.
+ *
+ * Sin esto quedaba una tirita de ochenta pixeles con trescientos de blanco
+ * debajo, y la pantalla se veia a medio cargar en vez de vacia a proposito. Con
+ * un "min-height" fijo se arreglaba con seis nombres y volvia a descuadrar con
+ * veinte, porque el indice crece y el numero no.
+ *
+ * "align-self: stretch" la hace medir lo que mide la fila de la rejilla —o sea,
+ * lo que mide la columna mas alta— y se acomoda sola. La rejilla alinea arriba
+ * a proposito, asi que esta es la unica que se estira: es la unica cuyo alto no
+ * lo decide su contenido.
+ */
+.cli-exp--vacio { align-self: stretch; justify-content: center; min-height: 300px; }
+
+.cli-exp__adeudo { color: ${v('peligro')}; font-weight: ${v('peso-fuerte')}; }
+
+/* ---------------------------------------------------------------- */
+/* LA COLUMNA DE APOYO                                               */
+/* ---------------------------------------------------------------- */
+.cli-proxima { display: flex; align-items: center; gap: ${v('espacio-3')}; min-width: 0; }
+
+/* Las acciones en columna, una debajo de otra: en trescientos veinte pixeles,
+   dos por renglon dejan las etiquetas cortadas. */
+.cli-acciones { display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
 
 /* En celular el buscador se lleva un renglon entero, que es lo unico que
    permite escribir comodo con el pulgar. */

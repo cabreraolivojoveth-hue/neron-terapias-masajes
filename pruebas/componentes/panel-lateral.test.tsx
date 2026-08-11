@@ -1,12 +1,16 @@
 /**
  * @vitest-environment happy-dom
  *
- * El panel de la derecha: filtros rapidos, seguimientos y cumpleaños.
+ * Los filtros de la lista y el panel de apoyo de Clientes.
+ *
+ * Se separaron a proposito: los filtros hacen falta SIEMPRE —tambien con un
+ * expediente abierto— y el panel de apoyo solo mientras no se lee a nadie.
  */
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  FiltrosRapidos,
   PanelLateral,
   RANGOS_DE_VISITAS,
   cuandoEsElCumple,
@@ -16,13 +20,16 @@ import {
 afterEach(cleanup);
 
 const props = {
-  estado: '', profesionalId: '', rango: '',
-  profesionales: [{ id: 'p1', nombre: 'Terapeuta A', rol: 'dueno', usuarioId: 'u1' }],
   seguimientos: [], cargandoSeguimientos: false,
   cumpleanos: [], cargandoCumpleanos: false,
-  onEstado: () => {}, onProfesional: () => {}, onRango: () => {}, onLimpiar: () => {},
   onVerRecordatorios: () => {}, onAbrirSeguimiento: () => {},
   onVerCumpleanos: () => {}, onAbrirCliente: () => {},
+};
+
+const deFiltros = {
+  estado: '', profesionalId: '', rango: '',
+  profesionales: [{ id: 'p1', nombre: 'Terapeuta A', rol: 'dueno', usuarioId: 'u1' }],
+  onEstado: () => {}, onProfesional: () => {}, onRango: () => {}, onLimpiar: () => {},
 };
 
 describe('el rango de visitas', () => {
@@ -77,14 +84,14 @@ describe('los estados vacios', () => {
 
 describe('los filtros', () => {
   it('"Limpiar filtros" esta apagado cuando no hay ninguno', () => {
-    render(<PanelLateral {...props} />);
+    render(<FiltrosRapidos {...deFiltros} />);
     expect((screen.getByRole('button', { name: /Limpiar filtros/ }) as HTMLButtonElement).disabled)
       .toBe(true);
   });
 
   it('con un filtro puesto se enciende y avisa', async () => {
     const limpiar = vi.fn();
-    render(<PanelLateral {...props} estado="activo" onLimpiar={limpiar} />);
+    render(<FiltrosRapidos {...deFiltros} estado="activo" onLimpiar={limpiar} />);
     await userEvent.click(screen.getByRole('button', { name: /Limpiar filtros/ }));
     expect(limpiar).toHaveBeenCalled();
   });
@@ -92,8 +99,19 @@ describe('los filtros', () => {
   it('los terapeutas salen de las personas REALES del centro', () => {
     // No hay una lista de nombres escrita: son las mismas membresias que
     // ofrece la Agenda.
-    render(<PanelLateral {...props} />);
+    render(<FiltrosRapidos {...deFiltros} />);
     expect(screen.getByRole('option', { name: 'Terapeuta A' })).toBeTruthy();
+  });
+
+  it('los tres filtros viven en UN solo sitio', () => {
+    /**
+     * Estaban tambien en el panel de la derecha. Dos juegos de controles para
+     * los mismos tres filtros, cada uno con su estado, es como se acaba con una
+     * pantalla que enseña algo que no cuadra con ninguno de los dos.
+     */
+    render(<PanelLateral {...props} />);
+    expect(screen.queryByRole('button', { name: /Limpiar filtros/ })).toBeNull();
+    expect(screen.queryByText('Rango de visitas')).toBeNull();
   });
 });
 

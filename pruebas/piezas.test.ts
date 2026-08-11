@@ -137,4 +137,20 @@ describe('nada mide su ALTO con una medida pensada para el ancho', () => {
   it('el titulo crece solo dentro de la cabecera, que es una fila', () => {
     expect(css).toMatch(/\.pz-cabecera\s+\.tt-tarjeta\s*\{[^}]*flex:\s*1/s);
   });
+
+  it('el texto del encabezado no lleva un flex-basis en pixeles', () => {
+    /*
+     * LA TERCERA VEZ DE LA MISMA TRAMPA, y la mas visible de las tres.
+     *
+     * Tenia "flex: 1 1 240px" para repartirse el renglon con los botones. En
+     * "pz-encabezado" —una fila— esos 240 son el ancho de partida. Pero Inicio
+     * la usa suelta, hija de una COLUMNA, y ahi son el ALTO: el saludo medía
+     * 240 pixeles con 64 de texto adentro y dejaba un hueco de 176 entre
+     * "¡Buenos días!" y las cuatro cifras. No era aire: era sobra.
+     */
+    const bloque = css.match(/\.pz-encabezado__texto\s*\{[^}]*\}/s)?.[0] ?? '';
+    expect(bloque).not.toBe('');
+    expect(bloque).not.toMatch(/flex\s*:[^;]*\d+px/);
+    expect(bloque).not.toMatch(/flex-basis\s*:\s*\d+px/);
+  });
 });

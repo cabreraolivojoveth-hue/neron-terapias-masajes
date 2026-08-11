@@ -38,6 +38,8 @@ export type NombreDeIcono =
   | 'lugar'
   | 'nota'
   | 'mensaje'
+  | 'telefono'
+  | 'sobre'
   | 'lapiz'
   | 'volver'
   | 'prohibido'
@@ -106,6 +108,13 @@ const TRAZOS: Readonly<Record<NombreDeIcono, string[]>> = {
     'M9 13h6M9 17h4',
   ],
   mensaje: ['M21 12a8 8 0 0 1-11.7 7.1L3 21l1.9-6.3A8 8 0 1 1 21 12z'],
+  /* El telefono y el sobre: los dos rotulos de contacto de una ficha. Antes se
+     usaba el globo de "mensaje" para las dos cosas, y un correo con globo de
+     chat se lee como un mensaje enviado, no como una direccion. */
+  telefono: [
+    'M7.5 3.5h-2A2 2 0 0 0 3.5 5.7c.3 3.2 1.6 6.2 3.7 8.6a20 20 0 0 0 6 4.8 2 2 0 0 0 2.4-.4l1.4-1.4a1.3 1.3 0 0 0-.1-1.9l-2-1.6a1.3 1.3 0 0 0-1.6 0l-1 .8a15 15 0 0 1-4.3-4.3l.8-1a1.3 1.3 0 0 0 0-1.6l-1.6-2a1.3 1.3 0 0 0-.7-.4z',
+  ],
+  sobre: ['M3.5 6h17v12h-17z', 'M3.5 6.8 12 13l8.5-6.2'],
   lapiz: ['M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z', 'M14.5 5.5l3 3'],
   volver: ['M20 12a8 8 0 1 1-2.6-5.9', 'M20 4v4h-4'],
   prohibido: ['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z', 'M5.5 5.5l13 13'],

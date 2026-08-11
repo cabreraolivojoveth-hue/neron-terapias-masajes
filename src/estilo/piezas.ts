@@ -594,7 +594,28 @@ export function piezas(): string {
   display: flex; align-items: flex-start; gap: ${v('espacio-4')};
   flex-wrap: wrap; min-width: 0;
 }
-.pz-encabezado__texto { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+/*
+ * LA MISMA TRAMPA DEL "flex-basis", POR TERCERA VEZ — y aqui costo 176 pixeles
+ * en la primera pantalla del sistema.
+ *
+ * Tenia "flex: 1 1 240px" para repartirse el renglon con los botones de la
+ * derecha. Eso vale dentro de "pz-encabezado", que es una FILA. Pero Inicio usa
+ * esta pieza suelta, como hija directa de una COLUMNA — y ahi 240px no es el
+ * ancho de partida sino el ALTO: el saludo medía 240 pixeles de alto con 64 de
+ * texto adentro, y entre "¡Buenos días!" y las cuatro cifras quedaba un hueco
+ * de 176 que no era aire, era espacio sobrante.
+ *
+ * Es exactamente lo que ya paso con el titulo de tarjeta y con el buscador, y
+ * la medicina es la misma: el tamaño de partida lo pone el contenido, y los
+ * 240 se conservan como MINIMO DE ANCHO, que es donde de verdad importaban.
+ * Asi la pieza sirve igual en fila y en columna, y no hay que acordarse de
+ * cual es cual.
+ */
+.pz-encabezado__texto {
+  flex: 1 1 auto;
+  min-width: min(240px, 100%);
+  display: flex; flex-direction: column; gap: 2px;
+}
 /*
  * LA FILA DE ACCIONES TIENE QUE PODER ENCOGER. Con "flex: none" medía lo que
  * midieran sus botones y en un telefono se salia ciento ochenta pixeles por la
@@ -631,6 +652,76 @@ export function piezas(): string {
    * que avisar de nada.
    */
   .pz-cuerpo:has(> .pz-pista) { grid-template-columns: minmax(0, 1fr); }
+}
+
+/*
+ * EL CUERPO DE TRES COLUMNAS: lista estrecha, ficha ancha, panel de apoyo.
+ *
+ * Es la forma de "maestro y detalle" que enseña el diseño de Clientes: la lista
+ * a la izquierda no es el contenido de la pantalla, es el INDICE — lo que se
+ * lee es la ficha de en medio. Por eso la lista es angosta y fija: una lista de
+ * nombres no necesita mas de trescientos pixeles, y cada uno que se le da se le
+ * quita a lo que de verdad se esta leyendo.
+ *
+ * SE DESARMA POR PARTES, no de golpe. Primero cae el panel de apoyo debajo
+ * —es apoyo, aguanta ir abajo—, y solo en pantalla de telefono la lista se
+ * pone encima de la ficha. Desarmarlo todo a la vez deja la ficha en una
+ * columna de 300 en una laptop, que es donde mas se usa.
+ */
+.pz-cuerpo--maestro { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1100px) {
+  .pz-cuerpo--maestro { grid-template-columns: 300px minmax(0, 1fr); }
+  /* El panel de apoyo cruza las dos de arriba cuando todavia no cabe al lado. */
+  .pz-cuerpo--maestro > .pz-apoyo { grid-column: 1 / -1; }
+}
+@media (min-width: 1400px) {
+  .pz-cuerpo--maestro { grid-template-columns: 300px minmax(0, 1fr) 320px; }
+  .pz-cuerpo--maestro > .pz-apoyo { grid-column: auto; }
+}
+.pz-apoyo { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
+
+/*
+ * LA CABECERA DE UNA FICHA: el retrato, el nombre y lo de contacto.
+ *
+ * El nombre va en grande porque es lo que dice DE QUIEN es todo lo demas. En la
+ * version de tabla el nombre era una celda mas, del mismo tamaño que un
+ * telefono, y la pantalla no tenia sujeto.
+ */
+.pz-identidad {
+  display: flex; align-items: flex-start; gap: ${v('espacio-4')};
+  flex-wrap: wrap; min-width: 0;
+}
+.pz-identidad__cuerpo { flex: 1 1 auto; min-width: min(240px, 100%); display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
+.pz-identidad__nombre { display: flex; align-items: center; gap: ${v('espacio-3')}; flex-wrap: wrap; min-width: 0; }
+.pz-identidad__contacto {
+  display: flex; flex-direction: column; gap: ${v('espacio-1')};
+  font-size: ${v('texto-chico')}; color: ${v('texto-suave')};
+}
+.pz-identidad__renglon { display: flex; align-items: center; gap: ${v('espacio-2')}; min-width: 0; }
+.pz-identidad__renglon > svg { flex: none; color: ${v('texto-tenue')}; }
+
+/* El retrato grande. Sigue siendo iniciales: la base no guarda foto. */
+.pz-inicial--grande {
+  width: 76px; height: 76px;
+  border-radius: ${c('radio-tarjeta')};
+  font-size: ${v('texto-titulo')};
+}
+
+/*
+ * UNA REJILLA DE DATOS CON SU ETIQUETA, para las fichas de detalle.
+ *
+ * Se usa en el expediente de Clientes y sirve igual en la ficha de un servicio
+ * o de un producto: son pares de "esto se llama asi" y "esto vale esto". Que
+ * sea rejilla y no lista es lo que deja leer nueve datos sin bajar la vista.
+ */
+/*
+ * El minimo son 160 y no 200 para que en la ficha de en medio quepan TRES
+ * columnas, como en el diseño. Con 200 salian dos, y nueve datos en dos
+ * columnas obligan a bajar la vista para leer la mitad de una persona.
+ */
+.pz-datos {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: ${v('espacio-4')} ${v('espacio-5')}; min-width: 0;
 }
 
 /* La tira que sustituye a la ficha vacia. */

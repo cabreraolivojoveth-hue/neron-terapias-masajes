@@ -33,6 +33,7 @@ const datos = vi.hoisted(() => ({
   resumen: null as unknown,
   creados: [] as unknown[],
   pedidos: [] as { pagina: number; porPagina: number; busqueda?: string }[],
+  expediente: null as unknown,
 }));
 
 const navegacion = vi.hoisted(() => ({ ir: (() => {}) as (m: string, o?: unknown) => void }));
@@ -73,7 +74,7 @@ vi.mock('../../src/datos/clientes.js', async () => {
     }),
     traerResumenDeClientes: vi.fn(async () => real.ordenarResumenDeClientes(datos.resumen)),
     traerSeguimientos: vi.fn(async () => []),
-    traerExpediente: vi.fn(async () => null),
+    traerExpediente: vi.fn(async () => datos.expediente),
     buscarPosibleDuplicado: vi.fn(async () => null),
     crearCliente: vi.fn(async (_n: string, d: unknown) => {
       datos.creados.push(d);
@@ -95,6 +96,7 @@ beforeEach(() => {
   datos.resumen = null;
   datos.creados = [];
   datos.pedidos = [];
+  datos.expediente = null;
   navegacion.ir = () => {};
 });
 
@@ -114,11 +116,11 @@ describe('un centro recien creado, sin un solo cliente', () => {
      */
     render(<Directorio />);
 
-    expect(await screen.findByText('No hay clientes registrados')).toBeTruthy();
+    expect(await screen.findByText('Todavía no hay clientes')).toBeTruthy();
     expect(screen.getByText('Sin clientes registrados')).toBeTruthy();
     expect(screen.getByText('No hay cumpleaños próximos')).toBeTruthy();
     expect(screen.getByText('No hay recordatorios')).toBeTruthy();
-    expect(screen.getByText('Mostrando 0 de 0 clientes')).toBeTruthy();
+    expect(screen.getByText('0 clientes')).toBeTruthy();
 
     const texto = document.body.textContent ?? '';
     expect(texto).not.toContain('NaN');
@@ -153,7 +155,7 @@ describe('la busqueda', () => {
 describe('dar de alta', () => {
   it('guarda en CLIENTES y normaliza lo capturado', async () => {
     render(<Directorio />);
-    await screen.findByText('No hay clientes registrados');
+    await screen.findByText('Todavía no hay clientes');
 
     await userEvent.click(screen.getAllByRole('button', { name: /Nuevo cliente/ })[0]!);
     await userEvent.type(await screen.findByLabelText(/Nombre/), 'Persona Nueva');
@@ -164,6 +166,27 @@ describe('dar de alta', () => {
   });
 });
 
+/** El expediente que contesta el servidor de mentiras al abrir a alguien. */
+const EXPEDIENTE = {
+  id: 'c1', nombre: 'Persona Uno', telefono: '6641234567', correo: 'uno@correo.mx',
+  fechaNacimiento: null, notas: null, clienteDesde: null, archivado: false,
+  profesionalId: null, profesional: null,
+  visitas: 3, canceladas: 0, noAsistio: 0, ultimaVisita: null, proximaCita: null,
+  compras: 0, totalGastado: 0, adeudo: 0, cursos: 0, servicios: [],
+};
+
+/**
+ * Abre a alguien y espera su ficha.
+ *
+ * LAS ACCIONES YA NO VIVEN EN EL INDICE. El renglon solo escoge; lo que se hace
+ * con una persona esta en su ficha y en la columna de apoyo, que es donde se
+ * esta cuando se decide hacerlo. Por eso la prueba tiene que abrirla primero:
+ * es el camino de verdad.
+ */
+async function abrirA(nombre: string): Promise<void> {
+  await userEvent.click(await screen.findByRole('button', { name: new RegExp(`^${nombre}`) }));
+}
+
 describe('a donde lleva cada accion', () => {
   it('"Nueva cita" abre AGENDA con el id del cliente por delante', async () => {
     /**
@@ -171,12 +194,13 @@ describe('a donde lleva cada accion', () => {
      * el bueno en cuanto alguien lo corrige en su expediente.
      */
     datos.pagina = { total: 1, filas: [FILA] };
+    datos.expediente = EXPEDIENTE;
     const ir = vi.fn();
     navegacion.ir = ir;
     render(<Directorio />);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Acciones para Persona Uno' }));
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Nueva cita' }));
+    await abrirA('Persona Uno');
+    await userEvent.click(await screen.findByRole('button', { name: /Agendar/ }));
 
     expect(ir.mock.calls[0]?.[0]).toBe('agenda');
     expect((ir.mock.calls[0]?.[1] as { intencion?: string })?.intencion).toBe('agenda:nueva:c1');
@@ -184,12 +208,13 @@ describe('a donde lleva cada accion', () => {
 
   it('"Enviar mensaje" abre MENSAJES con el id del cliente', async () => {
     datos.pagina = { total: 1, filas: [FILA] };
+    datos.expediente = EXPEDIENTE;
     const ir = vi.fn();
     navegacion.ir = ir;
     render(<Directorio />);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Acciones para Persona Uno' }));
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Enviar mensaje' }));
+    await abrirA('Persona Uno');
+    await userEvent.click(await screen.findByRole('button', { name: /Enviar mensaje/ }));
 
     expect(ir.mock.calls[0]?.[0]).toBe('mensajes');
     expect((ir.mock.calls[0]?.[1] as { intencion?: string })?.intencion)
@@ -217,6 +242,6 @@ describe('las cifras con datos', () => {
 
     expect(await screen.findByText('340')).toBeTruthy();
     expect(screen.getByText('120')).toBeTruthy();
-    expect(screen.getByText('Mostrando 1 de 340 clientes')).toBeTruthy();
+    expect(screen.getByText('340 clientes')).toBeTruthy();
   });
 });

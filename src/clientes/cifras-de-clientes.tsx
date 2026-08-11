@@ -188,20 +188,38 @@ export function CifrasDeArriba({ resumen }: { readonly resumen: ResumenDeCliente
   );
 }
 
+/**
+ * EL RESUMEN DE ACTIVIDAD, y por que dejo de ser una fila de cinco tarjetas.
+ *
+ * Vivia hasta abajo de la pantalla, como cinco tarjetas anchas iguales a las
+ * cinco de arriba. Dos filas de cinco tarjetas del mismo tamaño en la misma
+ * pantalla no dicen cual importa: se leen como diez cifras sueltas. Y para
+ * llegar a ellas habia que pasar por el blanco que dejaba la tabla.
+ *
+ * Los cinco numeros NO se tiraron —son de otros modulos y no estan en ningun
+ * otro lado de esta pantalla—: se volvieron una lista compacta en la columna
+ * de apoyo, que es donde caben sin competir con nada.
+ */
 export function ResumenGeneral({ resumen }: { readonly resumen: ResumenDeClientes | null }) {
   return (
-    <section className="pz-tarjeta cli-resumen" aria-labelledby="cli-resumen-titulo">
+    <section className="pz-tarjeta pz-tarjeta--apretada" aria-labelledby="cli-resumen-titulo">
       <h3 className="tt-tarjeta" id="cli-resumen-titulo">
         Resumen general
       </h3>
-      {/* Cinco cifras, y por eso "cli-resumen__cifras" y no la rejilla de
-          siempre: con el minimo de doscientos treinta caben cuatro y la quinta
-          se quedaba sola en una fila, con tres huecos al lado. */}
-      <div className="pz-cifras cli-resumen__cifras mv-escalonado">
+      <dl className="pz-totales">
         {cifrasDelPie(resumen).map((c) => (
-          <Tarjeta key={c.clave} c={c} />
+          <div key={c.clave}>
+            {/* El pie NO es adorno: dice que significa el numero. "Total
+                adeudos: $0.00" sin el "Sin adeudos" al lado se lee como un dato
+                que no cargo. */}
+            <dt>
+              {c.etiqueta}
+              {c.pie ? <> · <span className="tt-pie">{c.pie}</span></> : null}
+            </dt>
+            <dd>{textoDeLaCifra(c.valor, c.moneda)}</dd>
+          </div>
         ))}
-      </div>
+      </dl>
     </section>
   );
 }
