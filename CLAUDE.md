@@ -52,6 +52,11 @@ las mismas columnas, los mismos botones, los mismos textos, el mismo orden, los
 mismos estados. Si algo de la foto no se puede reproducir tal cual, se dice
 claramente en el resumen en lugar de aproximarlo en silencio.
 
+**Y se replica MIRÁNDOLA, no recordándola.** Esa es la regla que faltaba y que
+costó rehacer ocho pantallas: se puede tener los tipos, las guardias y las mil
+doscientas pruebas en verde y entregar una pantalla que no se parece a la foto,
+porque **nada de eso mira**. Cómo se mira está en el §8.
+
 ## 4. Los datos de la foto NUNCA se copian al código
 
 La foto viene llena para que se vea **cómo debe lucir cuando alguien ya la usó**:
@@ -113,3 +118,118 @@ en lugar de entregarlo.
 - **`onAuthStateChange` de Supabase avisa sosteniendo un candado interno.** Llamar
   a otra función de autenticación desde adentro cuelga la pantalla para siempre,
   sin error y sin nada en la consola.
+- **`src/estilos.ts` y los cuatro `src/estilo/*.ts` son literales de plantilla.**
+  Un acento grave dentro —hasta en un comentario— cierra la cadena y el archivo
+  deja de compilar. Para citar una clase en un comentario se usan comillas
+  dobles.
+- **Postgres NO valida el cuerpo de una función `plpgsql` al crearla**, solo el
+  de las `sql`. Por eso los ataques aplican el instalador de verdad: es la única
+  forma de que un error de tipeo dentro de una función salga antes de producción.
+
+---
+
+## 8. Cómo se mira la pantalla
+
+Los tipos, las guardias y las pruebas **no miran**. Todo puede estar en verde y
+la pantalla no parecerse a la foto. Por eso existen tres herramientas, y usarlas
+no es opcional cuando se toca lo visual.
+
+```bash
+npm run capturas                    # los 8 módulos, 1536x1024 (el tamaño de las fotos)
+npm run capturas -- ventas          # solo uno
+npm run capturas -- ventas --completa    # la pantalla entera, no solo lo que se ve
+npm run capturas -- ventas --ancho=430   # el celular
+```
+
+Las fotos salen en `capturas/` —que `.gitignore` excluye— y **se abren y se
+miran**, al lado de la foto de referencia. La comparación es de una y otra, no de
+memoria.
+
+Cuando una captura enseña que algo está mal pero no por qué, se **mide**:
+
+```bash
+npx tsx scripts/medir.ts ventas ".pz-tarjeta" ".pz-buscador"
+```
+
+Devuelve la caja de cada elemento, su padre, y las propiedades que casi siempre
+son la causa. Un hueco de ciento setenta píxeles puede ser un `flex-basis` que en
+una columna significa alto, o una tarjeta estirada por su vecina — y adivinar
+cuál de las dos cuesta más que medirlo.
+
+Debajo de las dos está la **vitrina** (`npm run vitrina`, puerto 5199): monta la
+aplicación de verdad contra un Supabase de mentiras que vive en
+`pruebas-visuales/servidor-de-mentiras.ts`. **Los datos de mentira viven SOLO
+ahí** — la guardia 12 revienta la publicación si `src/` importa algo de esa
+carpeta. Es lo que deja ver una pantalla llena sin meter ni un dato inventado al
+producto.
+
+El ciclo de un módulo es: mirar la foto → captura → comparar → corregir →
+captura otra vez. Hasta que se parezcan. **No se dice que un módulo está listo
+sin haber visto su última captura.**
+
+## 9. El sistema de diseño: no se reinventa, se usa
+
+El error más caro del proyecto fue dejar que cada módulo se escribiera su propia
+tarjeta. Ocho tarjetas parecidas y ninguna igual — ni entre ellas ni al diseño.
+Ahora hay **una** de cada cosa, y cambiarla cambia las ocho pantallas a la vez.
+
+| Archivo | Prefijo | Qué vive ahí |
+|---|---|---|
+| `src/estilo/cimientos.ts` | `tt-` | los tokens del Centro y la tipografía de pantalla |
+| `src/estilo/piezas.ts` | `pz-` | tarjeta, pastilla, cifra, renglón, tabla, buscador, vacío… |
+| `src/estilo/armadura.ts` | `arm-` | la barra lateral y la barra superior |
+| `src/estilo/movimiento.ts` | `mv-` | las animaciones, y su apagado |
+| `src/estilos.ts` | `ini- vta- caja-…` | **solo** lo que de verdad es de un módulo |
+
+Antes de escribir una regla nueva se busca si la pieza ya existe. Una tarjeta es
+`pz-tarjeta`; un estado es `pz-pastilla`; una cifra de arriba es `pz-cifra`; una
+fila de lista es `pz-renglon`; un título de tarjeta es `tt-tarjeta`. Si de verdad
+falta una pieza, se agrega **a `piezas.ts`** —para las ocho pantallas— y no al
+módulo que la pidió primero.
+
+**Ni un color escrito a mano.** Todos salen de `src/marca.ts`, y la guardia 3 lo
+vigila. La única excepción es el icono de la pestaña, que va incrustado en el
+HTML porque el navegador lo pide antes de que exista una línea de JavaScript —
+y por eso lleva su propia prueba de que sigue siendo el mismo verde.
+
+### Dos trampas de maquetación que ya costaron caro
+
+Las dos son invisibles leyendo el CSS: en las dos, el culpable es **dónde cae**
+la regla, no la regla.
+
+- **Crecer es cosa del sitio, no del elemento.** `flex: 1` dentro de una fila
+  crece a lo ancho; dentro de una columna crece a lo **alto**. El título de
+  tarjeta lo tenía y medía 162 píxeles de alto, hundiendo la lista hasta el fondo
+  de su tarjeta.
+- **Un `flex-basis` en píxeles mide el ALTO si el padre es una columna.** El
+  buscador tenía `flex: 1 1 220px` y en Ventas era una caja de 220 píxeles de
+  alto con un campo de 42 flotando en medio.
+
+Las dos tienen prueba propia en `pruebas/cimientos.test.ts` y
+`pruebas/piezas.test.ts`. Si vuelven, revientan.
+
+## 10. Las animaciones
+
+Están en `src/estilo/movimiento.ts` y se ponen con clases: `mv-pantalla` (la
+pantalla entra), `mv-escalonado` (los hijos entran de 40 en 40 ms), `mv-panel`
+(la ficha entra desde la derecha), `mv-cambia` (al cambiar de pestaña),
+`mv-levanta` (se levanta al pasar el puntero), `mv-late` (el punto de aviso).
+
+Tres reglas, y ninguna es decorativa:
+
+1. **El movimiento explica de dónde viene algo.** Una ficha que entra desde la
+   derecha dice "esto es el detalle de lo que tocaste".
+2. **Rápido o no sirve.** Nada pasa de 240 ms, y las duraciones salen de los
+   tokens — hay prueba de que no se escriben a mano, para que alargar algo
+   obligue a mover el token y ahí se piense dos veces.
+3. **Se apaga entero** para quien pide menos movimiento. Para algunas personas
+   no es un detalle bonito, es mareo.
+
+**Lo que no se anima, a propósito:** nada que cambie de sitio mientras alguien lo
+está leyendo o apuntando con el dedo. Un renglón de tabla que se acomoda solo
+mientras vas a tocarlo hace que toques el de al lado — y en Ventas eso es cobrar
+otra cosa.
+
+Para comprobar que de verdad corren no basta con leer el CSS: se abre la vitrina
+y se cuentan las animaciones vivas a los 70 ms y a los 1.3 s. Si a los 1.3 s
+queda alguna, algo se quedó moviéndose.
