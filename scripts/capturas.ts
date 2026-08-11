@@ -1,8 +1,11 @@
 /**
  * LAS FOTOS DE LA PANTALLA.
  *
- *   npx tsx scripts/capturas.ts            todos los modulos
- *   npx tsx scripts/capturas.ts ventas     solo uno
+ *   npx tsx scripts/capturas.ts               todos los modulos
+ *   npx tsx scripts/capturas.ts ventas        solo uno
+ *   npx tsx scripts/capturas.ts --completa    la pantalla entera, no solo lo
+ *                                             que se ve sin bajar
+ *   npx tsx scripts/capturas.ts --ancho=430   a otro ancho, para el celular
  *
  * POR QUE EXISTE: los tipos, las guardias y las pruebas no MIRAN. Se puede
  * tener todo en verde y una pantalla que no se parece al diseño — que es
@@ -30,6 +33,20 @@ const MODULOS = [
   'inicio', 'agenda', 'clientes', 'servicios', 'cursos', 'productos', 'ventas', 'caja',
 ];
 
+/**
+ * Como se llama la foto.
+ *
+ * El ancho y el "completa" van en el nombre para que una foto de celular no
+ * pise la de escritorio: comparar sin saber a que ancho se tomo cada una es
+ * peor que no comparar.
+ */
+export function nombreDeLaFoto(modulo: string, ancho: number, completa: boolean): string {
+  const partes = [modulo];
+  if (ancho !== ANCHO) partes.push(String(ancho));
+  if (completa) partes.push('completa');
+  return partes.join('-');
+}
+
 /** Espera a que el servidor conteste. Sin esto, la primera foto sale en blanco. */
 async function esperarAlServidor(intentos = 60): Promise<void> {
   for (let i = 0; i < intentos; i += 1) {
@@ -45,11 +62,24 @@ async function esperarAlServidor(intentos = 60): Promise<void> {
 }
 
 async function principal(): Promise<void> {
-  const pedidos = process.argv.slice(2);
+  const argumentos = process.argv.slice(2);
+  const completa = argumentos.includes('--completa');
+  const anchoPedido = argumentos.find((a) => a.startsWith('--ancho='));
+  const ancho = anchoPedido ? Number(anchoPedido.slice('--ancho='.length)) : ANCHO;
+  const pedidos = argumentos.filter((a) => !a.startsWith('--'));
   const cuales = pedidos.length > 0 ? pedidos : MODULOS;
 
-  rmSync(DESTINO, { recursive: true, force: true });
+  /**
+   * SOLO SE BORRA LO QUE SE VA A VOLVER A ESCRIBIR.
+   *
+   * Vaciar la carpeta entera al pedir un modulo suelto tiraba las fotos de los
+   * otros siete, y con ellas la posibilidad de comparar antes y despues sin
+   * volver a correr los ocho.
+   */
   mkdirSync(DESTINO, { recursive: true });
+  for (const modulo of cuales) {
+    rmSync(join(DESTINO, `${nombreDeLaFoto(modulo, ancho, completa)}.png`), { force: true });
+  }
 
   const servidor: ChildProcess = spawn(
     'npx',
@@ -71,7 +101,7 @@ async function principal(): Promise<void> {
       executablePath: process.env['CHROMIUM'] ?? '/opt/pw-browsers/chromium',
     });
     const pagina = await navegador.newPage({
-      viewport: { width: ANCHO, height: ALTO },
+      viewport: { width: ancho, height: ALTO },
       deviceScaleFactor: 1,
     });
 
@@ -89,8 +119,9 @@ async function principal(): Promise<void> {
       // Un respiro para que terminen las animaciones de entrada: una foto a
       // media transicion no se puede comparar con nada.
       await pagina.waitForTimeout(900);
-      await pagina.screenshot({ path: join(DESTINO, `${modulo}.png`) });
-      console.log(`  ${modulo}`);
+      const nombre = nombreDeLaFoto(modulo, ancho, completa);
+      await pagina.screenshot({ path: join(DESTINO, `${nombre}.png`), fullPage: completa });
+      console.log(`  ${nombre}`);
     }
 
     await navegador.close();
@@ -99,7 +130,11 @@ async function principal(): Promise<void> {
       console.log('\n  La consola del navegador se quejo:');
       for (const q of [...new Set(quejas)].slice(0, 12)) console.log(`    ${q}`);
     }
-    console.log(`\n  Fotos en capturas/ — ${ANCHO}x${ALTO}, el mismo tamaño del diseño.`);
+    console.log(
+      `\n  Fotos en capturas/ — ${ancho}x${completa ? 'entera' : ALTO}${
+        ancho === ANCHO ? ', el mismo tamaño del diseño' : ''
+      }.`,
+    );
   } finally {
     servidor.kill('SIGTERM');
   }

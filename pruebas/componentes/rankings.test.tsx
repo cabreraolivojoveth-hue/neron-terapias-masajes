@@ -106,3 +106,23 @@ describe('productos mas vendidos', () => {
     expect(container.querySelector('img')?.getAttribute('alt')).toBe('');
   });
 });
+
+describe('el podio se distingue del resto', () => {
+  it('los tres primeros van en solido y del cuarto en adelante no', () => {
+    // Un ranking donde las cinco filas pesan igual obliga a leerlas todas para
+    // saber cual va ganando, que es lo contrario de lo que hace un tablero.
+    const { container } = render(
+      <ServiciosMasVendidos
+        servicios={[1, 2, 3, 4, 5].map((n) => ({
+          id: `s${n}`,
+          nombre: `Servicio ${n}`,
+          sesiones: 10 - n,
+        }))}
+        cargando={false}
+        onVerTodos={() => {}}
+      />,
+    );
+    expect(container.querySelectorAll('.ini-puesto').length).toBe(5);
+    expect(container.querySelectorAll('.ini-puesto--podio').length).toBe(3);
+  });
+});

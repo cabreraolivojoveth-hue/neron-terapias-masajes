@@ -16,6 +16,7 @@ import {
   etiquetaCorta,
   etiquetasDeAbajo,
   pasoBonito,
+  puntosDelRelleno,
   techoDelEje,
 } from '../../src/inicio/grafica-de-ingresos.js';
 
@@ -162,5 +163,24 @@ describe('la pantalla', () => {
     expect(select.tagName).toBe('SELECT');
     await userEvent.selectOptions(select, 'esteMes');
     expect(cambiar).toHaveBeenCalledWith('esteMes');
+  });
+});
+
+describe('el relleno llega a los dos bordes, la linea no', () => {
+  it('se le agrega un punto en cada canto, a la altura de su vecino', () => {
+    // Sin esto el area queda como una losa flotando, con dos cantos verticales
+    // a los lados: se ve como un error de dibujo, y asi salio en la captura.
+    const puntos = escalarDesdeCero([100, 50, 100], 100);
+    const relleno = puntosDelRelleno(puntos);
+
+    expect(relleno).toHaveLength(puntos.length + 2);
+    expect(relleno[0]?.x).toBe(0);
+    expect(relleno[0]?.y).toBe(puntos[0]?.y);
+    expect(relleno[relleno.length - 1]?.x).toBe(100);
+    expect(relleno[relleno.length - 1]?.y).toBe(puntos[puntos.length - 1]?.y);
+  });
+
+  it('sin puntos no inventa un relleno', () => {
+    expect(puntosDelRelleno([])).toEqual([]);
   });
 });

@@ -150,61 +150,65 @@ function Tarjeta({
     t.anterior === undefined ? null : comparar(t.valor, t.anterior, 'masEsMejor');
 
   const clases = [
-    'ini-tarjeta',
-    `ini-tarjeta--${t.categoria}`,
+    'pz-cifra',
+    'mv-levanta',
+    `pz-cifra--${t.categoria}`,
     comparacion?.esBueno === true ? 'ini-tarjeta--bien' : '',
     comparacion?.esBueno === false ? 'ini-tarjeta--mal' : '',
   ]
     .filter(Boolean)
     .join(' ');
 
+  /**
+   * LA TARJETA ENTERA ES UN BOTON, y el pie va DENTRO de su texto.
+   *
+   * En la version anterior el pie era un boton HERMANO, para no meter un boton
+   * dentro de otro —que es HTML invalido y el navegador lo desarma—. El precio
+   * era que la tarjeta quedaba partida en dos columnas: el numero a la
+   * izquierda y "2 pendientes" flotando a la derecha, que no es lo que el
+   * diseño enseña.
+   *
+   * La salida es no tener dos botones: la tarjeta lleva a su modulo y el pie
+   * es TEXTO. Cuando el pie ofrecia otro destino —"Revisar inventario"— era en
+   * realidad el mismo lugar con otro filtro, asi que no se pierde nada.
+   */
   return (
-    <div className={clases}>
-      {/*
-        La tarjeta entera es UN boton, y el pie es OTRO al lado — no uno dentro
-        del otro. Un boton dentro de un boton es HTML invalido: el navegador lo
-        desarma, y con teclado se vuelve imposible llegar al de adentro.
-      */}
-      <button type="button" className="ini-tarjeta__abrir" onClick={() => onIr(t.ir)}>
-        <span className="ini-tarjeta__icono" aria-hidden="true">
-          <Icono nombre={t.icono} lado={22} />
-        </span>
-        <span className="ini-tarjeta__texto">
-          <span className="ini-tarjeta__etiqueta">{t.etiqueta}</span>
-          <span
-            className="ini-tarjeta__valor"
-            aria-busy={cargando ? 'true' : undefined}
-            aria-label={cargando ? `${t.etiqueta}: cargando` : undefined}
-          >
-            {textoDelValor(t.valor, t.moneda)}
-          </span>
-        </span>
-      </button>
-
-      {!cargando && comparacion?.hay ? (
-        <p className="ini-tarjeta__pie ini-tarjeta__pie--cambio">
-          {/* La flecha y el porcentaje son adorno para quien ve el color; la
-              frase completa es lo que oye quien usa lector de pantalla. */}
-          <span aria-hidden="true">
-            {comparacion.direccion === 'sube' ? '↑' : comparacion.direccion === 'baja' ? '↓' : '='}{' '}
-            {comparacion.texto} vs ayer
-          </span>
-          <span className="neron-solo-lectores">{comoSeDice(comparacion)} contra ayer</span>
-        </p>
-      ) : t.acceso && !cargando ? (
-        <button
-          type="button"
-          className="ini-tarjeta__pie ini-tarjeta__pie--accion"
-          onClick={() => onIr(t.acceso!.ir)}
+    <button type="button" className={clases} onClick={() => onIr(t.acceso?.ir ?? t.ir)}>
+      <span className="pz-cifra__icono" aria-hidden="true">
+        <Icono nombre={t.icono} lado={22} />
+      </span>
+      <span className="pz-cifra__texto">
+        <span className="pz-cifra__etiqueta">{t.etiqueta}</span>
+        <span
+          className="pz-cifra__valor"
+          aria-busy={cargando ? 'true' : undefined}
+          aria-label={cargando ? `${t.etiqueta}: cargando` : undefined}
         >
-          {t.acceso.texto}
-        </button>
-      ) : (
-        // El hueco se reserva SIEMPRE. Sin el, las tarjetas cambian de alto al
-        // terminar de cargar y la fila entera da un brinco.
-        <p className="ini-tarjeta__pie ini-tarjeta__pie--hueco" aria-hidden="true" />
-      )}
-    </div>
+          {textoDelValor(t.valor, t.moneda)}
+        </span>
+
+        {!cargando && comparacion?.hay ? (
+          <span className="pz-cifra__pie">
+            {/* La flecha y el porcentaje son adorno para quien ve el color; la
+                frase completa es lo que oye quien usa lector de pantalla. */}
+            <span aria-hidden="true">
+              {comparacion.direccion === 'sube' ? '↑' : comparacion.direccion === 'baja' ? '↓' : '='}{' '}
+              {comparacion.texto} vs ayer
+            </span>
+            <span className="neron-solo-lectores">{comoSeDice(comparacion)} contra ayer</span>
+          </span>
+        ) : t.acceso && !cargando ? (
+          <span className="pz-cifra__pie ini-tarjeta__accion">
+            <span className="pz-cifra__punto" aria-hidden="true" />
+            {t.acceso.texto}
+          </span>
+        ) : (
+          // El hueco se reserva SIEMPRE. Sin el, las tarjetas cambian de alto
+          // al terminar de cargar y la fila entera da un brinco.
+          <span className="pz-cifra__pie" aria-hidden="true" />
+        )}
+      </span>
+    </button>
   );
 }
 
@@ -223,7 +227,7 @@ export function Tarjetas({
   if (tarjetas.length === 0) return null;
 
   return (
-    <section className="ini-tarjetas" aria-label="Resumen del día">
+    <section className="pz-cifras mv-escalonado" aria-label="Resumen del día">
       {tarjetas.map((t) => (
         <Tarjeta key={t.clave} t={t} onIr={onIr} />
       ))}

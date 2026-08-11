@@ -106,22 +106,22 @@ export function AccionesRapidas({
   if (acciones.length === 0) return null;
 
   return (
-    <section className="ini-panel ini-acciones" aria-labelledby="ini-acciones-titulo">
-      <h3 className="ini-panel__titulo" id="ini-acciones-titulo">
+    <section className="pz-tarjeta ini-acciones" aria-labelledby="ini-acciones-titulo">
+      <h3 className="tt-tarjeta" id="ini-acciones-titulo">
         Acciones rápidas
       </h3>
-      <div className="ini-acciones__fila">
+      <div className="pz-acciones mv-escalonado">
         {acciones.map((a) => (
           <button
             key={a.clave}
             type="button"
-            className={`ini-accion ini-accion--${a.clave}`}
+            className={`pz-boton ini-accion ini-accion--${a.clave}`}
             onClick={() => onAccion(a)}
           >
-            <span className="ini-accion__icono" aria-hidden="true">
+            <span className="pz-ficha" aria-hidden="true">
               <Icono nombre={a.icono} lado={18} />
             </span>
-            <span className="ini-accion__texto">{a.etiqueta}</span>
+            <span className="pz-renglon__titulo">{a.etiqueta}</span>
           </button>
         ))}
       </div>

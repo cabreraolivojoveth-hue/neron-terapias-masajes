@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RecordatorioCercano } from '../../src/datos/tablero.js';
 import {
   RecordatoriosCercanos,
+  TONO_DE_LA_URGENCIA,
   iconoDeEntidad,
   urgenciaDe,
 } from '../../src/inicio/recordatorios-cercanos.js';
@@ -97,5 +98,20 @@ describe('la pantalla', () => {
     render(<RecordatoriosCercanos {...props} error="sin conexión" />);
     expect(screen.getByRole('alert')).toBeTruthy();
     expect(screen.getByText('Reintentar')).toBeTruthy();
+  });
+});
+
+describe('la urgencia se ve Y se lee', () => {
+  it('cada urgencia tiene su tono de pastilla, y ninguno se repite', () => {
+    // El color solo no le sirve a quien no lo distingue: al lado va siempre la
+    // palabra. Y tres urgencias con el mismo tono serian tres iguales.
+    const tonos = Object.values(TONO_DE_LA_URGENCIA);
+    expect(tonos).toHaveLength(3);
+    expect(new Set(tonos).size).toBe(3);
+  });
+
+  it('lo vencido va en el tono de peligro, no en uno cualquiera', () => {
+    expect(TONO_DE_LA_URGENCIA.vencido).toBe('peligro');
+    expect(TONO_DE_LA_URGENCIA.hoy).toBe('aviso');
   });
 });

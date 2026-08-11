@@ -47,6 +47,13 @@ export function comoSeLlamaLaUrgencia(u: Urgencia): string {
   return 'Próximo';
 }
 
+/** El tono de la pastilla compartida que le toca a cada urgencia. */
+export const TONO_DE_LA_URGENCIA: Readonly<Record<Urgencia, string>> = {
+  vencido: 'peligro',
+  hoy: 'aviso',
+  proximo: 'marca',
+};
+
 /** El icono dice de que modulo nacio. Sin entidad, un reloj. */
 export function iconoDeEntidad(tipo: EntidadDeRecordatorio | null): NombreDeIcono {
   if (tipo === 'cliente') return 'persona';
@@ -77,60 +84,60 @@ export function RecordatoriosCercanos({
   onReintentar,
 }: PropiedadesDeRecordatorios) {
   return (
-    <section className="ini-panel ini-recordatorios" aria-labelledby="ini-recordatorios-titulo">
-      <header className="ini-panel__barra">
-        <h3 className="ini-panel__titulo" id="ini-recordatorios-titulo">
+    <section className="pz-tarjeta ini-recordatorios" aria-labelledby="ini-recordatorios-titulo">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta" id="ini-recordatorios-titulo">
           Recordatorios
         </h3>
-        <button type="button" className="ini-panel__enlace" onClick={onVerTodos}>
+        <button type="button" className="pz-enlace pz-enlace--pelado" onClick={onVerTodos}>
           Ver todos
         </button>
       </header>
 
       {error ? (
-        <div className="ini-error" role="alert">
-          <p className="ini-error__que">No pudimos cargar los recordatorios.</p>
-          <p className="ini-error__detalle">{error}</p>
-          <button type="button" className="ini-boton-suave" onClick={onReintentar}>
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar los recordatorios.</p>
+          <p className="pz-error__detalle">{error}</p>
+          <button type="button" className="pz-boton" onClick={onReintentar}>
             Reintentar
           </button>
         </div>
       ) : cargando ? (
-        <div className="ini-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando los recordatorios</span>
           {[0, 1].map((i) => (
-            <div key={i} className="terapias-silueta ini-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : recordatorios.length === 0 ? (
-        <p className="ini-vacio">No tienes recordatorios pendientes.</p>
+        <p className="pz-vacio__texto">No tienes recordatorios pendientes.</p>
       ) : (
-        <ul className="ini-recordatorios__lista">
+        <ul className="pz-lista mv-escalonado">
           {recordatorios.map((r) => {
             const urgencia = urgenciaDe(r.fecha, hoy);
             return (
               <li key={r.id}>
                 <button
                   type="button"
-                  className={`ini-recordatorio ini-recordatorio--${urgencia}`}
+                  className={`pz-renglon ini-recordatorio ini-recordatorio--${urgencia}`}
                   onClick={() => onAbrir(r)}
                 >
-                  <span className="ini-recordatorio__icono" aria-hidden="true">
+                  <span className="pz-ficha" aria-hidden="true">
                     <Icono nombre={iconoDeEntidad(r.entidadTipo)} lado={18} />
                   </span>
-                  <span className="ini-recordatorio__texto">
-                    <span className="ini-recordatorio__titulo">{r.titulo}</span>
+                  <span className="pz-renglon__cuerpo">
+                    <span className="pz-renglon__titulo">{r.titulo}</span>
                     {r.detalle ? (
-                      <span className="ini-recordatorio__detalle">{r.detalle}</span>
+                      <span className="pz-renglon__pie">{r.detalle}</span>
                     ) : null}
                   </span>
                   {/* La urgencia va con PALABRA, no solo con el tono del
                       renglon: quien no distingue los colores tambien tiene que
                       saber cual ya vencio. */}
-                  <span className="ini-recordatorio__cuando">
+                  <span className={`pz-pastilla pz-pastilla--${TONO_DE_LA_URGENCIA[urgencia]}`}>
                     {comoSeLlamaLaUrgencia(urgencia)}
                   </span>
-                  <span className="ini-recordatorio__flecha" aria-hidden="true">
+                  <span className="pz-renglon__flecha" aria-hidden="true">
                     <Icono nombre="flecha" lado={16} />
                   </span>
                 </button>

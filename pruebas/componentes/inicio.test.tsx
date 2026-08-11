@@ -170,7 +170,9 @@ describe('a donde llevan las cosas', () => {
     const ir = vi.fn();
     navegacion.ir = ir;
     render(<Inicio />);
-    await userEvent.click(await screen.findByText('Nueva cita', { selector: '.ini-agenda__nueva span' }));
+    await userEvent.click(
+      await screen.findByText('Nueva cita', { selector: '.ini-agenda .pz-boton span' }),
+    );
     expect(ir.mock.calls[0]?.[0]).toBe('agenda');
     expect((ir.mock.calls[0]?.[1] as { intencion?: string })?.intencion).toBe('agenda:nueva');
   });

@@ -18,6 +18,21 @@ import { useState } from 'react';
 import type { ProductoVendido, ServicioVendido } from '../datos/tablero.js';
 import { Icono } from '../ui/iconos.js';
 
+/**
+ * EL NUMERITO DEL RANKING.
+ *
+ * Los tres primeros van en solido y el resto en tono suave. No es adorno: un
+ * ranking en el que las cinco filas pesan igual obliga a leerlas todas para
+ * saber cual va ganando, que es justo lo contrario de lo que hace un tablero.
+ */
+export function Puesto({ lugar }: { readonly lugar: number }) {
+  return (
+    <span className={`ini-puesto${lugar <= 3 ? ' ini-puesto--podio' : ''}`} aria-hidden="true">
+      {lugar}
+    </span>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Servicios                                                           */
 /* ------------------------------------------------------------------ */
@@ -32,41 +47,39 @@ export function ServiciosMasVendidos({
   readonly onVerTodos: () => void;
 }) {
   return (
-    <section className="ini-panel ini-ranking" aria-labelledby="ini-servicios-titulo">
-      <header className="ini-panel__barra">
-        <h3 className="ini-panel__titulo" id="ini-servicios-titulo">
+    <section className="pz-tarjeta ini-ranking" aria-labelledby="ini-servicios-titulo">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta" id="ini-servicios-titulo">
           Servicios más vendidos
         </h3>
-        <button type="button" className="ini-panel__enlace" onClick={onVerTodos}>
+        <button type="button" className="pz-enlace pz-enlace--pelado" onClick={onVerTodos}>
           Ver todos
         </button>
       </header>
 
       {cargando ? (
-        <div className="ini-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando el ranking de servicios</span>
           {[0, 1, 2].map((i) => (
-            <div key={i} className="terapias-silueta ini-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : servicios.length === 0 ? (
-        <p className="ini-vacio">Aún no hay suficientes datos.</p>
+        <p className="pz-vacio__texto">Aún no hay suficientes datos.</p>
       ) : (
-        <ol className="ini-ranking__lista">
+        <ol className="pz-lista mv-escalonado">
           {servicios.map((s, i) => (
-            <li key={s.id} className="ini-ranking__renglon">
+            <li key={s.id} className="pz-renglon pz-renglon--quieto">
               {/*
                 Un numero, no un icono de colores por servicio.
                 Los servicios los captura cada centro: no hay forma de saber
                 que dibujo le toca a "Constelaciones" sin inventarselo, y un
                 icono inventado es exactamente lo que no va en este producto.
               */}
-              <span className="ini-ranking__puesto" aria-hidden="true">
-                {i + 1}
-              </span>
-              <span className="ini-ranking__texto">
-                <span className="ini-ranking__nombre">{s.nombre}</span>
-                <span className="ini-ranking__dato">
+              <Puesto lugar={i + 1} />
+              <span className="pz-renglon__cuerpo">
+                <span className="pz-renglon__titulo">{s.nombre}</span>
+                <span className="pz-renglon__pie">
                   {s.sesiones} {s.sesiones === 1 ? 'sesión' : 'sesiones'}
                 </span>
               </span>
@@ -127,35 +140,45 @@ export function ProductosMasVendidos({
   readonly onVerTodos: () => void;
 }) {
   return (
-    <section className="ini-panel ini-productos" aria-labelledby="ini-productos-titulo">
-      <header className="ini-panel__barra">
-        <h3 className="ini-panel__titulo" id="ini-productos-titulo">
+    <section className="pz-tarjeta ini-productos" aria-labelledby="ini-productos-titulo">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta" id="ini-productos-titulo">
           Productos más vendidos
         </h3>
-        <button type="button" className="ini-panel__enlace" onClick={onVerTodos}>
+        <button type="button" className="pz-enlace pz-enlace--pelado" onClick={onVerTodos}>
           Ver todos
         </button>
       </header>
 
       {cargando ? (
-        <div className="ini-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando el ranking de productos</span>
-          <div className="terapias-silueta ini-cargando__renglon" />
+          <div className="pz-silueta" />
         </div>
       ) : productos.length === 0 ? (
-        <p className="ini-vacio">Aún no se han registrado ventas de productos.</p>
+        <p className="pz-vacio__texto">Aún no se han registrado ventas de productos.</p>
       ) : (
-        <ul className="ini-productos__lista">
-          {productos.map((p) => (
-            <li key={p.id} className="ini-producto">
+        /*
+          EN RENGLON, NO EN CUADRICULA. Con la foto grande y en rejilla, cinco
+          productos median mas de cuatrocientos pixeles de alto y dejaban la
+          columna de al lado vacia — que fue el reclamo del blanco de sobra. En
+          renglon este panel mide lo mismo que el de servicios, que es su
+          hermano, y los dos se leen igual.
+        */
+        <ol className="pz-lista mv-escalonado">
+          {productos.map((p, i) => (
+            <li key={p.id} className="pz-renglon pz-renglon--quieto">
+              <Puesto lugar={i + 1} />
               <ImagenDeProducto url={p.imagenUrl} nombre={p.nombre} />
-              <span className="ini-producto__nombre">{p.nombre}</span>
-              <span className="ini-producto__dato">
-                {p.unidades} {p.unidades === 1 ? 'unidad' : 'unidades'}
+              <span className="pz-renglon__cuerpo">
+                <span className="pz-renglon__titulo">{p.nombre}</span>
+                <span className="pz-renglon__pie">
+                  {p.unidades} {p.unidades === 1 ? 'unidad' : 'unidades'}
+                </span>
               </span>
             </li>
           ))}
-        </ul>
+        </ol>
       )}
     </section>
   );

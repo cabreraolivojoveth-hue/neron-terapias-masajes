@@ -68,58 +68,62 @@ export function AgendaDeHoy({
   const lista = citasParaHoy(citas);
 
   return (
-    <section className="ini-panel ini-agenda" aria-labelledby="ini-agenda-titulo">
-      <header className="ini-panel__barra">
-        <h3 className="ini-panel__titulo" id="ini-agenda-titulo">
+    <section className="pz-tarjeta ini-agenda" aria-labelledby="ini-agenda-titulo">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta" id="ini-agenda-titulo">
           Agenda de hoy
         </h3>
-        <button type="button" className="ini-panel__enlace" onClick={onVerCalendario}>
+        <button type="button" className="pz-enlace pz-enlace--pelado" onClick={onVerCalendario}>
           Ver calendario
         </button>
       </header>
 
       {error ? (
-        <div className="ini-error" role="alert">
-          <p className="ini-error__que">No pudimos cargar la agenda de hoy.</p>
-          <p className="ini-error__detalle">{error}</p>
-          <button type="button" className="ini-boton-suave" onClick={onReintentar}>
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar la agenda de hoy.</p>
+          <p className="pz-error__detalle">{error}</p>
+          <button type="button" className="pz-boton" onClick={onReintentar}>
             Reintentar
           </button>
         </div>
       ) : cargando ? (
         // Siluetas, NO una lista vacia. Una lista vacia mientras carga le dice
         // a la persona que hoy no tiene citas, y todavia no se sabe.
-        <div className="ini-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando las citas de hoy</span>
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="terapias-silueta ini-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : lista.length === 0 ? (
-        <p className="ini-vacio">No hay citas programadas para hoy.</p>
+        <p className="pz-vacio__texto">No hay citas programadas para hoy.</p>
       ) : (
-        <ul className="ini-agenda__lista">
+        <ul className="pz-lista mv-escalonado">
           {lista.map((c) => (
             <li key={c.id}>
-              <button type="button" className="ini-cita" onClick={() => onAbrir(c)}>
+              <button type="button" className="pz-renglon ini-cita" onClick={() => onAbrir(c)}>
                 <span className="ini-cita__horas">
                   <span className="ini-cita__inicio">{c.horaInicio}</span>
                   <span className="ini-cita__fin">{c.horaFin}</span>
                 </span>
-                <span className="ini-cita__inicial" aria-hidden="true">
+                {/* El circulo va CHICO en esta lista: el renglon lleva ya la
+                    hora, el nombre, el servicio y el estado, y cada pixel que
+                    se lleva el adorno se lo quita al nombre — que es lo que de
+                    verdad hay que leer. */}
+                <span className="pz-inicial pz-inicial--chica" aria-hidden="true">
                   {iniciales(c.cliente)}
                 </span>
-                <span className="ini-cita__quien">
-                  <span className="ini-cita__nombre">{c.cliente}</span>
-                  <span className="ini-cita__servicio">{c.servicio}</span>
+                <span className="pz-renglon__cuerpo">
+                  <span className="pz-renglon__titulo">{c.cliente}</span>
+                  <span className="pz-renglon__pie">{c.servicio}</span>
                 </span>
                 {/* El estado lleva SIEMPRE la palabra escrita, no solo el
                     color: una de cada doce personas no distingue el verde del
                     ambar, y con el sol encima no lo distingue nadie. */}
-                <span className={`ini-cita__estado ini-cita__estado--${c.estado}`}>
+                <span className={`pz-pastilla pz-pastilla--${c.estado}`}>
                   {etiquetaDeEstado(c.estado)}
                 </span>
-                <span className="ini-cita__flecha" aria-hidden="true">
+                <span className="pz-renglon__flecha" aria-hidden="true">
                   <Icono nombre="flecha" lado={16} />
                 </span>
               </button>
@@ -129,7 +133,7 @@ export function AgendaDeHoy({
       )}
 
       {puedeCrear ? (
-        <button type="button" className="ini-agenda__nueva" onClick={onNueva}>
+        <button type="button" className="pz-boton pz-boton--ancho" onClick={onNueva}>
           <Icono nombre="mas" lado={16} />
           <span>Nueva cita</span>
         </button>

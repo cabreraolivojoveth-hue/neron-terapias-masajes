@@ -77,7 +77,7 @@ describe('los cuatro estados de la pantalla', () => {
     // Una lista vacia mientras carga le dice a la persona que hoy no tiene
     // citas, y todavia no se sabe.
     const { container } = render(<AgendaDeHoy {...props} cargando />);
-    expect(container.querySelectorAll('.terapias-silueta').length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('.pz-silueta').length).toBeGreaterThan(0);
     expect(screen.queryByText(/No hay citas programadas/)).toBeNull();
   });
 

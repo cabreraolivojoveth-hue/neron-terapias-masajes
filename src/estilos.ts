@@ -25,6 +25,7 @@ import { movimiento } from './estilo/movimiento.js';
 import { piezas } from './estilo/piezas.js';
 
 const v = (nombre: string): string => `var(--neron-${nombre})`;
+const c = (nombre: string): string => `var(--centro-${nombre})`;
 
 export function estilosDelProducto(): string {
   return [cimientos(), piezas(), armadura(), movimiento(), loQueTodaviaEsDeUnModulo()].join('\n');
@@ -32,6 +33,36 @@ export function estilosDelProducto(): string {
 
 function loQueTodaviaEsDeUnModulo(): string {
   return `
+
+/* ================================================================ */
+/* LAS PASTILLAS DEL NEGOCIO                                        */
+/* ================================================================ */
+/*
+ * La pastilla compartida trae los tonos NEUTROS —exito, aviso, peligro—. Aqui
+ * se dice que estado del negocio usa cual, que si es propio del producto: la
+ * base no sabe que una cita puede estar "pendiente".
+ *
+ * Y CADA UNA LLEVA SU PALABRA. El color es la segunda señal, nunca la unica:
+ * quien no distingue el verde del ambar tiene que poder leer "Confirmada".
+ */
+.pz-pastilla--confirmada { background: ${v('exito-tenue')};       color: ${v('exito')}; }
+.pz-pastilla--completada { background: ${v('cat-cursos-tenue')};  color: ${v('cat-cursos')}; }
+.pz-pastilla--pendiente  { background: ${v('advertencia-tenue')}; color: ${v('advertencia')}; }
+.pz-pastilla--cancelada  { background: ${v('peligro-tenue')};     color: ${v('peligro')}; }
+.pz-pastilla--no_asistio { background: ${v('peligro-tenue')};     color: ${v('peligro')}; }
+.pz-pastilla--cobrada    { background: ${v('exito-tenue')};       color: ${v('exito')}; }
+.pz-pastilla--borrador   { background: ${v('superficie-tenue')};  color: ${v('texto-suave')}; }
+.pz-pastilla--abierta    { background: ${v('exito-tenue')};       color: ${v('exito')}; }
+.pz-pastilla--cerrada    { background: ${v('superficie-tenue')};  color: ${v('texto-suave')}; }
+.pz-pastilla--activo     { background: ${v('exito-tenue')};       color: ${v('exito')}; }
+.pz-pastilla--inactivo   { background: ${v('superficie-tenue')};  color: ${v('texto-suave')}; }
+.pz-pastilla--archivado  { background: ${v('advertencia-tenue')}; color: ${v('advertencia')}; }
+.pz-pastilla--proximo    { background: ${v('cat-cursos-tenue')};  color: ${v('cat-cursos')}; }
+.pz-pastilla--finalizado { background: ${v('superficie-tenue')};  color: ${v('texto-suave')}; }
+.pz-pastilla--disponible { background: ${v('exito-tenue')};       color: ${v('exito')}; }
+.pz-pastilla--bajo       { background: ${v('advertencia-tenue')}; color: ${v('advertencia')}; }
+.pz-pastilla--agotado    { background: ${v('peligro-tenue')};     color: ${v('peligro')}; }
+
 
 .terapias-hoja { color: ${v('marca')}; flex: none; }
 
@@ -713,313 +744,97 @@ function loQueTodaviaEsDeUnModulo(): string {
  * reacomodan solas, y cada hijo lleva su "min-width: 0" — sin eso, un nombre
  * de paciente largo estira su columna, la rejilla crece, y aparece scroll
  * horizontal en TODA la aplicacion. Es el defecto que mas veces vuelve.
+ *
+ * LO QUE ES DE TODOS YA NO VIVE AQUI. La tarjeta, la pastilla, el renglon y la
+ * cifra son piezas compartidas ("pz-"). Lo que queda en este archivo es
+ * unicamente lo que SOLO tiene sentido en el tablero: la fila de una cita con
+ * sus dos horas, la grafica, y el numerito del ranking.
  */
-.ini { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
+.ini { display: flex; flex-direction: column; gap: ${v('espacio-5')}; min-width: 0; }
 
 .ini-icono { flex: none; }
 
 /* ---------------------------------------------------------------- */
-/* El encabezado: saludo y fecha                                     */
-/* ---------------------------------------------------------------- */
-.ini-encabezado { min-width: 0; }
-.ini-encabezado__saludo {
-  margin: 0;
-  font-size: ${v('texto-titulo-grande')};
-  font-weight: ${v('peso-fuerte')};
-  /* Un nombre largo parte en dos lineas en vez de salirse de la pantalla. */
-  overflow-wrap: anywhere;
-}
-.ini-encabezado__fecha {
-  margin: ${v('espacio-1')} 0 0;
-  color: ${v('texto-suave')};
-  font-size: ${v('texto-chico')};
-}
-
-/* ---------------------------------------------------------------- */
-/* Las cuatro tarjetas                                               */
+/* El cuerpo: columnas que se llenan solas                           */
 /* ---------------------------------------------------------------- */
 /*
- * "auto-fit" con un minimo: cuatro en una laptop, dos en tableta, una en
- * celular. Sin escribir un solo punto de corte, y sin que ninguna se
- * comprima hasta que el numero no quepa.
+ * COLUMNAS DE VERDAD, NO CELDAS DE UNA REJILLA.
+ *
+ * La primera version colocaba cada panel en su fila y su columna con
+ * "grid-row". El resultado se veia en la captura y era el reclamo principal:
+ * la fila entera medía lo que el panel MAS ALTO, y debajo de la agenda quedaba
+ * medio metro de blanco porque el panel de productos era gigante.
+ *
+ * Ahora cada columna es una pila independiente: nada se alinea de lado a lado,
+ * asi que ningun panel corto arrastra un hueco. Y al ser "auto-fit", tres
+ * columnas en escritorio, dos en tableta y una en celular sin escribir un solo
+ * punto de corte.
  */
-.ini-tarjetas {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: ${v('espacio-3')};
-  min-width: 0;
-}
-.ini-tarjeta {
-  display: flex;
-  flex-direction: column;
-  gap: ${v('espacio-1')};
-  padding: ${v('espacio-4')};
-  border: 1px solid ${v('borde-suave')};
-  border-radius: ${v('radio-tarjeta')};
-  background: ${v('superficie-elevada')};
-  box-shadow: ${v('sombra-sutil')};
-  min-width: 0;
-}
-.ini-tarjeta__abrir {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: ${v('espacio-3')};
-  width: 100%;
-  padding: 0;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  font-family: ${v('familia')};
-  color: ${v('texto')};
-  min-width: 0;
-}
-.ini-tarjeta__abrir:focus-visible { outline: ${v('foco')}; outline-offset: 3px; border-radius: ${v('radio-sistema')}; }
-.ini-tarjeta__icono {
-  width: 44px; height: 44px; flex: none;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: ${v('radio-sistema')};
-}
-.ini-tarjeta__texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ini-tarjeta__etiqueta {
-  color: ${v('texto-suave')};
-  font-size: ${v('texto-chico')};
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.ini-tarjeta__valor {
-  font-size: ${v('texto-titulo')};
-  font-weight: ${v('peso-fuerte')};
-  font-variant-numeric: ${v('cifra-numeros')};
-  /* Un total de seis cifras no debe estirar la tarjeta. */
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.ini-tarjeta__pie {
-  margin: 0;
-  font-size: ${v('texto-micro')};
-  color: ${v('texto-suave')};
-  /* El hueco se reserva aunque no haya pie: sin esto las tarjetas cambian de
-     alto al terminar de cargar y la fila entera da un brinco. */
-  min-height: 20px;
-  display: flex; align-items: center;
-  background: transparent; border: none; padding: 0;
-  font-family: ${v('familia')};
-  text-align: left;
-}
-.ini-tarjeta__pie--accion {
-  color: ${v('marca')};
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-.ini-tarjeta__pie--accion:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
-.ini-tarjeta--bien .ini-tarjeta__pie--cambio { color: ${v('exito')}; }
-.ini-tarjeta--mal .ini-tarjeta__pie--cambio { color: ${v('peligro')}; }
-
-/*
- * Los cuatro tonos de categoria. Salen de marca.ts, que es el unico archivo
- * del producto con colores escritos, y los cuatro pasaron la prueba de
- * contraste en tema claro y en oscuro.
- */
-.ini-tarjeta--citas { background: ${v('cat-citas-tenue')}; border-color: transparent; }
-.ini-tarjeta--citas .ini-tarjeta__icono { background: ${v('cat-citas')}; color: ${v('cat-citas-encima')}; }
-.ini-tarjeta--ventas { background: ${v('cat-ventas-tenue')}; border-color: transparent; }
-.ini-tarjeta--ventas .ini-tarjeta__icono { background: ${v('cat-ventas')}; color: ${v('cat-ventas-encima')}; }
-.ini-tarjeta--productos { background: ${v('cat-productos-tenue')}; border-color: transparent; }
-.ini-tarjeta--productos .ini-tarjeta__icono { background: ${v('cat-productos')}; color: ${v('cat-productos-encima')}; }
-.ini-tarjeta--cursos { background: ${v('cat-cursos-tenue')}; border-color: transparent; }
-.ini-tarjeta--cursos .ini-tarjeta__icono { background: ${v('cat-cursos')}; color: ${v('cat-cursos-encima')}; }
-
-/* ---------------------------------------------------------------- */
-/* El cuerpo: los paneles                                            */
-/* ---------------------------------------------------------------- */
 .ini-cuerpo {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: ${v('espacio-3')};
-  /* Cada panel mide lo que necesita en vez de estirarse al alto del mas
-     largo: una lista de dos recordatorios no debe dejar medio metro vacio. */
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: ${v('espacio-4')};
   align-items: start;
   min-width: 0;
 }
-/*
- * En pantalla ancha, la distribucion del diseño: la agenda alta a la
- * izquierda, y a su derecha dos filas.
- *
- * Solo se aplica cuando ESTAN LOS CINCO PANELES —de ahi "--completo", que se
- * pone cuando la persona puede ver finanzas—. Si se colocaran a mano siempre,
- * a una recepcionista sin esos paneles le quedarian huecos en la rejilla.
- */
-@media (min-width: 1180px) {
-  .ini-cuerpo--completo {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 0.95fr);
-  }
-  .ini-cuerpo--completo .ini-agenda { grid-column: 1; grid-row: 1 / span 2; }
-  .ini-cuerpo--completo .ini-grafica { grid-column: 2; grid-row: 1; }
-  .ini-cuerpo--completo .ini-ranking { grid-column: 3; grid-row: 1; }
-  .ini-cuerpo--completo .ini-productos { grid-column: 2; grid-row: 2; }
-  .ini-cuerpo--completo .ini-recordatorios { grid-column: 3; grid-row: 2; }
-}
-
-.ini-panel {
+.ini-columna {
   display: flex;
   flex-direction: column;
-  gap: ${v('espacio-3')};
-  padding: ${v('espacio-4')};
-  background: ${v('superficie-elevada')};
-  border: 1px solid ${v('borde-suave')};
-  border-radius: ${v('radio-tarjeta')};
-  box-shadow: ${v('sombra-sutil')};
+  gap: ${v('espacio-4')};
   min-width: 0;
 }
-.ini-panel__barra { display: flex; align-items: center; gap: ${v('espacio-2')}; min-width: 0; }
-.ini-panel__titulo {
-  margin: 0;
-  font-size: ${v('texto-grande')};
-  font-weight: ${v('peso-fuerte')};
-  flex: 1; min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+/*
+ * Cuando estan las tres, no se reparten en partes iguales: la agenda lleva
+ * nombre, servicio y estado en el mismo renglon y es la que mas ancho necesita.
+ * Con tres tercios exactos, "Adriana Villalobos" se cortaba en "Adriana
+ * Villal…" — y un nombre a medias en la pantalla principal se ve descuidado.
+ *
+ * Solo se aplica con las tres puestas: si a alguien le faltan paneles por
+ * permiso, "auto-fit" reparte lo que haya y no queda una pista vacia.
+ */
+@media (min-width: 1240px) {
+  .ini-cuerpo--tres {
+    grid-template-columns: minmax(0, 1.22fr) minmax(0, 1.06fr) minmax(0, 0.92fr);
+  }
 }
-.ini-panel__enlace {
-  flex: none;
-  min-height: 36px;
-  padding: 0 ${v('espacio-3')};
-  border: 1px solid ${v('borde-suave')};
-  border-radius: ${v('radio-sistema')};
-  background: ${v('superficie')};
-  color: ${v('marca')};
-  font-family: ${v('familia')};
-  font-size: ${v('texto-micro')};
-  cursor: pointer;
-  white-space: nowrap;
-}
-.ini-panel__enlace:hover { background: ${v('superficie-tenue')}; }
-.ini-panel__enlace:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
 
-/* ---------------------------------------------------------------- */
-/* Estados compartidos: vacio, error, cargando                       */
-/* ---------------------------------------------------------------- */
-.ini-vacio {
-  margin: 0;
-  padding: ${v('espacio-5')} ${v('espacio-3')};
-  text-align: center;
-  color: ${v('texto-suave')};
-  font-size: ${v('texto-chico')};
-  background: ${v('superficie-tenue')};
-  border-radius: ${v('radio-sistema')};
-}
-.ini-error {
-  display: flex; flex-direction: column; align-items: flex-start;
-  gap: ${v('espacio-2')};
-  padding: ${v('espacio-3')};
-  border-left: 3px solid ${v('peligro')};
-  background: ${v('peligro-tenue')};
-  border-radius: ${v('radio-sistema')};
-}
-.ini-error--ancho { align-items: flex-start; }
-.ini-error__que { margin: 0; font-size: ${v('texto-chico')}; color: ${v('texto')}; }
-.ini-error__detalle {
-  margin: 0; font-size: ${v('texto-micro')}; color: ${v('texto-suave')};
-  /* Un mensaje del servidor puede ser larguisimo y sin espacios. */
-  overflow-wrap: anywhere;
-}
-.ini-boton-suave {
-  min-height: 36px;
-  padding: 0 ${v('espacio-3')};
-  border: 1px solid ${v('borde')};
-  border-radius: ${v('radio-sistema')};
-  background: ${v('superficie')};
-  color: ${v('texto')};
-  font-family: ${v('familia')};
-  font-size: ${v('texto-micro')};
-  cursor: pointer;
-}
-.ini-boton-suave:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
-.ini-cargando { display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
-.ini-cargando__renglon { height: 44px; }
-.ini-cargando__grafica { height: 180px; }
+/* El cambio contra ayer pinta su propio color, encima del tono de la familia:
+   subir y bajar no son lo mismo y la flecha sola no basta. */
+.ini-tarjeta--bien .pz-cifra__pie { color: ${v('exito')}; }
+.ini-tarjeta--mal  .pz-cifra__pie { color: ${v('peligro')}; }
+/* El pie que ADEMAS lleva a algun lado: se subraya, para que se note. */
+.ini-tarjeta__accion { text-decoration: underline; text-underline-offset: 3px; }
 
 /* ---------------------------------------------------------------- */
 /* Agenda de hoy                                                     */
 /* ---------------------------------------------------------------- */
-.ini-agenda__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+/*
+ * LA HORA MANDA EN LA FILA y por eso va primero y con ancho propio. Sin ese
+ * ancho reservado, "09:00" y "17:30" ocupan distinto y la columna de nombres
+ * baila de renglon en renglon.
+ */
 .ini-cita {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: ${v('espacio-3')};
-  width: 100%;
-  min-height: 56px;
-  padding: ${v('espacio-2')};
-  background: transparent;
-  border: none;
-  border-radius: ${v('radio-sistema')};
-  cursor: pointer;
-  text-align: left;
-  font-family: ${v('familia')};
-  color: ${v('texto')};
+  gap: ${v('espacio-2')};
+  padding: ${v('espacio-2')} ${v('espacio-2')};
 }
-.ini-cita:hover { background: ${v('superficie-tenue')}; }
-.ini-cita:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
-.ini-cita__horas { display: flex; flex-direction: column; font-variant-numeric: ${v('cifra-numeros')}; }
+.ini-cita__horas {
+  flex: none;
+  width: 46px;
+  display: flex; flex-direction: column;
+  font-variant-numeric: ${v('cifra-numeros')};
+  line-height: 1.25;
+}
 .ini-cita__inicio { font-weight: ${v('peso-fuerte')}; font-size: ${v('texto-chico')}; }
 .ini-cita__fin { color: ${v('texto-tenue')}; font-size: ${v('texto-micro')}; }
-.ini-cita__inicial {
-  width: 36px; height: 36px; flex: none;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: ${v('radio-redondo')};
-  background: ${v('marca-tenue')};
-  color: ${v('marca')};
-  font-size: ${v('texto-micro')};
-  font-weight: ${v('peso-fuerte')};
-}
-.ini-cita__quien { display: flex; flex-direction: column; min-width: 0; }
-.ini-cita__nombre {
-  font-weight: ${v('peso-medio')};
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.ini-cita__servicio {
-  color: ${v('texto-suave')}; font-size: ${v('texto-micro')};
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-/* El estado lleva color Y palabra. El color solo no le sirve a quien no lo
-   distingue, ni a quien mira la pantalla con el sol encima. */
-.ini-cita__estado {
-  flex: none;
-  font-size: ${v('texto-micro')};
-  padding: 3px ${v('espacio-2')};
-  border-radius: ${v('radio-redondo')};
-  white-space: nowrap;
-  border: 1px solid transparent;
-}
-.ini-cita__estado--pendiente { background: ${v('advertencia-tenue')}; border-color: ${v('advertencia')}; }
-.ini-cita__estado--confirmada { background: ${v('exito-tenue')}; border-color: ${v('exito')}; }
-.ini-cita__estado--completada { background: ${v('marca-tenue')}; border-color: ${v('marca')}; }
-.ini-cita__estado--cancelada { background: ${v('peligro-tenue')}; border-color: ${v('peligro')}; }
-.ini-cita__estado--no_asistio { background: ${v('superficie-tenue')}; border-color: ${v('borde')}; }
-.ini-cita__flecha { color: ${v('texto-tenue')}; display: flex; flex: none; }
-.ini-agenda__nueva {
-  display: flex; align-items: center; justify-content: center; gap: ${v('espacio-2')};
-  min-height: 44px;
-  border: 1px dashed ${v('borde')};
-  border-radius: ${v('radio-sistema')};
-  background: ${v('superficie-tenue')};
-  color: ${v('texto')};
-  font-family: ${v('familia')};
-  font-size: ${v('texto-chico')};
-  cursor: pointer;
-}
-.ini-agenda__nueva:hover { border-color: ${v('marca')}; color: ${v('marca')}; }
-.ini-agenda__nueva:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
 
 /*
- * En celular el renglon se aprieta: se van el circulo de iniciales y la
- * flecha, que son adorno, y se queda lo que se necesita para decidir —hora,
- * quien, que servicio y en que estado—.
+ * En celular se va el circulo de iniciales, que es adorno, y se queda lo que
+ * hace falta para decidir: hora, quien, que servicio y en que estado.
  */
 @media (max-width: 560px) {
-  .ini-cita { grid-template-columns: auto minmax(0, 1fr) auto; gap: ${v('espacio-2')}; }
-  .ini-cita__inicial, .ini-cita__flecha { display: none; }
+  .ini-cita .pz-inicial { display: none; }
+  .ini-cita { gap: ${v('espacio-2')}; }
 }
 
 /* ---------------------------------------------------------------- */
@@ -1027,36 +842,42 @@ function loQueTodaviaEsDeUnModulo(): string {
 /* ---------------------------------------------------------------- */
 .ini-grafica__periodo { display: flex; align-items: center; flex: none; }
 .ini-grafica__periodo select {
-  min-height: 36px;
-  padding: 0 ${v('espacio-2')};
-  border: 1px solid ${v('borde')};
-  border-radius: ${v('radio-sistema')};
+  min-height: 34px;
+  padding: 0 ${v('espacio-3')};
+  border: 1px solid ${c('borde-tarjeta')};
+  border-radius: ${c('radio-pastilla')};
   background: ${v('superficie')};
-  color: ${v('texto')};
+  color: ${v('texto-suave')};
   font-family: ${v('familia')};
   font-size: ${v('texto-micro')};
   max-width: 160px;
+  cursor: pointer;
 }
 .ini-grafica__periodo select:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
 
 .ini-grafica__cuerpo { display: flex; gap: ${v('espacio-2')}; min-width: 0; }
 .ini-grafica__eje {
   list-style: none; margin: 0; padding: 0;
-  width: 46px; flex: none; height: 180px;
+  width: 44px; flex: none; height: 190px;
   display: flex; flex-direction: column; justify-content: space-between;
   text-align: right;
   font-size: ${v('texto-micro')};
   color: ${v('texto-tenue')};
   font-variant-numeric: ${v('cifra-numeros')};
 }
-.ini-grafica__lienzo { position: relative; flex: 1; min-width: 0; height: 180px; }
+.ini-grafica__lienzo { position: relative; flex: 1; min-width: 0; height: 190px; }
 .ini-grafica__svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.ini-grafica__guia { stroke: ${v('borde-suave')}; stroke-width: 1; vector-effect: non-scaling-stroke; }
-.ini-grafica__area { fill: ${v('marca-tenue')}; stroke: none; }
+/* Las guias son CASI invisibles a proposito: en el diseño se adivinan, no se
+   leen. Una reja marcada compite con la linea, que es lo que importa. */
+.ini-grafica__guia { stroke: ${c('borde-tenue')}; stroke-width: 1; vector-effect: non-scaling-stroke; }
+/* El relleno va en degradado —fuerte pegado a la linea, transparente en el
+   piso—. Plano se ve como una mancha; en degradado se lee como volumen, que es
+   lo que enseña el diseño. */
+.ini-grafica__area { fill: url(#ini-degradado); stroke: none; }
 .ini-grafica__linea {
   fill: none;
   stroke: ${v('marca')};
-  stroke-width: 2;
+  stroke-width: 2.5;
   stroke-linejoin: round;
   stroke-linecap: round;
   /* Sin esto, estirar el SVG a lo ancho engorda la linea horizontalmente y la
@@ -1078,24 +899,31 @@ function loQueTodaviaEsDeUnModulo(): string {
 }
 .ini-grafica__punto {
   position: absolute; left: 50%;
-  width: 10px; height: 10px;
-  margin: -5px 0 0 -5px;
-  border-radius: ${v('radio-redondo')};
+  width: 9px; height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: ${c('radio-pastilla')};
   background: ${v('superficie-elevada')};
-  border: 2px solid ${v('marca')};
+  border: 2.5px solid ${v('marca')};
+  transition: transform ${v('movimiento-curva')} ${v('movimiento-instantaneo')};
 }
-.ini-grafica__columna--activa .ini-grafica__punto { background: ${v('marca')}; }
+/* El punto señalado crece: es la confirmacion de que el globito habla de ESE
+   dia y no del de al lado. */
+.ini-grafica__columna--activa .ini-grafica__punto {
+  background: ${v('marca')};
+  transform: scale(1.45);
+}
 .ini-grafica__globo {
   position: absolute; top: ${v('espacio-2')};
   transform: translateX(-50%);
   z-index: 3;
   display: flex; flex-direction: column;
-  padding: ${v('espacio-1')} ${v('espacio-2')};
+  padding: ${v('espacio-2')} ${v('espacio-3')};
   background: ${v('superficie-elevada')};
-  border: 1px solid ${v('borde-suave')};
-  border-radius: ${v('radio-sistema')};
-  box-shadow: ${v('sombra-flotante')};
+  border: 1px solid ${c('borde-tarjeta')};
+  border-radius: ${c('radio-control')};
+  box-shadow: ${c('sombra-alta')};
   white-space: nowrap;
+  animation: mv-aparece ${v('movimiento-instantaneo')} ${v('movimiento-curva')} both;
   /* No intercepta el raton: si lo hiciera, el globito taparia la columna de
      al lado y el señalado se quedaria pegado. */
   pointer-events: none;
@@ -1114,7 +942,7 @@ function loQueTodaviaEsDeUnModulo(): string {
   display: flex;
   /* El mismo hueco que ocupa el eje vertical, para que cada etiqueta caiga
      bajo su franja. */
-  margin-left: calc(46px + ${v('espacio-2')});
+  margin-left: calc(44px + ${v('espacio-2')});
   font-size: ${v('texto-micro')};
   color: ${v('texto-tenue')};
 }
@@ -1124,45 +952,42 @@ function loQueTodaviaEsDeUnModulo(): string {
 }
 
 /* ---------------------------------------------------------------- */
-/* Rankings                                                          */
+/* Rankings: el puesto y la foto del producto                        */
 /* ---------------------------------------------------------------- */
-.ini-ranking__lista {
-  list-style: none; margin: 0; padding: 0;
-  display: flex; flex-direction: column; gap: ${v('espacio-3')};
-}
-.ini-ranking__renglon { display: flex; align-items: center; gap: ${v('espacio-3')}; min-width: 0; }
-.ini-ranking__puesto {
-  width: 28px; height: 28px; flex: none;
+/*
+ * Un numero, no un icono de colores por servicio. Los servicios los captura
+ * cada centro: no hay forma de saber que dibujo le toca a "Constelaciones" sin
+ * inventarselo, y un icono inventado es exactamente lo que no va aqui.
+ */
+.ini-puesto {
+  flex: none;
+  width: 26px; height: 26px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: ${v('radio-redondo')};
+  border-radius: ${c('radio-pastilla')};
   background: ${v('marca-tenue')};
   color: ${v('marca')};
   font-size: ${v('texto-micro')};
   font-weight: ${v('peso-fuerte')};
   font-variant-numeric: ${v('cifra-numeros')};
 }
-.ini-ranking__texto { display: flex; flex-direction: column; min-width: 0; }
-.ini-ranking__nombre {
-  font-weight: ${v('peso-medio')};
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.ini-ranking__dato { color: ${v('texto-suave')}; font-size: ${v('texto-micro')}; }
+/* Los tres primeros pesan mas que el resto: es un ranking, y el ojo tiene que
+   poder quedarse en el podio sin leer las cinco filas. */
+.ini-puesto--podio { background: ${v('marca')}; color: ${v('sobre-marca')}; }
 
-.ini-productos__lista {
-  list-style: none; margin: 0; padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
-  gap: ${v('espacio-3')};
-}
-.ini-producto {
-  display: flex; flex-direction: column; align-items: center; gap: ${v('espacio-1')};
-  min-width: 0; text-align: center;
-}
+/*
+ * EL PRODUCTO VA EN RENGLON, NO EN CUADRICULA.
+ *
+ * Con foto grande y en rejilla, cinco productos median mas de cuatrocientos
+ * pixeles de alto y dejaban la columna de al lado vacia. En renglon el panel
+ * mide lo mismo que el de servicios —que es su hermano— y las dos columnas
+ * quedan parejas.
+ */
 .ini-producto__foto, .ini-producto__hueco {
-  width: 100%; max-width: 76px; aspect-ratio: 1;
-  border-radius: ${v('radio-sistema')};
+  flex: none;
+  width: 40px; height: 40px;
+  border-radius: ${c('radio-control')};
   background: ${v('superficie-tenue')};
-  border: 1px solid ${v('borde-suave')};
+  border: 1px solid ${c('borde-tenue')};
 }
 /* "contain" y no "cover": la foto de un frasco recortada por los lados deja
    de parecerse al frasco que esta en el estante. */
@@ -1171,100 +996,42 @@ function loQueTodaviaEsDeUnModulo(): string {
   display: flex; align-items: center; justify-content: center;
   color: ${v('texto-tenue')};
 }
-.ini-producto__nombre {
-  font-size: ${v('texto-micro')};
-  font-weight: ${v('peso-medio')};
-  overflow-wrap: anywhere;
-}
-.ini-producto__dato { font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
 
 /* ---------------------------------------------------------------- */
 /* Recordatorios                                                     */
 /* ---------------------------------------------------------------- */
-.ini-recordatorios__lista {
-  list-style: none; margin: 0; padding: 0;
-  display: flex; flex-direction: column; gap: ${v('espacio-2')};
-}
+/*
+ * La urgencia se ve en la raya de la izquierda Y se lee en la pastilla. Solo
+ * con el color no le sirve a quien no lo distingue, ni a quien mira la
+ * pantalla con el sol encima.
+ */
 .ini-recordatorio {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: ${v('espacio-3')};
-  width: 100%;
-  min-height: 56px;
-  padding: ${v('espacio-2')} ${v('espacio-3')};
-  border: 1px solid ${v('borde-suave')};
-  border-left-width: 3px;
-  border-radius: ${v('radio-sistema')};
-  background: ${v('superficie')};
-  cursor: pointer;
-  text-align: left;
-  font-family: ${v('familia')};
-  color: ${v('texto')};
+  border-left: 3px solid transparent;
+  border-radius: ${c('radio-control')};
 }
-.ini-recordatorio:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
-.ini-recordatorio--vencido { border-left-color: ${v('peligro')}; background: ${v('peligro-tenue')}; }
-.ini-recordatorio--hoy { border-left-color: ${v('advertencia')}; background: ${v('advertencia-tenue')}; }
-.ini-recordatorio--proximo { border-left-color: ${v('borde')}; }
-.ini-recordatorio__icono {
-  width: 34px; height: 34px; flex: none;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: ${v('radio-redondo')};
-  background: ${v('superficie-elevada')};
-  color: ${v('texto-suave')};
-  border: 1px solid ${v('borde-suave')};
-}
-.ini-recordatorio__texto { display: flex; flex-direction: column; min-width: 0; }
-.ini-recordatorio__titulo {
-  font-weight: ${v('peso-medio')}; font-size: ${v('texto-chico')};
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.ini-recordatorio__detalle {
-  color: ${v('texto-suave')}; font-size: ${v('texto-micro')};
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.ini-recordatorio__cuando {
-  flex: none; font-size: ${v('texto-micro')}; color: ${v('texto-suave')};
-  white-space: nowrap;
-}
-.ini-recordatorio__flecha { color: ${v('texto-tenue')}; display: flex; flex: none; }
-@media (max-width: 560px) {
-  .ini-recordatorio { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .ini-recordatorio__flecha { display: none; }
-}
+.ini-recordatorio--vencido { border-left-color: ${v('peligro')}; }
+.ini-recordatorio--hoy { border-left-color: ${v('advertencia')}; }
+.ini-recordatorio--proximo { border-left-color: ${c('borde-tarjeta')}; }
 
 /* ---------------------------------------------------------------- */
 /* Acciones rapidas                                                  */
 /* ---------------------------------------------------------------- */
-.ini-acciones__fila {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(146px, 1fr));
-  gap: ${v('espacio-2')};
+.ini-accion { justify-content: flex-start; min-height: 56px; gap: ${v('espacio-3')}; }
+/* Se levanta al pasar: son los seis botones que mas se aprietan del producto y
+   tienen que sentirse vivos. */
+.ini-accion:hover:not(:disabled) {
+  border-color: ${v('marca')};
+  box-shadow: ${c('sombra-alta')};
+  transform: translateY(-2px);
 }
-.ini-accion {
-  display: flex; align-items: center; justify-content: center; gap: ${v('espacio-2')};
-  min-height: 52px; min-width: 0;
-  padding: 0 ${v('espacio-3')};
-  border: 1px solid ${v('borde-suave')};
-  border-radius: ${v('radio-sistema')};
-  background: ${v('superficie')};
-  color: ${v('texto')};
-  font-family: ${v('familia')};
-  font-size: ${v('texto-chico')};
-  cursor: pointer;
-}
-.ini-accion:hover { background: ${v('superficie-tenue')}; }
-.ini-accion:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
-.ini-accion__icono { display: flex; flex: none; }
-.ini-accion__texto { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* El icono toma el tono de la familia a la que pertenece la accion. El gasto
    va en rojo a proposito: es lo unico de la fila que saca dinero. */
-.ini-accion--venta .ini-accion__icono { color: ${v('cat-citas')}; }
-.ini-accion--cliente .ini-accion__icono { color: ${v('cat-cursos')}; }
-.ini-accion--cita .ini-accion__icono { color: ${v('cat-citas')}; }
-.ini-accion--pago .ini-accion__icono { color: ${v('cat-citas')}; }
-.ini-accion--gasto .ini-accion__icono { color: ${v('peligro')}; }
-.ini-accion--reportes .ini-accion__icono { color: ${v('cat-ventas')}; }
+.ini-accion--venta   .pz-ficha { background: ${v('cat-ventas-tenue')};    color: ${v('cat-ventas')}; }
+.ini-accion--cliente .pz-ficha { background: ${v('cat-visitas-tenue')};   color: ${v('cat-visitas')}; }
+.ini-accion--cita    .pz-ficha { background: ${v('cat-citas-tenue')};     color: ${v('cat-citas')}; }
+.ini-accion--pago    .pz-ficha { background: ${v('cat-ventas-tenue')};    color: ${v('cat-ventas')}; }
+.ini-accion--gasto   .pz-ficha { background: ${v('peligro-tenue')};       color: ${v('peligro')}; }
+.ini-accion--reportes .pz-ficha { background: ${v('cat-cursos-tenue')};   color: ${v('cat-cursos')}; }
 
 /* ================================================================ */
 /* LA BARRA SUPERIOR: buscador y campana                            */

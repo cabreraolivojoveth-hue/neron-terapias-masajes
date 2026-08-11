@@ -654,6 +654,13 @@ export function piezas(): string {
 
 .pz-tabla__marca { width: 36px; }
 
+
+/* La fila de acciones rapidas: botones iguales que se reparten el ancho. */
+.pz-acciones {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: ${v('espacio-3')}; min-width: 0;
+}
+
 /* La cuadricula de tarjetas, para catalogos con foto. */
 .pz-cuadricula {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));

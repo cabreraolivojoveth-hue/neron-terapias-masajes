@@ -168,19 +168,19 @@ export function Inicio() {
   const cargandoResumen = resumen.estado === 'cargando' && resumen.datos === null;
 
   return (
-    <div className="ini">
-      <header className="ini-encabezado">
-        <h2 className="ini-encabezado__saludo">
+    <div className="ini mv-pantalla">
+      <header className="pz-encabezado__texto">
+        <h2 className="tt-pagina">
           {encabezadoDeSaludo(acceso?.nombre, momento)}
         </h2>
-        <p className="ini-encabezado__fecha">{fechaLarga(dia)}</p>
+        <p className="tt-lema">{fechaLarga(dia)}</p>
       </header>
 
       {resumen.error ? (
-        <div className="ini-error ini-error--ancho" role="alert">
-          <p className="ini-error__que">No pudimos cargar el resumen del día.</p>
-          <p className="ini-error__detalle">{resumen.error}</p>
-          <button type="button" className="ini-boton-suave" onClick={resumen.recargar}>
+        <div className="pz-error pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar el resumen del día.</p>
+          <p className="pz-error__detalle">{resumen.error}</p>
+          <button type="button" className="pz-boton" onClick={resumen.recargar}>
             Reintentar
           </button>
         </div>
@@ -188,57 +188,73 @@ export function Inicio() {
 
       <Tarjetas resumen={resumen.datos} permisos={permisos} hoy={dia} onIr={irA} />
 
-      <div className={`ini-cuerpo${verFinanzas ? ' ini-cuerpo--completo' : ''}`}>
+      {/*
+        TRES COLUMNAS DE VERDAD, cada una con su propia pila de paneles.
+
+        La version anterior colocaba cada panel en su celda de una rejilla, con
+        `grid-row` a mano. Se veia en la captura y fue el reclamo principal: una
+        fila mide lo que su panel MAS ALTO, asi que debajo de la agenda quedaba
+        medio metro de blanco porque el panel de productos era gigante.
+
+        Apilando por columna nada se alinea de lado a lado y no hay hueco que
+        rellenar. Las columnas se arman aqui —y no en la hoja de estilos—
+        porque cuales existen depende del permiso: a quien no ve finanzas no le
+        puede quedar una columna vacia en medio de la pantalla.
+      */}
+      <div className={`ini-cuerpo${verAgenda && verFinanzas ? ' ini-cuerpo--tres' : ''}`}>
         {verAgenda ? (
-          <AgendaDeHoy
-            citas={citas.datos ?? []}
-            cargando={citas.estado === 'cargando' && citas.datos === null}
-            error={citas.error}
-            puedeCrear={crearCitas}
-            onReintentar={citas.recargar}
-            onAbrir={abrirCita}
-            onVerCalendario={() => ir('agenda', { parametros: { fecha: dia } })}
-            onNueva={nuevaCita}
-          />
+          <div className="ini-columna">
+            <AgendaDeHoy
+              citas={citas.datos ?? []}
+              cargando={citas.estado === 'cargando' && citas.datos === null}
+              error={citas.error}
+              puedeCrear={crearCitas}
+              onReintentar={citas.recargar}
+              onAbrir={abrirCita}
+              onVerCalendario={() => ir('agenda', { parametros: { fecha: dia } })}
+              onNueva={nuevaCita}
+            />
+          </div>
         ) : null}
 
         {verFinanzas ? (
-          <GraficaDeIngresos
-            dias={dias}
-            periodos={periodos}
-            periodo={periodo}
-            cargando={cargandoIngresos}
-            error={otro ? ingresosDeOtroPeriodo.error : resumen.error}
-            onCambiarPeriodo={setPeriodo}
-            onReintentar={otro ? ingresosDeOtroPeriodo.recargar : resumen.recargar}
-          />
+          <div className="ini-columna">
+            <GraficaDeIngresos
+              dias={dias}
+              periodos={periodos}
+              periodo={periodo}
+              cargando={cargandoIngresos}
+              error={otro ? ingresosDeOtroPeriodo.error : resumen.error}
+              onCambiarPeriodo={setPeriodo}
+              onReintentar={otro ? ingresosDeOtroPeriodo.recargar : resumen.recargar}
+            />
+            <ProductosMasVendidos
+              productos={resumen.datos?.topProductos ?? []}
+              cargando={cargandoResumen}
+              onVerTodos={() => ir('reportes', { parametros: { ranking: 'productos' } })}
+            />
+          </div>
         ) : null}
 
-        {verFinanzas ? (
-          <ServiciosMasVendidos
-            servicios={resumen.datos?.topServicios ?? []}
-            cargando={cargandoResumen}
-            onVerTodos={() => ir('reportes', { parametros: { ranking: 'servicios' } })}
-          />
-        ) : null}
+        <div className="ini-columna">
+          {verFinanzas ? (
+            <ServiciosMasVendidos
+              servicios={resumen.datos?.topServicios ?? []}
+              cargando={cargandoResumen}
+              onVerTodos={() => ir('reportes', { parametros: { ranking: 'servicios' } })}
+            />
+          ) : null}
 
-        {verFinanzas ? (
-          <ProductosMasVendidos
-            productos={resumen.datos?.topProductos ?? []}
-            cargando={cargandoResumen}
-            onVerTodos={() => ir('reportes', { parametros: { ranking: 'productos' } })}
+          <RecordatoriosCercanos
+            recordatorios={recordatorios.datos ?? []}
+            hoy={dia}
+            cargando={recordatorios.estado === 'cargando' && recordatorios.datos === null}
+            error={recordatorios.error}
+            onAbrir={abrirRecordatorio}
+            onVerTodos={() => ir('recordatorios')}
+            onReintentar={recordatorios.recargar}
           />
-        ) : null}
-
-        <RecordatoriosCercanos
-          recordatorios={recordatorios.datos ?? []}
-          hoy={dia}
-          cargando={recordatorios.estado === 'cargando' && recordatorios.datos === null}
-          error={recordatorios.error}
-          onAbrir={abrirRecordatorio}
-          onVerTodos={() => ir('recordatorios')}
-          onReintentar={recordatorios.recargar}
-        />
+        </div>
       </div>
 
       <AccionesRapidas permisos={permisos} onAccion={hacerAccion} />

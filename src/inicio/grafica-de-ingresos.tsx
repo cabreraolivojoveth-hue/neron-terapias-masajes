@@ -82,6 +82,28 @@ export function escalarDesdeCero(
   });
 }
 
+/**
+ * Los puntos que dibujan el RELLENO, que no son los mismos que los de la linea.
+ *
+ * El punto de cada dia cae en el centro de su franja, asi que el primero
+ * empieza a un catorceavo del borde y el ultimo termina igual de adentro.
+ * Rellenando exactamente esos puntos, el area queda como una losa flotando con
+ * dos cantos verticales a los lados — se ve como un error de dibujo, y asi
+ * salio en la primera captura.
+ *
+ * Se estira entonces el relleno hasta los dos bordes a la misma altura que su
+ * punto de la punta. La LINEA no se toca: ahi si es informacion, y una linea
+ * que llega al borde diria que hay un dia mas del que hay.
+ */
+export function puntosDelRelleno(
+  puntos: readonly { readonly x: number; readonly y: number }[],
+): { readonly x: number; readonly y: number }[] {
+  const primero = puntos[0];
+  const ultimo = puntos[puntos.length - 1];
+  if (!primero || !ultimo) return [];
+  return [{ x: 0, y: primero.y }, ...puntos, { x: 100, y: ultimo.y }];
+}
+
 /** `$0`, `$2k`, `$1.5M`. Solo para el EJE: el globito dice la cifra exacta. */
 export function etiquetaCorta(centavos: number): string {
   if (!Number.isFinite(centavos)) return '';
@@ -154,9 +176,9 @@ export function GraficaDeIngresos({
   const seleccion = periodos.find((p) => p.clave === periodo) ?? periodos[0];
 
   return (
-    <section className="ini-panel ini-grafica" aria-labelledby="ini-grafica-titulo">
-      <header className="ini-panel__barra">
-        <h3 className="ini-panel__titulo" id="ini-grafica-titulo">
+    <section className="pz-tarjeta ini-grafica" aria-labelledby="ini-grafica-titulo">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta" id="ini-grafica-titulo">
           Ingresos {seleccion?.clave === 'esteMes' ? 'este mes' : 'esta semana'}
         </h3>
         {/*
@@ -181,17 +203,17 @@ export function GraficaDeIngresos({
       </header>
 
       {error ? (
-        <div className="ini-error" role="alert">
-          <p className="ini-error__que">No pudimos cargar los ingresos.</p>
-          <p className="ini-error__detalle">{error}</p>
-          <button type="button" className="ini-boton-suave" onClick={onReintentar}>
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar los ingresos.</p>
+          <p className="pz-error__detalle">{error}</p>
+          <button type="button" className="pz-boton" onClick={onReintentar}>
             Reintentar
           </button>
         </div>
       ) : cargando ? (
-        <div className="ini-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando los ingresos</span>
-          <div className="terapias-silueta ini-cargando__grafica" />
+          <div className="pz-silueta pz-silueta--alta" />
         </div>
       ) : (
         <div className="ini-grafica__cuerpo">
@@ -210,13 +232,28 @@ export function GraficaDeIngresos({
               aria-hidden="true"
               focusable="false"
             >
+              {/*
+                EL DEGRADADO DEL RELLENO. Va aqui y no en la hoja de estilos
+                porque un degradado de SVG es un elemento, no una propiedad: el
+                CSS solo puede apuntarle con `url(#…)`.
+
+                Los dos topes salen del color de marca con distinta opacidad,
+                asi que sigue sin haber un solo color escrito a mano y el tema
+                oscuro lo hereda sin tocar nada.
+              */}
+              <defs>
+                <linearGradient id="ini-degradado" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--neron-marca)" stopOpacity="0.28" />
+                  <stop offset="100%" stopColor="var(--neron-marca)" stopOpacity="0.02" />
+                </linearGradient>
+              </defs>
               {marcas.map((_, i) => {
                 const y = 100 - (i / DIVISIONES) * 100;
                 return <line key={i} className="ini-grafica__guia" x1="0" y1={y} x2="100" y2={y} />;
               })}
               {hayAlgo && puntos.length > 1 ? (
                 <>
-                  <path className="ini-grafica__area" d={comoArea(puntos, 100)} />
+                  <path className="ini-grafica__area" d={comoArea(puntosDelRelleno(puntos), 100)} />
                   <polyline className="ini-grafica__linea" points={comoPolilinea(puntos)} />
                 </>
               ) : null}
@@ -287,7 +324,7 @@ export function GraficaDeIngresos({
         // El eje se queda puesto y lo que falta se DICE. Inventar una linea
         // para que "se vea completo" es justo lo que hace desconfiar despues
         // de los numeros que si son reales.
-        <p className="ini-vacio">Aún no hay ventas cobradas en este periodo.</p>
+        <p className="pz-vacio__texto">Aún no hay ventas cobradas en este periodo.</p>
       ) : null}
     </section>
   );

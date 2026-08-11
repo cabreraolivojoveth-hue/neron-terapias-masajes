@@ -146,13 +146,24 @@ describe('a donde lleva cada tarjeta', () => {
     expect(screen.queryByText(/pendientes/)).toBeNull();
   });
 
-  it('el pie de inventario es un boton aparte, no uno dentro de otro', () => {
-    // Un boton dentro de otro es HTML invalido: el navegador lo desarma y con
-    // teclado se vuelve imposible llegar al de adentro.
+  it('la tarjeta entera es UN boton y el pie va de texto adentro', () => {
+    /*
+     * Un boton dentro de otro es HTML invalido: el navegador lo desarma y con
+     * teclado se vuelve imposible llegar al de adentro. Antes se evitaba
+     * poniendo el pie como boton HERMANO, y el precio se vio en la captura: la
+     * tarjeta quedaba partida en dos columnas, con el numero a la izquierda y
+     * "Revisar inventario" flotando a la derecha.
+     *
+     * Ahora la tarjeta entera es el boton y el pie es texto. No se pierde
+     * nada: el pie llevaba al MISMO modulo con el mismo filtro.
+     */
     const { container } = render(
       <Tarjetas resumen={resumen()} permisos={TODO} hoy={HOY} onIr={() => {}} />,
     );
     expect(container.querySelector('button button')).toBeNull();
-    expect(screen.getByText('Revisar inventario').tagName).toBe('BUTTON');
+
+    const pie = screen.getByText('Revisar inventario');
+    expect(pie.tagName).toBe('SPAN');
+    expect(pie.closest('button')).not.toBeNull();
   });
 });
