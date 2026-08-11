@@ -90,13 +90,13 @@ function Renglon({
   readonly children: ReactNode;
 }) {
   return (
-    <div className="cli-exp__renglon">
-      <span className="cli-exp__renglon-icono" aria-hidden="true">
+    <div className="pz-renglon pz-renglon--quieto">
+      <span className="pz-ficha" aria-hidden="true">
         <Icono nombre={icono} lado={18} />
       </span>
-      <div className="cli-exp__renglon-cuerpo">
-        <span className="cli-exp__etiqueta">{titulo}</span>
-        <div className="cli-exp__valor">{children}</div>
+      <div className="pz-dato">
+        <span className="tt-etiqueta">{titulo}</span>
+        <div className="pz-dato__valor">{children}</div>
       </div>
     </div>
   );
@@ -126,8 +126,8 @@ export function DetalleDeServicio({
 
   if (!ficha && !cargando && !error) {
     return (
-      <aside className="cli-panel srv-detalle srv-detalle--vacio">
-        <p className="cli-vacio__texto">
+      <aside className="pz-tarjeta srv-detalle srv-detalle--vacio">
+        <p className="pz-vacio__texto">
           Toca un servicio para ver su ficha, su historial de cambios y las acciones.
         </p>
       </aside>
@@ -135,9 +135,9 @@ export function DetalleDeServicio({
   }
 
   return (
-    <aside className="cli-panel srv-detalle" aria-label="Detalle del servicio">
-      <header className="cli-panel__barra">
-        <h3 className="cli-panel__titulo">Detalle del servicio</h3>
+    <aside className="pz-tarjeta srv-detalle" aria-label="Detalle del servicio">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta">Detalle del servicio</h3>
         <button
           type="button"
           className="srv-detalle__cerrar"
@@ -149,15 +149,15 @@ export function DetalleDeServicio({
       </header>
 
       {error ? (
-        <div className="cli-error" role="alert">
-          <p className="cli-error__que">No pudimos cargar el servicio.</p>
-          <p className="cli-error__detalle">{error}</p>
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar el servicio.</p>
+          <p className="pz-error__detalle">{error}</p>
         </div>
       ) : cargando || !ficha ? (
-        <div className="cli-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando el servicio</span>
           {[0, 1, 2].map((i) => (
-            <div key={i} className="terapias-silueta cli-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : (
@@ -173,7 +173,7 @@ export function DetalleDeServicio({
             <div className="srv-detalle__quien">
               <span className="srv-detalle__nombre">
                 {ficha.nombre}
-                <span className={`cli-estado cli-estado--${ficha.activo ? 'activo' : 'inactivo'}`}>
+                <span className={`pz-pastilla pz-pastilla--${ficha.activo ? 'activo' : 'inactivo'}`}>
                   {ficha.activo ? 'Activo' : 'Inactivo'}
                 </span>
               </span>
@@ -183,14 +183,14 @@ export function DetalleDeServicio({
             </div>
           </div>
 
-          <div className="srv-pestanas" role="tablist" aria-label="Secciones del servicio">
+          <div className="pz-segmentos" role="tablist" aria-label="Secciones del servicio">
             {PESTANAS.map((p) => (
               <button
                 key={p.clave}
                 type="button"
                 role="tab"
                 aria-selected={pestana === p.clave}
-                className={`srv-pestana${pestana === p.clave ? ' srv-pestana--puesta' : ''}`}
+                className={`pz-segmento${pestana === p.clave ? ' pz-segmento--puesto' : ''}`}
                 onClick={() => setPestana(p.clave)}
               >
                 {p.etiqueta}
@@ -211,13 +211,13 @@ export function DetalleDeServicio({
                     {ficha.categoria}
                   </span>
                 ) : (
-                  <span className="cli-falta">Sin categoría</span>
+                  <span className="tt-falta">Sin categoría</span>
                 )}
               </Renglon>
 
               <Renglon icono="reloj" titulo="Duración">
                 {ficha.duracionMin} minutos
-                <span className="cli-exp__secundario"> · {duracionEnPalabras(ficha.duracionMin)}</span>
+                <span className="tt-secundario"> · {duracionEnPalabras(ficha.duracionMin)}</span>
               </Renglon>
 
               <Renglon icono="dinero" titulo="Precio">
@@ -226,14 +226,14 @@ export function DetalleDeServicio({
 
               <Renglon icono="estrella" titulo="Precio promocional">
                 {ficha.precioPromocionalCentavos === null ? (
-                  <span className="cli-falta">Sin promoción</span>
+                  <span className="tt-falta">Sin promoción</span>
                 ) : (
                   <>
                     {formatearMoneda(ficha.precioPromocionalCentavos)}
                     {/* Se dice si la promocion esta VIGENTE hoy, no solo que
                         existe: una promocion que ya vencio sigue guardada, y
                         verla sin fecha hace creer que se esta cobrando. */}
-                    <div className="cli-exp__secundario">
+                    <div className="tt-secundario">
                       {ficha.precioHoyCentavos === ficha.precioPromocionalCentavos
                         ? 'Vigente hoy'
                         : 'Fuera de vigencia hoy'}
@@ -252,7 +252,7 @@ export function DetalleDeServicio({
               <Renglon icono="alerta" titulo="Requiere preparación">
                 {ficha.requierePreparacion ? 'Sí' : 'No'}
                 {ficha.requierePreparacion && ficha.preparacion ? (
-                  <div className="cli-exp__secundario">{ficha.preparacion}</div>
+                  <div className="tt-secundario">{ficha.preparacion}</div>
                 ) : null}
               </Renglon>
 
@@ -267,7 +267,7 @@ export function DetalleDeServicio({
                     {ficha.color}
                   </span>
                 ) : (
-                  <span className="cli-falta">El del estado de la cita</span>
+                  <span className="tt-falta">El del estado de la cita</span>
                 )}
               </Renglon>
 
@@ -282,9 +282,9 @@ export function DetalleDeServicio({
               {ficha.descripcion ? (
                 // Como TEXTO, nunca como HTML: es lo que alguien escribio, y si
                 // se interpretara podria romper la pantalla.
-                <p className="srv-texto">{ficha.descripcion}</p>
+                <p className="tt-libre">{ficha.descripcion}</p>
               ) : (
-                <p className="cli-vacio__texto">
+                <p className="pz-vacio__texto">
                   Este servicio todavía no tiene descripción. Se ve en la lista y ayuda a quien
                   agenda a saber de qué se trata.
                 </p>
@@ -295,9 +295,9 @@ export function DetalleDeServicio({
           {pestana === 'notas' ? (
             <div className="srv-detalle__cuerpo">
               {ficha.notas ? (
-                <p className="srv-texto">{ficha.notas}</p>
+                <p className="tt-libre">{ficha.notas}</p>
               ) : (
-                <p className="cli-vacio__texto">
+                <p className="pz-vacio__texto">
                   Sin notas internas. Aquí va lo que el equipo necesita recordar y al paciente no
                   se le enseña.
                 </p>
@@ -312,12 +312,12 @@ export function DetalleDeServicio({
                   "no hay cambios" a quien sí los tiene enseña a desconfiar de
                   todo lo demás que dice la pantalla. */}
               {!ficha.puedeVerHistorial ? (
-                <p className="cli-vacio__texto">
+                <p className="pz-vacio__texto">
                   Tu rol no tiene permiso para ver la bitácora del centro. Aquí van los cambios de
                   precio y de duración, con quién los hizo y cuándo.
                 </p>
               ) : ficha.historial.length === 0 ? (
-                <p className="cli-vacio__texto">Todavía no hay cambios registrados.</p>
+                <p className="pz-vacio__texto">Todavía no hay cambios registrados.</p>
               ) : (
                 <ul className="srv-historial">
                   {ficha.historial.map((h, i) => {
@@ -326,9 +326,9 @@ export function DetalleDeServicio({
                       <li key={`${h.cuando}:${i}`} className="srv-historial__renglon">
                         <span className="srv-historial__que">{comoSeLeeElCambio(h.accion)}</span>
                         {cambios.length > 0 ? (
-                          <span className="cli-exp__secundario">Cambió {cambios.join(', ')}</span>
+                          <span className="tt-secundario">Cambió {cambios.join(', ')}</span>
                         ) : null}
-                        <span className="cli-exp__secundario">
+                        <span className="tt-secundario">
                           {h.quien} · {h.cuando.slice(0, 10).split('-').reverse().join('/')}
                         </span>
                       </li>
@@ -341,12 +341,12 @@ export function DetalleDeServicio({
 
           {puedeGestionar ? (
             <div className="srv-detalle__acciones">
-              <button type="button" className="cli-boton-principal" onClick={onEditar}>
+              <button type="button" className="pz-boton pz-boton--principal" onClick={onEditar}>
                 <Icono nombre="lapiz" lado={16} /> Editar servicio
               </button>
               <button
                 type="button"
-                className={ficha.activo ? 'srv-boton-peligro' : 'cli-boton-suave'}
+                className={ficha.activo ? 'srv-boton-peligro' : 'pz-boton'}
                 onClick={onCambiarEstado}
               >
                 <Icono nombre={ficha.activo ? 'prohibido' : 'palomita'} lado={16} />{' '}

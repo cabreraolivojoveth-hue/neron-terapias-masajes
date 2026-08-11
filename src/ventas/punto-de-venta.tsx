@@ -415,15 +415,15 @@ export function PuntoDeVenta() {
 
   return (
     <div className="cli srv vta">
-      <header className="cli-encabezado">
-        <div className="cli-encabezado__texto">
-          <h2 className="cli-encabezado__titulo">Ventas</h2>
-          <p className="cli-encabezado__lema">Registra ventas de servicios, productos y cursos</p>
+      <header className="pz-encabezado">
+        <div className="pz-encabezado__texto">
+          <h2 className="tt-pagina">Ventas</h2>
+          <p className="tt-lema">Registra ventas de servicios, productos y cursos</p>
         </div>
-        <div className="srv-encabezado__acciones">
+        <div className="pz-encabezado__acciones">
           <button
             type="button"
-            className="cli-boton-suave"
+            className="pz-boton"
             onClick={() => {
               limpiarCarrito();
               setPestana('nueva');
@@ -431,13 +431,13 @@ export function PuntoDeVenta() {
           >
             <Icono nombre="nota" lado={16} /> Nueva cotización
           </button>
-          <div className="cli-buscador">
-            <span className="cli-buscador__lupa" aria-hidden="true">
+          <div className="pz-buscador">
+            <span className="pz-buscador__lupa" aria-hidden="true">
               <Icono nombre="lupa" lado={16} />
             </span>
             <input
               type="search"
-              className="cli-buscador__campo"
+              className="pz-buscador__campo"
               autoComplete="off"
               placeholder="Buscar venta..."
               aria-label="Buscar venta por folio, cliente o concepto"
@@ -450,7 +450,7 @@ export function PuntoDeVenta() {
           </div>
           <button
             type="button"
-            className="cli-boton-principal"
+            className="pz-boton pz-boton--principal"
             onClick={() => {
               limpiarCarrito();
               setPestana('nueva');
@@ -461,14 +461,14 @@ export function PuntoDeVenta() {
         </div>
       </header>
 
-      <div className="cur-pestanas" role="tablist" aria-label="Secciones de Ventas">
+      <div className="pz-pestanas" role="tablist" aria-label="Secciones de Ventas">
         {PESTANAS.map((p) => (
           <button
             key={p.clave}
             type="button"
             role="tab"
             aria-selected={pestana === p.clave}
-            className={`cur-pestana${pestana === p.clave ? ' cur-pestana--puesta' : ''}`}
+            className={`pz-pestana${pestana === p.clave ? ' pz-pestana--puesta' : ''}`}
             onClick={() => setPestana(p.clave)}
           >
             {p.etiqueta}
@@ -480,13 +480,13 @@ export function PuntoDeVenta() {
           quien cobro no sabe si paso o si perdio la captura. */}
       {cobrada ? (
         <div className="vta-listo" role="status">
-          <span className="cli-exp__renglon-icono" aria-hidden="true">
+          <span className="pz-ficha" aria-hidden="true">
             <Icono nombre="palomita" lado={18} />
           </span>
-          <p className="cli-exp__valor">Venta registrada. Ya está en la caja y en el inventario.</p>
+          <p className="pz-dato__valor">Venta registrada. Ya está en la caja y en el inventario.</p>
           <button
             type="button"
-            className="cli-boton-suave"
+            className="pz-boton"
             onClick={() => {
               setPestana('historial');
               setAbierta(cobrada);
@@ -495,14 +495,14 @@ export function PuntoDeVenta() {
           >
             Ver la venta
           </button>
-          <button type="button" className="cli-boton-suave" onClick={() => setCobrada(null)}>
+          <button type="button" className="pz-boton" onClick={() => setCobrada(null)}>
             Nueva venta
           </button>
         </div>
       ) : null}
 
       {pestana === 'nueva' ? (
-        <div className="cli-cuerpo">
+        <div className="pz-cuerpo">
           <div className="vta-columna">
             <QuienCompra
               clienteId={clienteId}
@@ -632,7 +632,7 @@ export function PuntoDeVenta() {
           onCancelar={(c) => void marcada.ejecutar(c.id, 'cancelada')}
         />
       ) : (
-        <div className="cli-cuerpo">
+        <div className="pz-cuerpo">
           <Historial
             ventas={listaDeLaPestana.datos?.filas ?? []}
             total={listaDeLaPestana.datos?.total ?? 0}
@@ -688,7 +688,7 @@ export function PuntoDeVenta() {
       ) : null}
 
       {!puedeCobrar ? (
-        <p className="cli-exp__secundario">
+        <p className="tt-secundario">
           Tu rol no cobra. Puedes ver las ventas, pero finalizar una es de quien tiene ese permiso —
           y lo decide la base de datos, no esta pantalla.
         </p>

@@ -47,39 +47,39 @@ export function HistorialDeCajas({
   return (
     <Modal abierto={abierto} titulo="Historial de cajas" onCerrar={onCerrar}>
       {error ? (
-        <div className="cli-error" role="alert">
-          <p className="cli-error__que">No pudimos cargar el historial.</p>
-          <p className="cli-error__detalle">{error}</p>
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar el historial.</p>
+          <p className="pz-error__detalle">{error}</p>
         </div>
       ) : cargando ? (
-        <div className="cli-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando el historial</span>
           {[0, 1, 2].map((i) => (
-            <div key={i} className="terapias-silueta cli-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : cajas.length === 0 ? (
-        <div className="cli-vacio cli-vacio--chico">
-          <span className="cli-vacio__icono" aria-hidden="true">
+        <div className="pz-vacio pz-vacio--chico">
+          <span className="pz-vacio__icono" aria-hidden="true">
             <Icono nombre="reloj" lado={36} />
           </span>
-          <p className="cli-vacio__texto">
+          <p className="pz-vacio__texto">
             Todavía no se ha cerrado ninguna caja. Cada corte queda aquí con lo que se esperaba, lo
             que se contó y la diferencia.
           </p>
         </div>
       ) : (
-        <div className="cli-tabla__marco">
-          <table className="cli-tabla">
+        <div className="pz-tabla__marco">
+          <table className="pz-tabla">
             <thead>
               <tr>
                 <th>Caja</th>
                 <th>Apertura</th>
                 <th>Cierre</th>
-                <th className="cli-tabla__numero">Inicial</th>
-                <th className="cli-tabla__numero">Esperado</th>
-                <th className="cli-tabla__numero">Contado</th>
-                <th className="cli-tabla__numero">Diferencia</th>
+                <th className="pz-tabla__numero">Inicial</th>
+                <th className="pz-tabla__numero">Esperado</th>
+                <th className="pz-tabla__numero">Contado</th>
+                <th className="pz-tabla__numero">Diferencia</th>
                 <th>Estado</th>
               </tr>
             </thead>
@@ -89,9 +89,9 @@ export function HistorialDeCajas({
                 return (
                   <tr key={c.id}>
                     <td>
-                      <span className="srv-nombre">
-                        <span className="cli-persona__nombre">{c.nombre}</span>
-                        <span className="srv-descripcion">
+                      <span className="pz-renglon__cuerpo">
+                        <span className="pz-renglon__titulo">{c.nombre}</span>
+                        <span className="pz-renglon__pie">
                           {c.abiertaPor ?? '—'} · {c.movimientos}{' '}
                           {c.movimientos === 1 ? 'movimiento' : 'movimientos'}
                         </span>
@@ -102,25 +102,25 @@ export function HistorialDeCajas({
                       {c.cerradaEn ? (
                         cuandoSeAbrio(c.cerradaEn)
                       ) : (
-                        <span className="cli-falta">Sigue abierta</span>
+                        <span className="tt-falta">Sigue abierta</span>
                       )}
                     </td>
-                    <td className="cli-tabla__numero">
+                    <td className="pz-tabla__numero">
                       {formatearMoneda(c.saldoInicialCentavos)}
                     </td>
-                    <td className="cli-tabla__numero">{formatearMoneda(c.esperadoCentavos)}</td>
+                    <td className="pz-tabla__numero">{formatearMoneda(c.esperadoCentavos)}</td>
                     {/* Nulo = todavia nadie conto. Cero seria decir que se
                         conto y el cajon estaba vacio. */}
-                    <td className="cli-tabla__numero">
+                    <td className="pz-tabla__numero">
                       {c.contadoCentavos === null ? (
-                        <span className="cli-falta">Sin contar</span>
+                        <span className="tt-falta">Sin contar</span>
                       ) : (
                         formatearMoneda(c.contadoCentavos)
                       )}
                     </td>
-                    <td className={`cli-tabla__numero caja-diferencia--${como}`}>
+                    <td className={`pz-tabla__numero caja-diferencia--${como}`}>
                       {c.diferenciaCentavos === null ? (
-                        <span className="cli-falta">—</span>
+                        <span className="tt-falta">—</span>
                       ) : c.diferenciaCentavos < 0 ? (
                         `−${formatearMoneda(-c.diferenciaCentavos)}`
                       ) : (
@@ -128,7 +128,7 @@ export function HistorialDeCajas({
                       )}
                     </td>
                     <td>
-                      <span className={`cli-estado caja-estado--${c.estado}`}>
+                      <span className={`pz-pastilla caja-estado--${c.estado}`}>
                         {c.estado === 'abierta' ? 'Abierta' : 'Cerrada'}
                       </span>
                     </td>
@@ -140,26 +140,26 @@ export function HistorialDeCajas({
         </div>
       )}
 
-      <footer className="cli-pie">
-        <span className="cli-pie__cuenta">
+      <footer className="pz-pie">
+        <span className="pz-pie__cuenta">
           {total} {total === 1 ? 'caja' : 'cajas'}
         </span>
-        <div className="cli-paginas" role="group" aria-label="Páginas del historial">
+        <div className="pz-paginas" role="group" aria-label="Páginas del historial">
           <button
             type="button"
-            className="cli-paginas__boton"
+            className="pz-pagina"
             aria-label="Página anterior"
             disabled={pagina <= 1}
             onClick={() => onPagina(pagina - 1)}
           >
             ‹
           </button>
-          <span className="cli-paginas__actual">
+          <span className="pz-paginas__actual">
             {pagina} de {paginas}
           </span>
           <button
             type="button"
-            className="cli-paginas__boton"
+            className="pz-pagina"
             aria-label="Página siguiente"
             disabled={pagina >= paginas}
             onClick={() => onPagina(pagina + 1)}
@@ -201,18 +201,18 @@ export function ReportesDeCaja({
 }) {
   return (
     <Modal abierto={abierto} titulo="Reportes de caja" onCerrar={onCerrar}>
-      <div className="cli-ficha">
-        <div className="srv-filtros">
-          <label className="cli-campo">
-            <span className="cli-campo__etiqueta">Desde</span>
+      <div className="pz-columna">
+        <div className="pz-filtros">
+          <label className="pz-campo">
+            <span className="tt-etiqueta">Desde</span>
             <input type="date" value={desde} onChange={(e) => onDesde(e.target.value)} />
           </label>
-          <label className="cli-campo">
-            <span className="cli-campo__etiqueta">Hasta</span>
+          <label className="pz-campo">
+            <span className="tt-etiqueta">Hasta</span>
             <input type="date" value={hasta} onChange={(e) => onHasta(e.target.value)} />
           </label>
-          <label className="cli-campo">
-            <span className="cli-campo__etiqueta">Método de pago</span>
+          <label className="pz-campo">
+            <span className="tt-etiqueta">Método de pago</span>
             <select value={metodo} onChange={(e) => onMetodo(e.target.value)}>
               <option value="">Todos</option>
               {Object.entries(COMO_SE_DICE_EL_METODO_DE_CAJA).map(([clave, texto]) => (
@@ -225,19 +225,19 @@ export function ReportesDeCaja({
         </div>
 
         {error ? (
-          <div className="cli-error" role="alert">
-            <p className="cli-error__que">No pudimos cargar el reporte.</p>
-            <p className="cli-error__detalle">{error}</p>
+          <div className="pz-error" role="alert">
+            <p className="pz-error__que">No pudimos cargar el reporte.</p>
+            <p className="pz-error__detalle">{error}</p>
           </div>
         ) : cargando ? (
-          <div className="cli-cargando" aria-busy="true">
+          <div className="pz-cargando" aria-busy="true">
             <span className="neron-solo-lectores">Cargando el reporte</span>
             {[0, 1].map((i) => (
-              <div key={i} className="terapias-silueta cli-cargando__renglon" />
+              <div key={i} className="pz-silueta" />
             ))}
           </div>
         ) : !reporte || reporte.movimientos === 0 ? (
-          <p className="cli-vacio__texto">
+          <p className="pz-vacio__texto">
             No hubo movimientos de caja en ese periodo. Los ceros son ceros porque no hay registros.
           </p>
         ) : (
@@ -263,9 +263,9 @@ export function ReportesDeCaja({
               </div>
             </dl>
 
-            <div className="cli-exp__renglon">
-              <div className="cli-exp__renglon-cuerpo">
-                <span className="cli-exp__etiqueta">Por forma de pago</span>
+            <div className="pz-renglon pz-renglon--quieto">
+              <div className="pz-dato">
+                <span className="tt-etiqueta">Por forma de pago</span>
                 <ul className="caja-leyenda">
                   {reporte.porMetodo.map((m) => (
                     <li key={m.metodo} className="caja-leyenda__renglon">
@@ -280,9 +280,9 @@ export function ReportesDeCaja({
               </div>
             </div>
 
-            <div className="cli-exp__renglon">
-              <div className="cli-exp__renglon-cuerpo">
-                <span className="cli-exp__etiqueta">Por tipo</span>
+            <div className="pz-renglon pz-renglon--quieto">
+              <div className="pz-dato">
+                <span className="tt-etiqueta">Por tipo</span>
                 <ul className="caja-leyenda">
                   {reporte.porClase.map((c) => (
                     <li key={c.clase} className="caja-leyenda__renglon">
@@ -297,9 +297,9 @@ export function ReportesDeCaja({
               </div>
             </div>
 
-            <div className="cli-exp__renglon">
-              <div className="cli-exp__renglon-cuerpo">
-                <span className="cli-exp__etiqueta">Por usuario</span>
+            <div className="pz-renglon pz-renglon--quieto">
+              <div className="pz-dato">
+                <span className="tt-etiqueta">Por usuario</span>
                 <ul className="caja-leyenda">
                   {reporte.porUsuario.map((u) => (
                     <li key={u.usuario} className="caja-leyenda__renglon">
@@ -314,11 +314,11 @@ export function ReportesDeCaja({
 
             {/* LAS DIFERENCIAS SALEN DE LOS CORTES, no de los movimientos: son
                 lo que alguien conto contra lo que el sistema esperaba. */}
-            <div className="cli-exp__renglon">
-              <div className="cli-exp__renglon-cuerpo">
-                <span className="cli-exp__etiqueta">Diferencias de corte</span>
+            <div className="pz-renglon pz-renglon--quieto">
+              <div className="pz-dato">
+                <span className="tt-etiqueta">Diferencias de corte</span>
                 {reporte.cortes.length === 0 ? (
-                  <span className="cli-falta">No se cerró ninguna caja en el periodo</span>
+                  <span className="tt-falta">No se cerró ninguna caja en el periodo</span>
                 ) : (
                   <ul className="caja-leyenda">
                     {reporte.cortes.map((c) => (

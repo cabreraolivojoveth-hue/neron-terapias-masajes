@@ -67,10 +67,10 @@ export function DetalleDeVenta({
 
   if (cargando) {
     return (
-      <aside className="cli-panel" aria-busy="true">
+      <aside className="pz-tarjeta" aria-busy="true">
         <span className="neron-solo-lectores">Cargando la venta</span>
         {[0, 1, 2].map((i) => (
-          <div key={i} className="terapias-silueta cli-cargando__renglon" />
+          <div key={i} className="pz-silueta" />
         ))}
       </aside>
     );
@@ -78,10 +78,10 @@ export function DetalleDeVenta({
 
   if (error) {
     return (
-      <aside className="cli-panel">
-        <div className="cli-error" role="alert">
-          <p className="cli-error__que">No pudimos cargar la venta.</p>
-          <p className="cli-error__detalle">{error}</p>
+      <aside className="pz-tarjeta">
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar la venta.</p>
+          <p className="pz-error__detalle">{error}</p>
         </div>
       </aside>
     );
@@ -89,12 +89,12 @@ export function DetalleDeVenta({
 
   if (!venta) {
     return (
-      <aside className="cli-panel">
-        <div className="cli-vacio cli-vacio--chico">
-          <span className="cli-vacio__icono" aria-hidden="true">
+      <aside className="pz-tarjeta">
+        <div className="pz-vacio pz-vacio--chico">
+          <span className="pz-vacio__icono" aria-hidden="true">
             <Icono nombre="recibo" lado={36} />
           </span>
-          <p className="cli-vacio__texto">
+          <p className="pz-vacio__texto">
             Abre una venta de la lista para ver su ticket: lo que se llevó, a qué precio se cobró y
             con qué se pagó.
           </p>
@@ -106,58 +106,58 @@ export function DetalleDeVenta({
   const verCostos = permisos['verCostos'] === true || permisos['verFinanzas'] === true;
 
   return (
-    <aside className="cli-panel vta-detalle" aria-label={`Venta ${venta.folio}`}>
-      <header className="cli-panel__barra">
-        <h3 className="cli-panel__titulo">{venta.folio}</h3>
-        <span className={`cli-estado vta-estado--${venta.estado}`}>
+    <aside className="pz-tarjeta vta-detalle" aria-label={`Venta ${venta.folio}`}>
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta">{venta.folio}</h3>
+        <span className={`pz-pastilla vta-estado--${venta.estado}`}>
           {COMO_SE_DICE_LA_VENTA[venta.estado] ?? venta.estado}
         </span>
-        <button type="button" className="cli-menu__boton" aria-label="Cerrar la venta" onClick={onCerrar}>
+        <button type="button" className="pz-icono-boton" aria-label="Cerrar la venta" onClick={onCerrar}>
           ×
         </button>
       </header>
 
-      <div className="cli-exp">
-        <p className="cli-exp__valor">
+      <div className="pz-columna">
+        <p className="pz-dato__valor">
           {venta.fecha}
           {venta.vendedor ? ` · ${venta.vendedor}` : ''}
         </p>
 
-        <p className="cli-exp__valor">
+        <p className="pz-dato__valor">
           {venta.clienteId ? (
             <button
               type="button"
-              className="cli-exp__enlace cli-persona"
+              className="pz-renglon__enlace pz-renglon"
               onClick={() => onVerCliente(venta.clienteId!)}
             >
               {venta.cliente ?? 'Cliente'}
             </button>
           ) : (
-            <span className="cli-falta">Venta de mostrador, sin cliente</span>
+            <span className="tt-falta">Venta de mostrador, sin cliente</span>
           )}
         </p>
 
-        <div className="cli-tabla__marco">
-          <table className="cli-tabla">
+        <div className="pz-tabla__marco">
+          <table className="pz-tabla">
             <thead>
               <tr>
                 <th>Concepto</th>
                 <th>Tipo</th>
-                <th className="cli-tabla__numero">Cant.</th>
-                <th className="cli-tabla__numero">Precio</th>
-                <th className="cli-tabla__numero">Total</th>
+                <th className="pz-tabla__numero">Cant.</th>
+                <th className="pz-tabla__numero">Precio</th>
+                <th className="pz-tabla__numero">Total</th>
               </tr>
             </thead>
             <tbody>
               {venta.items.map((i) => (
                 <tr key={i.id}>
                   <td>
-                    <span className="srv-nombre">
-                      <span className="cli-persona__nombre">{i.descripcion}</span>
+                    <span className="pz-renglon__cuerpo">
+                      <span className="pz-renglon__titulo">{i.descripcion}</span>
                       {/* SOLO A QUIEN PUEDE VERLO. El costo llega nulo desde la
                           base cuando el rol no lo alcanza: no se esconde aqui. */}
                       {verCostos && i.costoUnitario !== null ? (
-                        <span className="srv-descripcion">
+                        <span className="pz-renglon__pie">
                           Utilidad{' '}
                           {formatearMoneda(
                             utilidadDelRenglon(i.subtotal, i.costoUnitario, i.cantidad) ?? 0,
@@ -167,14 +167,14 @@ export function DetalleDeVenta({
                     </span>
                   </td>
                   <td>
-                    <span className={`cli-estado vta-tipo--${i.tipo}`}>
+                    <span className={`pz-pastilla vta-tipo--${i.tipo}`}>
                       {COMO_SE_DICE_EL_TIPO[i.tipo] ?? i.tipo}
                     </span>
                   </td>
-                  <td className="cli-tabla__numero">{i.cantidad}</td>
+                  <td className="pz-tabla__numero">{i.cantidad}</td>
                   {/* EL PRECIO DE ESE DIA. */}
-                  <td className="cli-tabla__numero">{formatearMoneda(i.precioUnitario)}</td>
-                  <td className="cli-tabla__numero">{formatearMoneda(i.subtotal)}</td>
+                  <td className="pz-tabla__numero">{formatearMoneda(i.precioUnitario)}</td>
+                  <td className="pz-tabla__numero">{formatearMoneda(i.subtotal)}</td>
                 </tr>
               ))}
             </tbody>
@@ -204,14 +204,14 @@ export function DetalleDeVenta({
           </div>
         </dl>
 
-        <div className="cli-exp__renglon">
-          <span className="cli-exp__renglon-icono" aria-hidden="true">
+        <div className="pz-renglon pz-renglon--quieto">
+          <span className="pz-ficha" aria-hidden="true">
             <Icono nombre="dinero" lado={18} />
           </span>
-          <div className="cli-exp__renglon-cuerpo">
-            <span className="cli-exp__etiqueta">Pagos</span>
+          <div className="pz-dato">
+            <span className="tt-etiqueta">Pagos</span>
             {venta.pagos.length === 0 ? (
-              <span className="cli-falta">Sin pago registrado</span>
+              <span className="tt-falta">Sin pago registrado</span>
             ) : (
               <ul className="vta-pagos">
                 {venta.pagos.map((p) => (
@@ -227,7 +227,7 @@ export function DetalleDeVenta({
             {/* LO RECIBIDO SE GUARDA APARTE del pago aplicado: el cambio no es
                 un egreso, y a la caja entro lo aplicado. */}
             {venta.efectivoRecibidoCentavos !== null ? (
-              <span className="cli-exp__secundario">
+              <span className="tt-secundario">
                 Recibió {formatearMoneda(venta.efectivoRecibidoCentavos)} en efectivo. El cambio no
                 se registró como salida.
               </span>
@@ -236,28 +236,28 @@ export function DetalleDeVenta({
         </div>
 
         {venta.notas ? (
-          <div className="cli-exp__renglon">
-            <span className="cli-exp__renglon-icono" aria-hidden="true">
+          <div className="pz-renglon pz-renglon--quieto">
+            <span className="pz-ficha" aria-hidden="true">
               <Icono nombre="nota" lado={18} />
             </span>
-            <div className="cli-exp__renglon-cuerpo">
-              <span className="cli-exp__etiqueta">Nota</span>
-              <p className="srv-texto">{venta.notas}</p>
+            <div className="pz-dato">
+              <span className="tt-etiqueta">Nota</span>
+              <p className="tt-libre">{venta.notas}</p>
             </div>
           </div>
         ) : null}
 
         {venta.estado === 'cancelada' ? (
-          <div className="cli-exp__renglon">
-            <span className="cli-exp__renglon-icono" aria-hidden="true">
+          <div className="pz-renglon pz-renglon--quieto">
+            <span className="pz-ficha" aria-hidden="true">
               <Icono nombre="prohibido" lado={18} />
             </span>
-            <div className="cli-exp__renglon-cuerpo">
-              <span className="cli-exp__etiqueta">Cancelada</span>
-              <span className="cli-exp__valor">
+            <div className="pz-dato">
+              <span className="tt-etiqueta">Cancelada</span>
+              <span className="pz-dato__valor">
                 {venta.canceladaMotivo ?? 'Sin motivo anotado'}
               </span>
-              <span className="cli-exp__secundario">
+              <span className="tt-secundario">
                 El inventario volvió con un movimiento contrario y la caja recibió el egreso. Nada
                 se borró.
               </span>
@@ -266,13 +266,13 @@ export function DetalleDeVenta({
         ) : null}
 
         {errorDeOperacion ? (
-          <p className="cli-ficha__error" role="alert">
+          <p className="pz-error__que" role="alert">
             {errorDeOperacion}
           </p>
         ) : null}
 
         {sePuedeCancelar(venta, permisos) ? (
-          <div className="cli-exp__acciones">
+          <div className="pz-encabezado__acciones">
             <Boton tono="contorno" type="button" onClick={() => setACancelar(true)}>
               Cancelar venta
             </Boton>

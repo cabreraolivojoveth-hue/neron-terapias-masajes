@@ -182,7 +182,7 @@ export function FichaDeCliente({
 
   return (
     <Modal abierto={abierta} titulo={titulo} onCerrar={onCerrar}>
-      <form className="cli-ficha" onSubmit={enviar} noValidate>
+      <form className="pz-columna" onSubmit={enviar} noValidate>
         <Campo
           etiqueta="Nombre"
           value={v.nombre}
@@ -193,7 +193,7 @@ export function FichaDeCliente({
           ayuda="Nombre y apellidos, como quieras verlo en la agenda."
         />
 
-        <div className="cli-ficha__par">
+        <div className="pz-dos">
           <Campo
             etiqueta="Teléfono"
             type="tel"
@@ -211,12 +211,12 @@ export function FichaDeCliente({
         </div>
 
         {duplicado ? (
-          <div className="cli-ficha__duplicado" role="alert">
+          <div className="pz-columna__duplicado" role="alert">
             <p>
               Ya hay un cliente con ese {duplicado.porque === 'telefono' ? 'teléfono' : 'correo'}:{' '}
               <strong>{duplicado.nombre}</strong>.
             </p>
-            <p className="cli-ficha__duplicado-nota">
+            <p className="tt-secundario">
               Si es la misma persona, abre su expediente en vez de crear otro — un historial partido
               en dos ya no se vuelve a juntar.
             </p>
@@ -226,7 +226,7 @@ export function FichaDeCliente({
           </div>
         ) : null}
 
-        <div className="cli-ficha__par">
+        <div className="pz-dos">
           <Campo
             etiqueta="Fecha de nacimiento"
             type="date"
@@ -251,7 +251,7 @@ export function FichaDeCliente({
             visibles hace que se capture menos, no más. */}
         <button
           type="button"
-          className="cli-ficha__mas"
+          className="pz-columna__mas"
           aria-expanded={extras}
           onClick={() => setExtras((a) => !a)}
         >
@@ -270,12 +270,12 @@ export function FichaDeCliente({
         ) : null}
 
         {error ? (
-          <p className="cli-ficha__error" role="alert">
+          <p className="pz-error__que" role="alert">
             {error}
           </p>
         ) : null}
 
-        <div className="cli-ficha__pie">
+        <div className="pz-ficha__pie">
           <Boton tono="contorno" type="button" onClick={onCerrar}>
             Cancelar
           </Boton>

@@ -9,7 +9,7 @@
  */
 
 import { generarCss } from '@neron/base/ui';
-import { ProveedorDeNavegacion, Marco, resolverMenu, useNavegacion } from '@neron/base/marco';
+import { ProveedorDeNavegacion, resolverMenu, useNavegacion } from '@neron/base/marco';
 import { createRoot } from 'react-dom/client';
 import { Agenda } from '../src/agenda/agenda.js';
 import { Inicio } from '../src/inicio/inicio.js';
@@ -26,6 +26,7 @@ import { MarcaVisible } from '../src/marco/marca-visible.js';
 import { Buscador } from '../src/marco/buscador.js';
 import { CampanaDeAvisos } from '../src/marco/notificaciones.js';
 import { estilosDelProducto } from '../src/estilos.js';
+import { Armazon } from '../src/marco/armazon.js';
 import { useSesion } from '../src/identidad/sesion.js';
 
 const hoja = document.createElement('style');
@@ -61,9 +62,8 @@ function Vitrina() {
   });
 
   return (
-    <Marco
+    <Armazon
       menu={menu}
-      nombreDelNegocio={NOMBRE_DEL_PRODUCTO}
       nombreDeLaPersona={acceso.nombre}
       rolDeLaPersona={acceso.rolEtiqueta}
       logo={<MarcaVisible />}
@@ -75,6 +75,7 @@ function Vitrina() {
         </>
       }
       alFallar={(error, donde) => console.error(`[${donde}] ${error.message}`)}
+      onSalir={() => {}}
     />
   );
 }

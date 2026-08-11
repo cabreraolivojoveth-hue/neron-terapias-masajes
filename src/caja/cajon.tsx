@@ -207,24 +207,24 @@ export function Cajon() {
 
   return (
     <div className="cli srv caja">
-      <header className="cli-encabezado">
-        <div className="cli-encabezado__texto">
-          <h2 className="cli-encabezado__titulo">Caja</h2>
-          <p className="cli-encabezado__lema">
+      <header className="pz-encabezado">
+        <div className="pz-encabezado__texto">
+          <h2 className="tt-pagina">Caja</h2>
+          <p className="tt-lema">
             Administra tu caja y controla los movimientos de efectivo
           </p>
         </div>
-        <div className="srv-encabezado__acciones">
+        <div className="pz-encabezado__acciones">
           <button
             type="button"
-            className="cli-boton-suave"
+            className="pz-boton"
             onClick={() => setHistorialAbierto(true)}
           >
             <Icono nombre="reloj" lado={16} /> Historial de cajas
           </button>
           <button
             type="button"
-            className="cli-boton-suave"
+            className="pz-boton"
             onClick={() => setReportesAbiertos(true)}
           >
             <Icono nombre="barras" lado={16} /> Reportes de caja
@@ -232,7 +232,7 @@ export function Cajon() {
           {puedeMover && !laCaja ? (
             <button
               type="button"
-              className="cli-boton-principal"
+              className="pz-boton pz-boton--principal"
               onClick={() => setAbriendo(true)}
             >
               <Icono nombre="mas" lado={16} /> Abrir nueva caja
@@ -242,10 +242,10 @@ export function Cajon() {
       </header>
 
       {caja.error ? (
-        <div className="cli-error" role="alert">
-          <p className="cli-error__que">No pudimos cargar la caja.</p>
-          <p className="cli-error__detalle">{caja.error}</p>
-          <button type="button" className="cli-boton-suave" onClick={caja.recargar}>
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar la caja.</p>
+          <p className="pz-error__detalle">{caja.error}</p>
+          <button type="button" className="pz-boton" onClick={caja.recargar}>
             Reintentar
           </button>
         </div>
@@ -253,21 +253,21 @@ export function Cajon() {
 
       {aviso ? (
         <div className="vta-listo" role="status">
-          <span className="cli-exp__renglon-icono" aria-hidden="true">
+          <span className="pz-ficha" aria-hidden="true">
             <Icono nombre="palomita" lado={18} />
           </span>
-          <p className="cli-exp__valor">{aviso}</p>
-          <button type="button" className="cli-boton-suave" onClick={() => setAviso(null)}>
+          <p className="pz-dato__valor">{aviso}</p>
+          <button type="button" className="pz-boton" onClick={() => setAviso(null)}>
             Entendido
           </button>
         </div>
       ) : null}
 
       {cargandoCaja ? (
-        <div className="cli-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando la caja</span>
           {[0, 1, 2].map((i) => (
-            <div key={i} className="terapias-silueta cli-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : !laCaja ? (
@@ -276,7 +276,7 @@ export function Cajon() {
         <>
           <CifrasDeLaCaja caja={laCaja} />
 
-          <div className="cli-cuerpo">
+          <div className="pz-cuerpo">
             <div className="caja-columna">
               <div className="vta-dos">
                 <MetodosDePago

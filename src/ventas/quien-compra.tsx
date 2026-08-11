@@ -62,20 +62,20 @@ export function QuienCompra({
   onVendedor,
 }: PropiedadesDeQuienCompra) {
   return (
-    <section className="cli-panel vta-quien" aria-label="Cliente, fecha y vendedor">
+    <section className="pz-tarjeta vta-quien" aria-label="Cliente, fecha y vendedor">
       <div className="vta-quien__campo">
-        <span className="cli-campo__etiqueta" id="vta-cliente-titulo">
+        <span className="tt-etiqueta" id="vta-cliente-titulo">
           Cliente
         </span>
         {clienteId ? (
           <div className="vta-escogido">
-            <span className="cli-exp__renglon-icono" aria-hidden="true">
+            <span className="pz-ficha" aria-hidden="true">
               <Icono nombre="persona" lado={16} />
             </span>
-            <span className="cli-persona__nombre">{clienteNombre}</span>
+            <span className="pz-renglon__titulo">{clienteNombre}</span>
             <button
               type="button"
-              className="cli-menu__boton"
+              className="pz-icono-boton"
               aria-label={`Quitar a ${clienteNombre} de la venta`}
               onClick={onQuitarCliente}
             >
@@ -84,15 +84,15 @@ export function QuienCompra({
           </div>
         ) : (
           <div className="vta-buscar-cliente">
-            <div className="cli-buscador">
-              <span className="cli-buscador__lupa" aria-hidden="true">
+            <div className="pz-buscador">
+              <span className="pz-buscador__lupa" aria-hidden="true">
                 <Icono nombre="persona" lado={16} />
               </span>
               {/* SIEMPRE en el mismo lugar del arbol: es lo que sostiene el
                   foco mientras la lista de abajo cambia con cada letra. */}
               <input
                 type="search"
-                className="cli-buscador__campo"
+                className="pz-buscador__campo"
                 autoComplete="off"
                 placeholder="Buscar cliente…"
                 aria-labelledby="vta-cliente-titulo"
@@ -102,12 +102,12 @@ export function QuienCompra({
             </div>
             {busqueda ? (
               buscando ? (
-                <div className="cli-cargando" aria-busy="true">
+                <div className="pz-cargando" aria-busy="true">
                   <span className="neron-solo-lectores">Buscando clientes</span>
-                  <div className="terapias-silueta cli-cargando__renglon" />
+                  <div className="pz-silueta" />
                 </div>
               ) : encontrados.length === 0 ? (
-                <p className="cli-vacio__texto">
+                <p className="pz-vacio__texto">
                   Nadie coincide.{' '}
                   {puedeCrearCliente
                     ? 'Puedes darlo de alta sin salir de la venta.'
@@ -122,9 +122,9 @@ export function QuienCompra({
                         className="vta-concepto"
                         onClick={() => onEscogerCliente(c)}
                       >
-                        <span className="srv-nombre">
-                          <span className="cli-persona__nombre">{c.nombre}</span>
-                          <span className="srv-descripcion">
+                        <span className="pz-renglon__cuerpo">
+                          <span className="pz-renglon__titulo">{c.nombre}</span>
+                          <span className="pz-renglon__pie">
                             {c.telefono ?? c.correo ?? 'Sin contacto'}
                           </span>
                         </span>
@@ -135,7 +135,7 @@ export function QuienCompra({
               )
             ) : null}
             {puedeCrearCliente ? (
-              <button type="button" className="cli-boton-suave" onClick={onNuevoCliente}>
+              <button type="button" className="pz-boton" onClick={onNuevoCliente}>
                 <Icono nombre="personaMas" lado={16} /> Nuevo cliente
               </button>
             ) : null}
@@ -143,16 +143,16 @@ export function QuienCompra({
         )}
         {/* VENDER SIN CLIENTE ES VALIDO. Se dice, para que nadie invente uno. */}
         {!clienteId ? (
-          <span className="cli-exp__secundario">
+          <span className="tt-secundario">
             Sin cliente es una venta de mostrador. Los cursos sí necesitan a quién inscribir.
           </span>
         ) : null}
       </div>
 
       <label className="vta-quien__campo">
-        <span className="cli-campo__etiqueta">Fecha</span>
+        <span className="tt-etiqueta">Fecha</span>
         <span className="vta-fecha">
-          <span className="cli-exp__renglon-icono" aria-hidden="true">
+          <span className="pz-ficha" aria-hidden="true">
             <Icono nombre="calendario" lado={16} />
           </span>
           <input
@@ -162,12 +162,12 @@ export function QuienCompra({
             onChange={(e) => onFecha(deValorDeCampo(e.target.value, fecha))}
           />
         </span>
-        <span className="cli-exp__secundario">{fechaLarga(fecha)}</span>
+        <span className="tt-secundario">{fechaLarga(fecha)}</span>
       </label>
 
       <label className="vta-quien__campo">
-        <span className="cli-campo__etiqueta">Vendedor</span>
-        <span className="cli-campo cli-campo--bloque">
+        <span className="tt-etiqueta">Vendedor</span>
+        <span className="pz-campo pz-campo--bloque">
           <select
             aria-label="Vendedor de la venta"
             value={vendedorId}
@@ -184,7 +184,7 @@ export function QuienCompra({
         </span>
         {/* QUIEN NO PUEDE CAMBIARLO VE POR QUE, en vez de un campo muerto. */}
         {!puedeCambiarVendedor ? (
-          <span className="cli-exp__secundario">
+          <span className="tt-secundario">
             La venta queda a tu nombre. Cambiar de vendedor es de quien administra.
           </span>
         ) : null}
@@ -227,54 +227,54 @@ export function InformacionDelCliente({
   onVerExpediente,
 }: PropiedadesDeInformacionDelCliente) {
   return (
-    <section className="cli-panel" aria-labelledby="vta-cliente-panel">
-      <header className="cli-panel__barra">
-        <h3 className="cli-panel__titulo" id="vta-cliente-panel">
+    <section className="pz-tarjeta" aria-labelledby="vta-cliente-panel">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta" id="vta-cliente-panel">
           Información del cliente
         </h3>
         {expediente && puedeEditar ? (
-          <button type="button" className="cli-panel__enlace" onClick={onEditar}>
+          <button type="button" className="pz-enlace" onClick={onEditar}>
             <Icono nombre="lapiz" lado={14} /> Editar
           </button>
         ) : null}
       </header>
 
       {cargando ? (
-        <div className="cli-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando el expediente</span>
-          <div className="terapias-silueta cli-cargando__renglon" />
+          <div className="pz-silueta" />
         </div>
       ) : !expediente ? (
-        <div className="cli-vacio cli-vacio--chico">
-          <span className="cli-vacio__icono" aria-hidden="true">
+        <div className="pz-vacio pz-vacio--chico">
+          <span className="pz-vacio__icono" aria-hidden="true">
             <Icono nombre="persona" lado={32} />
           </span>
-          <p className="cli-vacio__texto">
+          <p className="pz-vacio__texto">
             Escoge un cliente para ver su ficha. Sin cliente la venta se cobra igual, como venta de
             mostrador.
           </p>
         </div>
       ) : (
-        <div className="cli-exp">
+        <div className="pz-columna">
           <div className="vta-quien-es">
-            <span className="cli-persona__inicial" aria-hidden="true">
+            <span className="pz-inicial" aria-hidden="true">
               {expediente.nombre.trim().charAt(0).toUpperCase()}
             </span>
-            <span className="srv-nombre">
-              <span className="cli-persona__nombre">{expediente.nombre}</span>
-              <span className={`cli-estado cli-estado--${expediente.archivado ? 'archivado' : 'activo'}`}>
+            <span className="pz-renglon__cuerpo">
+              <span className="pz-renglon__titulo">{expediente.nombre}</span>
+              <span className={`pz-pastilla pz-pastilla--${expediente.archivado ? 'archivado' : 'activo'}`}>
                 {etiquetaDeEstadoDeCliente(expediente.archivado ? 'archivado' : 'activo')}
               </span>
             </span>
           </div>
 
-          <p className="cli-exp__valor">
+          <p className="pz-dato__valor">
             <Icono nombre="mensaje" lado={14} />{' '}
-            {expediente.telefono ?? <span className="cli-falta">Sin teléfono</span>}
+            {expediente.telefono ?? <span className="tt-falta">Sin teléfono</span>}
           </p>
-          <p className="cli-exp__valor">
+          <p className="pz-dato__valor">
             <Icono nombre="nota" lado={14} />{' '}
-            {expediente.correo ?? <span className="cli-falta">Sin correo</span>}
+            {expediente.correo ?? <span className="tt-falta">Sin correo</span>}
           </p>
 
           {/*
@@ -284,28 +284,28 @@ export function InformacionDelCliente({
             nadie puede auditar. Lo que si existe —lo que lleva gastado y lo
             que debe— sale de sus ventas, y eso si se puede rastrear.
           */}
-          <dl className="cli-exp__cuentas">
-            <div className="cli-exp__cuenta">
-              <dt className="cli-exp__cuenta-que">Compras</dt>
-              <dd className="cli-exp__cuenta-numero">{expediente.compras}</dd>
+          <dl className="pz-tres">
+            <div className="pz-dato">
+              <dt className="tt-pie">Compras</dt>
+              <dd className="tt-dato">{expediente.compras}</dd>
             </div>
-            <div className="cli-exp__cuenta">
-              <dt className="cli-exp__cuenta-que">Gastado</dt>
-              <dd className="cli-exp__cuenta-numero">
+            <div className="pz-dato">
+              <dt className="tt-pie">Gastado</dt>
+              <dd className="tt-dato">
                 {formatearMoneda(expediente.totalGastado)}
               </dd>
             </div>
-            <div className="cli-exp__cuenta">
-              <dt className="cli-exp__cuenta-que">Visitas</dt>
-              <dd className="cli-exp__cuenta-numero">{expediente.visitas}</dd>
+            <div className="pz-dato">
+              <dt className="tt-pie">Visitas</dt>
+              <dd className="tt-dato">{expediente.visitas}</dd>
             </div>
           </dl>
 
           {expediente.adeudo > 0 ? (
-            <p className="cli-exp__adeudo">Debe {formatearMoneda(expediente.adeudo)}</p>
+            <p className="pz-columna__adeudo">Debe {formatearMoneda(expediente.adeudo)}</p>
           ) : null}
 
-          <button type="button" className="cli-boton-suave cli-boton-suave--ancho" onClick={onVerExpediente}>
+          <button type="button" className="pz-boton pz-boton--ancho" onClick={onVerExpediente}>
             Ver expediente completo
           </button>
         </div>

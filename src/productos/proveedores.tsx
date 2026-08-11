@@ -60,25 +60,25 @@ export function Proveedores({
   return (
     <div className="srv-detalle__cuerpo">
       {ficha.proveedores.length === 0 ? (
-        <p className="cli-vacio__texto">
+        <p className="pz-vacio__texto">
           Este producto todavía no tiene proveedores. Aquí se registra a quién se le compra y a qué
           precio, para poder comparar.
         </p>
       ) : (
-        <ul className="cat__lista">
+        <ul className="pz-lista">
           {ficha.proveedores.map((p) => (
-            <li key={p.id} className="cat__renglon">
-              <span className="cli-exp__renglon-icono" aria-hidden="true">
+            <li key={p.id} className="pz-renglon pz-renglon--quieto">
+              <span className="pz-ficha" aria-hidden="true">
                 <Icono nombre="bolsa" lado={18} />
               </span>
-              <span className="cat__texto">
-                <span className="cat__nombre">
+              <span className="pz-renglon__cuerpo">
+                <span className="pz-renglon__titulo">
                   {p.nombre}
                   {p.preferido ? (
-                    <span className="cli-estado cli-estado--activo">Principal</span>
+                    <span className="pz-pastilla pz-pastilla--exito">Principal</span>
                   ) : null}
                 </span>
-                <span className="cat__uso">
+                <span className="pz-renglon__pie">
                   {/* El costo de ESE proveedor, solo a quien puede verlo. */}
                   {p.costoCentavos === null ? 'Sin costo registrado' : formatearMoneda(p.costoCentavos)}
                   {p.codigo ? ` · su código: ${p.codigo}` : ''}
@@ -86,8 +86,8 @@ export function Proveedores({
                 </span>
               </span>
               {puedeGestionar ? (
-                <span className="cat__acciones">
-                  <button type="button" className="cli-boton-suave" onClick={() => setAQuitar(p)}>
+                <span className="pz-encabezado__acciones">
+                  <button type="button" className="pz-boton" onClick={() => setAQuitar(p)}>
                     <Icono nombre="archivar" lado={14} /> Quitar
                   </button>
                 </span>
@@ -101,12 +101,12 @@ export function Proveedores({
         ligando ? (
           <div className="cat__forma">
             {disponibles.length === 0 ? (
-              <p className="cli-vacio__texto">
+              <p className="pz-vacio__texto">
                 No hay más proveedores para ligar. Da de alta uno nuevo primero.
               </p>
             ) : (
-              <label className="cli-campo">
-                <span className="cli-campo__etiqueta">Proveedor</span>
+              <label className="pz-campo">
+                <span className="tt-etiqueta">Proveedor</span>
                 <select value={escogido} onChange={(e) => setEscogido(e.target.value)}>
                   <option value="">Escoge uno</option>
                   {disponibles.map((p) => (
@@ -118,7 +118,7 @@ export function Proveedores({
               </label>
             )}
 
-            <div className="cli-ficha__par">
+            <div className="pz-dos">
               <Campo
                 etiqueta="Lo que te cobra"
                 type="text"
@@ -146,12 +146,12 @@ export function Proveedores({
             </label>
 
             {error ? (
-              <p className="cli-ficha__error" role="alert">
+              <p className="pz-error__que" role="alert">
                 {error}
               </p>
             ) : null}
 
-            <div className="cli-ficha__pie">
+            <div className="pz-ficha__pie">
               <Boton tono="contorno" type="button" onClick={() => setLigando(false)}>
                 Cancelar
               </Boton>
@@ -175,15 +175,15 @@ export function Proveedores({
             </div>
           </div>
         ) : (
-          <div className="cat__acciones">
+          <div className="pz-encabezado__acciones">
             <button
               type="button"
-              className="cli-boton-suave"
+              className="pz-boton"
               onClick={() => setLigando(true)}
             >
               <Icono nombre="mas" lado={14} /> Ligar un proveedor
             </button>
-            <button type="button" className="cli-boton-suave" onClick={onNuevoProveedor}>
+            <button type="button" className="pz-boton" onClick={onNuevoProveedor}>
               <Icono nombre="personaMas" lado={14} /> Dar de alta uno nuevo
             </button>
           </div>
@@ -191,7 +191,7 @@ export function Proveedores({
       ) : null}
 
       {/* NO HAY MODULO DE COMPRAS: se dice, no se finge. */}
-      <p className="cli-ficha__duplicado-nota">
+      <p className="tt-secundario">
         Para que llegue mercancía usa <strong>Ajustar inventario → Entrada</strong>. La orden de
         compra formal, con su folio y su cuenta por pagar, todavía no existe en el sistema.
       </p>

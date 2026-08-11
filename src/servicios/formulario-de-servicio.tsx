@@ -199,7 +199,7 @@ export function FormularioDeServicio({
 
   return (
     <Modal abierto={abierto} titulo={titulo} onCerrar={onCerrar}>
-      <form className="cli-ficha" onSubmit={enviar} noValidate>
+      <form className="pz-columna" onSubmit={enviar} noValidate>
         <Campo
           etiqueta="Nombre"
           value={v.nombre}
@@ -210,11 +210,11 @@ export function FormularioDeServicio({
         />
 
         {parecido ? (
-          <div className="cli-ficha__duplicado" role="alert">
+          <div className="pz-columna__duplicado" role="alert">
             <p>
               Ya hay un servicio que se llama igual: <strong>{parecido.nombre}</strong>.
             </p>
-            <p className="cli-ficha__duplicado-nota">
+            <p className="tt-secundario">
               Dos renglones iguales en el catálogo dejan la mitad de las citas colgando de uno y la
               mitad del otro, y ningún reporte por servicio vuelve a cuadrar.
             </p>
@@ -230,7 +230,7 @@ export function FormularioDeServicio({
           ayuda="Una línea que explique en qué consiste. Se ve en la lista y en la agenda."
         />
 
-        <div className="cli-ficha__par">
+        <div className="pz-dos">
           <Seleccion
             etiqueta="Categoría"
             value={v.categoriaId}
@@ -252,7 +252,7 @@ export function FormularioDeServicio({
           />
         </div>
 
-        <div className="cli-ficha__par">
+        <div className="pz-dos">
           <Campo
             etiqueta="Precio"
             type="text"
@@ -277,7 +277,7 @@ export function FormularioDeServicio({
 
         <button
           type="button"
-          className="cli-ficha__mas"
+          className="pz-columna__mas"
           aria-expanded={extras}
           onClick={() => setExtras((a) => !a)}
         >
@@ -286,7 +286,7 @@ export function FormularioDeServicio({
 
         {extras ? (
           <>
-            <div className="cli-ficha__par">
+            <div className="pz-dos">
               <Campo
                 etiqueta="Precio promocional"
                 type="text"
@@ -310,7 +310,7 @@ export function FormularioDeServicio({
               />
             </div>
 
-            <div className="cli-ficha__par">
+            <div className="pz-dos">
               <Campo
                 etiqueta="La promoción empieza"
                 type="date"
@@ -329,7 +329,7 @@ export function FormularioDeServicio({
             </div>
 
             <fieldset className="srv-dias">
-              <legend className="cli-campo__etiqueta">Días en que se ofrece</legend>
+              <legend className="tt-etiqueta">Días en que se ofrece</legend>
               <div className="srv-dias__fila">
                 {DIAS_DE_LA_SEMANA.map((d) => {
                   const puesto = (v.diasDisponibles || '').includes(d.clave);
@@ -352,7 +352,7 @@ export function FormularioDeServicio({
               </p>
             </fieldset>
 
-            <div className="cli-ficha__par">
+            <div className="pz-dos">
               <Campo
                 etiqueta="Desde las"
                 type="time"
@@ -401,12 +401,12 @@ export function FormularioDeServicio({
         ) : null}
 
         {error ? (
-          <p className="cli-ficha__error" role="alert">
+          <p className="pz-error__que" role="alert">
             {error}
           </p>
         ) : null}
 
-        <div className="cli-ficha__pie">
+        <div className="pz-ficha__pie">
           <Boton tono="contorno" type="button" onClick={onCerrar}>
             Cancelar
           </Boton>

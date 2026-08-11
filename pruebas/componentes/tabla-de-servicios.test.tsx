@@ -135,7 +135,7 @@ describe('el renglon de un servicio', () => {
 
   it('el estado lleva palabra, no solo color', () => {
     const { container } = pintar({ servicios: [{ ...SERVICIO, activo: false }], total: 1 });
-    expect(container.querySelector('.cli-estado--inactivo')?.textContent).toBe('Inactivo');
+    expect(container.querySelector('.pz-pastilla')?.textContent).toBe('Inactivo');
   });
 });
 

@@ -30,26 +30,26 @@ export function SinCajaAbierta({
   onAbrir(): void;
 }) {
   return (
-    <section className="cli-panel" aria-label="Sin caja abierta">
-      <div className="cli-vacio">
-        <span className="cli-vacio__icono" aria-hidden="true">
+    <section className="pz-tarjeta" aria-label="Sin caja abierta">
+      <div className="pz-vacio">
+        <span className="pz-vacio__icono" aria-hidden="true">
           <Icono nombre="dinero" lado={44} />
         </span>
-        <p className="cli-vacio__titulo">Sin caja abierta</p>
-        <p className="cli-vacio__texto">
+        <p className="pz-vacio__titulo">Sin caja abierta</p>
+        <p className="pz-vacio__texto">
           Abre una caja para empezar el turno. Mientras no haya una abierta no se puede cobrar en
           efectivo ni registrar gastos en efectivo — ese dinero quedaría fuera de todos los cortes.
         </p>
-        <p className="cli-vacio__texto">
+        <p className="pz-vacio__texto">
           Las ventas con tarjeta y transferencia sí se pueden cobrar: ese dinero no pasa por el
           cajón.
         </p>
         {puedeAbrir ? (
-          <button type="button" className="cli-boton-principal" onClick={onAbrir}>
+          <button type="button" className="pz-boton pz-boton--principal" onClick={onAbrir}>
             <Icono nombre="mas" lado={16} /> Abrir nueva caja
           </button>
         ) : (
-          <p className="cli-exp__secundario">
+          <p className="tt-secundario">
             Tu rol no abre caja. Quien administra las finanzas del centro puede hacerlo.
           </p>
         )}
@@ -86,7 +86,7 @@ export function FormularioDeApertura({
 
   return (
     <Modal abierto={abierto} titulo="Abrir nueva caja" onCerrar={onCerrar}>
-      <div className="cli-ficha">
+      <div className="pz-columna">
         <Campo
           etiqueta="Nombre de la caja"
           value={nombre}
@@ -115,31 +115,31 @@ export function FormularioDeApertura({
 
         {/* EL RESPONSABLE SALE DE LA SESION, no de un campo. Escribirlo a mano
             dejaria abrir la caja a nombre de otra persona. */}
-        <div className="cli-exp__renglon">
-          <span className="cli-exp__renglon-icono" aria-hidden="true">
+        <div className="pz-renglon pz-renglon--quieto">
+          <span className="pz-ficha" aria-hidden="true">
             <Icono nombre="persona" lado={18} />
           </span>
-          <div className="cli-exp__renglon-cuerpo">
-            <span className="cli-exp__etiqueta">Responsable</span>
-            <span className="cli-exp__valor">{quien}</span>
-            <span className="cli-exp__secundario">
+          <div className="pz-dato">
+            <span className="tt-etiqueta">Responsable</span>
+            <span className="pz-dato__valor">{quien}</span>
+            <span className="tt-secundario">
               Queda a tu nombre: es tu sesión la que abre la caja.
             </span>
           </div>
         </div>
 
-        <p className="cli-ficha__duplicado-nota">
+        <p className="tt-secundario">
           El saldo inicial no se puede cambiar después de abrir. Si te equivocas, se corrige con un
           ingreso o un retiro — que sí deja rastro.
         </p>
 
         {error ? (
-          <p className="cli-ficha__error" role="alert">
+          <p className="pz-error__que" role="alert">
             {error}
           </p>
         ) : null}
 
-        <div className="cli-ficha__pie">
+        <div className="pz-ficha__pie">
           <Boton tono="contorno" type="button" onClick={onCerrar}>
             Cancelar
           </Boton>
@@ -160,7 +160,7 @@ export function FormularioDeApertura({
           </Boton>
         </div>
 
-        {problema ? <p className="cli-exp__secundario">{problema}</p> : null}
+        {problema ? <p className="tt-secundario">{problema}</p> : null}
       </div>
     </Modal>
   );

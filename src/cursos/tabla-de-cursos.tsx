@@ -146,7 +146,7 @@ function MenuDeAcciones({
       <button
         ref={boton}
         type="button"
-        className="cli-menu__boton"
+        className="pz-icono-boton"
         aria-expanded={abierto}
         aria-label={`Acciones para ${curso.nombre}`}
         onClick={() => setAbierto((a) => !a)}
@@ -274,20 +274,20 @@ export function TablaDeCursos({
   const desde = total === 0 ? 0 : (pagina - 1) * porPagina + 1;
 
   return (
-    <section className="cli-panel cli-lista" aria-labelledby="cur-lista-titulo">
-      <header className="cli-panel__barra">
-        <h3 className="cli-panel__titulo" id="cur-lista-titulo">
+    <section className="pz-tarjeta pz-tarjeta--lista" aria-labelledby="cur-lista-titulo">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta" id="cur-lista-titulo">
           Lista de cursos
         </h3>
         <button
           type="button"
-          className={`cli-panel__enlace${filtrosAbiertos ? ' srv-filtro--puesto' : ''}`}
+          className={`pz-enlace${filtrosAbiertos ? ' pz-boton--puesto' : ''}`}
           aria-expanded={filtrosAbiertos}
           onClick={onFiltros}
         >
           <Icono nombre="filtros" lado={14} /> Filtrar
         </button>
-        <label className="cli-campo cli-campo--corto">
+        <label className="pz-campo pz-campo--corto">
           <span className="neron-solo-lectores">Estado del curso</span>
           <select value={pestana} onChange={(e) => onPestana(e.target.value)}>
             <option value="">Todos los estados</option>
@@ -301,14 +301,14 @@ export function TablaDeCursos({
       </header>
 
       {/* Las pestañas FILTRAN de verdad: no son decoracion sobre la misma lista. */}
-      <div className="cur-pestanas" role="tablist" aria-label="Filtrar por estado">
+      <div className="pz-pestanas" role="tablist" aria-label="Filtrar por estado">
         {PESTANAS_DE_LISTA.map((p) => (
           <button
             key={p.clave || 'todos'}
             type="button"
             role="tab"
             aria-selected={pestana === p.clave}
-            className={`cur-pestana${pestana === p.clave ? ' cur-pestana--puesta' : ''}`}
+            className={`pz-pestana${pestana === p.clave ? ' pz-pestana--puesta' : ''}`}
             onClick={() => onPestana(p.clave)}
           >
             {p.etiqueta}
@@ -317,16 +317,16 @@ export function TablaDeCursos({
       </div>
 
       {filtrosAbiertos ? (
-        <div className="srv-filtros">
-          <div className="cli-buscador">
-            <span className="cli-buscador__lupa" aria-hidden="true">
+        <div className="pz-filtros">
+          <div className="pz-buscador">
+            <span className="pz-buscador__lupa" aria-hidden="true">
               <Icono nombre="lupa" lado={16} />
             </span>
             {/* SIEMPRE pintado, en el mismo lugar del arbol: es lo que sostiene
                 el foco mientras la tabla de abajo cambia. */}
             <input
               type="search"
-              className="cli-buscador__campo"
+              className="pz-buscador__campo"
               autoComplete="off"
               placeholder="Buscar curso…"
               aria-label="Buscar curso por nombre, subtítulo o descripción"
@@ -334,8 +334,8 @@ export function TablaDeCursos({
               onChange={(e) => onBuscar(e.target.value)}
             />
           </div>
-          <label className="cli-campo">
-            <span className="cli-campo__etiqueta">Categoría</span>
+          <label className="pz-campo">
+            <span className="tt-etiqueta">Categoría</span>
             <select value={categoriaId} onChange={(e) => onCategoria(e.target.value)}>
               <option value="">Todas</option>
               {categorias.map((c) => (
@@ -345,8 +345,8 @@ export function TablaDeCursos({
               ))}
             </select>
           </label>
-          <label className="cli-campo">
-            <span className="cli-campo__etiqueta">Instructor</span>
+          <label className="pz-campo">
+            <span className="tt-etiqueta">Instructor</span>
             <select value={instructorId} onChange={(e) => onInstructor(e.target.value)}>
               <option value="">Todos</option>
               {instructores.map((p) => (
@@ -356,8 +356,8 @@ export function TablaDeCursos({
               ))}
             </select>
           </label>
-          <label className="cli-campo">
-            <span className="cli-campo__etiqueta">Modalidad</span>
+          <label className="pz-campo">
+            <span className="tt-etiqueta">Modalidad</span>
             <select value={modalidad} onChange={(e) => onModalidad(e.target.value)}>
               <option value="">Todas</option>
               <option value="presencial">Presencial</option>
@@ -378,37 +378,37 @@ export function TablaDeCursos({
       ) : null}
 
       {error ? (
-        <div className="cli-error" role="alert">
+        <div className="pz-error" role="alert">
           {/* VACIO y ERROR son estados distintos: decir "no hay cursos" cuando
               lo que fallo fue la red hace que alguien los capture otra vez. */}
-          <p className="cli-error__que">No pudimos cargar los cursos.</p>
-          <p className="cli-error__detalle">{error}</p>
-          <button type="button" className="cli-boton-suave" onClick={onReintentar}>
+          <p className="pz-error__que">No pudimos cargar los cursos.</p>
+          <p className="pz-error__detalle">{error}</p>
+          <button type="button" className="pz-boton" onClick={onReintentar}>
             Reintentar
           </button>
         </div>
       ) : cargando ? (
-        <div className="cli-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando los cursos</span>
           {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="terapias-silueta cli-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : cursos.length === 0 ? (
-        <div className="cli-vacio">
-          <span className="cli-vacio__icono" aria-hidden="true">
+        <div className="pz-vacio">
+          <span className="pz-vacio__icono" aria-hidden="true">
             <Icono nombre="birrete" lado={44} />
           </span>
-          <p className="cli-vacio__titulo">
+          <p className="pz-vacio__titulo">
             {hayFiltros ? 'Ningún curso coincide' : 'No hay cursos registrados'}
           </p>
-          <p className="cli-vacio__texto">
+          <p className="pz-vacio__texto">
             {hayFiltros
               ? 'Prueba con otro nombre o quita los filtros.'
               : 'Crea tu primer curso para comenzar.'}
           </p>
           {puedeGestionar && !hayFiltros ? (
-            <button type="button" className="cli-boton-principal" onClick={onNuevo}>
+            <button type="button" className="pz-boton pz-boton--principal" onClick={onNuevo}>
               <Icono nombre="mas" lado={16} /> Nuevo curso
             </button>
           ) : null}
@@ -416,36 +416,36 @@ export function TablaDeCursos({
       ) : (
         <>
           {/* El scroll horizontal vive DENTRO de la tabla, nunca en la pagina. */}
-          <div className="cli-tabla__marco cur-solo-ancho">
-            <table className="cli-tabla">
+          <div className="pz-tabla__marco cur-solo-ancho">
+            <table className="pz-tabla">
               <thead>
                 <tr>
                   <th>Curso</th>
                   <th>Categoría</th>
                   <th>Fecha / Duración</th>
-                  <th className="cli-tabla__numero">Precio</th>
+                  <th className="pz-tabla__numero">Precio</th>
                   <th>Alumnos</th>
                   <th>Estado</th>
-                  <th className="cli-tabla__acciones">Acciones</th>
+                  <th className="pz-tabla__acciones">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {cursos.map((c) => {
                   const f = comoSeLeeLaFecha(c);
                   return (
-                    <tr key={c.id} className={c.id === seleccionado ? 'cli-tabla__fila--marcada' : ''}>
+                    <tr key={c.id} className={c.id === seleccionado ? 'pz-tabla__fila--marcada' : ''}>
                       <td>
                         <button
                           type="button"
-                          className="cli-persona"
+                          className="pz-renglon"
                           onClick={() => onAccion('ver', c)}
                         >
                           <Portada curso={c} />
-                          <span className="srv-nombre">
-                            <span className="cli-persona__nombre">{c.nombre}</span>
+                          <span className="pz-renglon__cuerpo">
+                            <span className="pz-renglon__titulo">{c.nombre}</span>
                             {/* Sin subtitulo NO se inventa un texto. */}
                             {c.subtitulo ? (
-                              <span className="srv-descripcion">{c.subtitulo}</span>
+                              <span className="pz-renglon__pie">{c.subtitulo}</span>
                             ) : null}
                           </span>
                         </button>
@@ -461,7 +461,7 @@ export function TablaDeCursos({
                             {c.categoria}
                           </span>
                         ) : (
-                          <span className="cli-falta">Sin categoría</span>
+                          <span className="tt-falta">Sin categoría</span>
                         )}
                       </td>
                       <td>
@@ -470,7 +470,7 @@ export function TablaDeCursos({
                           {f.cuanto ? <span className="cur-fecha__cuanto">{f.cuanto}</span> : null}
                         </span>
                       </td>
-                      <td className="cli-tabla__numero">{formatearMoneda(c.precioCentavos)}</td>
+                      <td className="pz-tabla__numero">{formatearMoneda(c.precioCentavos)}</td>
                       <td>
                         <span
                           className={`cur-lugares${estaLleno(c.cupo, c.ocupados) ? ' cur-lugares--lleno' : ''}`}
@@ -480,15 +480,15 @@ export function TablaDeCursos({
                         {/* Sin cupo se DICE, en vez de dejar un numero suelto
                             que se lee como si faltara el denominador. */}
                         {c.cupo === null ? (
-                          <span className="cli-falta"> sin límite</span>
+                          <span className="tt-falta"> sin límite</span>
                         ) : null}
                       </td>
                       <td>
-                        <span className={`cli-estado cur-estado--${c.vida}`}>
+                        <span className={`pz-pastilla cur-estado--${c.vida}`}>
                           {COMO_SE_DICE_LA_VIDA[c.vida]}
                         </span>
                       </td>
-                      <td className="cli-tabla__acciones">
+                      <td className="pz-tabla__acciones">
                         <MenuDeAcciones curso={c} permisos={permisos} onAccion={onAccion} />
                       </td>
                     </tr>
@@ -512,13 +512,13 @@ export function TablaDeCursos({
                   >
                     <span className="cur-tarjeta__cabeza">
                       <Portada curso={c} />
-                      <span className="srv-nombre">
-                        <span className="cli-persona__nombre">{c.nombre}</span>
+                      <span className="pz-renglon__cuerpo">
+                        <span className="pz-renglon__titulo">{c.nombre}</span>
                         {c.subtitulo ? (
-                          <span className="srv-descripcion">{c.subtitulo}</span>
+                          <span className="pz-renglon__pie">{c.subtitulo}</span>
                         ) : null}
                       </span>
-                      <span className={`cli-estado cur-estado--${c.vida}`}>
+                      <span className={`pz-pastilla cur-estado--${c.vida}`}>
                         {COMO_SE_DICE_LA_VIDA[c.vida]}
                       </span>
                     </span>
@@ -535,28 +535,28 @@ export function TablaDeCursos({
         </>
       )}
 
-      <footer className="cli-pie">
-        <span className="cli-pie__cuenta">
+      <footer className="pz-pie">
+        <span className="pz-pie__cuenta">
           Mostrando {desde} a {desde === 0 ? 0 : desde + cursos.length - 1} de {total}{' '}
           {total === 1 ? 'curso' : 'cursos'}
         </span>
 
-        <div className="cli-paginas" role="group" aria-label="Páginas">
+        <div className="pz-paginas" role="group" aria-label="Páginas">
           <button
             type="button"
-            className="cli-paginas__boton"
+            className="pz-pagina"
             aria-label="Página anterior"
             disabled={pagina <= 1}
             onClick={() => onPagina(pagina - 1)}
           >
             ‹
           </button>
-          <span className="cli-paginas__actual" aria-live="polite">
+          <span className="pz-paginas__actual" aria-live="polite">
             {pagina} de {paginas}
           </span>
           <button
             type="button"
-            className="cli-paginas__boton"
+            className="pz-pagina"
             aria-label="Página siguiente"
             disabled={pagina >= paginas}
             onClick={() => onPagina(pagina + 1)}
@@ -565,7 +565,7 @@ export function TablaDeCursos({
           </button>
         </div>
 
-        <label className="cli-campo cli-campo--corto">
+        <label className="pz-campo pz-campo--corto">
           <span className="neron-solo-lectores">Cuántos por página</span>
           <select value={porPagina} onChange={(e) => onPorPagina(Number(e.target.value))}>
             {POR_PAGINA.map((n) => (

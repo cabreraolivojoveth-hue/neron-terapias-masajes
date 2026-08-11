@@ -237,23 +237,23 @@ export function Catalogo() {
 
   return (
     <div className="cli srv">
-      <header className="cli-encabezado">
-        <div className="cli-encabezado__texto">
-          <h2 className="cli-encabezado__titulo">Servicios</h2>
-          <p className="cli-encabezado__lema">Administra el catálogo de servicios de tu centro</p>
+      <header className="pz-encabezado">
+        <div className="pz-encabezado__texto">
+          <h2 className="tt-pagina">Servicios</h2>
+          <p className="tt-lema">Administra el catálogo de servicios de tu centro</p>
         </div>
         {puedeGestionar ? (
-          <div className="srv-encabezado__acciones">
+          <div className="pz-encabezado__acciones">
             <button
               type="button"
-              className="cli-boton-suave"
+              className="pz-boton"
               onClick={() => setCategoriasAbiertas(true)}
             >
               <Icono nombre="cuadricula" lado={16} /> Categorías
             </button>
             <button
               type="button"
-              className="cli-boton-principal"
+              className="pz-boton pz-boton--principal"
               onClick={() => setFormulario({ inicial: SERVICIO_VACIO })}
             >
               <Icono nombre="mas" lado={16} /> Nuevo servicio
@@ -263,10 +263,10 @@ export function Catalogo() {
       </header>
 
       {resumen.error ? (
-        <div className="cli-error" role="alert">
-          <p className="cli-error__que">No pudimos cargar el resumen del catálogo.</p>
-          <p className="cli-error__detalle">{resumen.error}</p>
-          <button type="button" className="cli-boton-suave" onClick={resumen.recargar}>
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar el resumen del catálogo.</p>
+          <p className="pz-error__detalle">{resumen.error}</p>
+          <button type="button" className="pz-boton" onClick={resumen.recargar}>
             Reintentar
           </button>
         </div>
@@ -274,7 +274,7 @@ export function Catalogo() {
 
       <CifrasDeServicios resumen={resumen.datos} />
 
-      <div className="cli-cuerpo">
+      <div className="pz-cuerpo">
         <TablaDeServicios
           servicios={lista.datos?.filas ?? []}
           total={lista.datos?.total ?? 0}

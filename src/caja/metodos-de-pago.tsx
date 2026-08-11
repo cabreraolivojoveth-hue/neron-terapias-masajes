@@ -79,20 +79,20 @@ export function MetodosDePago({
   const rebanadas = repartirElAnillo(metodos, totalCentavos);
 
   return (
-    <section className="cli-panel" aria-labelledby="caja-metodos-titulo">
-      <h3 className="cli-panel__titulo" id="caja-metodos-titulo">
+    <section className="pz-tarjeta" aria-labelledby="caja-metodos-titulo">
+      <h3 className="tt-tarjeta" id="caja-metodos-titulo">
         Métodos de pago
       </h3>
 
       {cargando ? (
-        <div className="cli-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando las formas de pago</span>
           {[0, 1, 2].map((i) => (
-            <div key={i} className="terapias-silueta cli-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : rebanadas.length === 0 ? (
-        <p className="cli-vacio__texto">
+        <p className="pz-vacio__texto">
           Todavía no ha entrado dinero en esta caja. En cuanto se cobre algo, aquí se ve con qué se
           pagó.
         </p>

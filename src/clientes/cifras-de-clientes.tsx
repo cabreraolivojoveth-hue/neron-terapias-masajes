@@ -157,14 +157,14 @@ export function textoDeLaCifra(valor: number | null, moneda = false): string {
 function Tarjeta({ c }: { readonly c: Cifra }) {
   const cargando = c.valor === null;
   return (
-    <div className={`cli-cifra cli-cifra--${c.categoria}`}>
-      <span className="cli-cifra__icono" aria-hidden="true">
+    <div className={`pz-cifra pz-cifra--${c.categoria}`}>
+      <span className="pz-cifra__icono" aria-hidden="true">
         <Icono nombre={c.icono} lado={20} />
       </span>
-      <span className="cli-cifra__texto">
-        <span className="cli-cifra__etiqueta">{c.etiqueta}</span>
+      <span className="pz-cifra__texto">
+        <span className="pz-cifra__etiqueta">{c.etiqueta}</span>
         <span
-          className="cli-cifra__valor"
+          className="pz-cifra__valor"
           aria-busy={cargando ? 'true' : undefined}
           aria-label={cargando ? `${c.etiqueta}: cargando` : undefined}
         >
@@ -172,7 +172,7 @@ function Tarjeta({ c }: { readonly c: Cifra }) {
         </span>
         {/* El hueco se reserva aunque el pie este vacio: sin eso, la fila da un
             brinco al terminar de cargar. */}
-        <span className="cli-cifra__pie">{c.pie || ' '}</span>
+        <span className="pz-cifra__pie">{c.pie || ' '}</span>
       </span>
     </div>
   );
@@ -180,7 +180,7 @@ function Tarjeta({ c }: { readonly c: Cifra }) {
 
 export function CifrasDeArriba({ resumen }: { readonly resumen: ResumenDeClientes | null }) {
   return (
-    <section className="cli-cifras" aria-label="Resumen de clientes">
+    <section className="pz-cifras" aria-label="Resumen de clientes">
       {cifrasDeArriba(resumen).map((c) => (
         <Tarjeta key={c.clave} c={c} />
       ))}
@@ -190,11 +190,11 @@ export function CifrasDeArriba({ resumen }: { readonly resumen: ResumenDeCliente
 
 export function ResumenGeneral({ resumen }: { readonly resumen: ResumenDeClientes | null }) {
   return (
-    <section className="cli-panel cli-resumen" aria-labelledby="cli-resumen-titulo">
-      <h3 className="cli-panel__titulo" id="cli-resumen-titulo">
+    <section className="pz-tarjeta cli-resumen" aria-labelledby="cli-resumen-titulo">
+      <h3 className="tt-tarjeta" id="cli-resumen-titulo">
         Resumen general
       </h3>
-      <div className="cli-cifras cli-cifras--pie">
+      <div className="pz-cifras pz-cifras">
         {cifrasDelPie(resumen).map((c) => (
           <Tarjeta key={c.clave} c={c} />
         ))}

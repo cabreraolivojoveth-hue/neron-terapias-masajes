@@ -1,31 +1,37 @@
 /**
- * Los estilos propios del producto.
+ * LA HOJA DE ESTILOS DEL PRODUCTO, ARMADA POR CAPAS.
  *
- * Solo lo que la base no puede traer: las pantallas de estado, la hoja de la
- * marca y la pantalla de un modulo pendiente. Todo lo demas —botones, campos,
- * modales, tabla, tablero, el marco entero— viene de la base.
+ * El orden importa y es este:
  *
- * NI UN COLOR ESCRITO A MANO. Todo sale de las variables, incluidas las cuatro
- * de marca que pone `marca.ts` encima. Hay una prueba que lo vigila.
+ *   1. cimientos    los tokens del Centro y la tipografia de pantalla
+ *   2. piezas       la tarjeta, la pastilla, la cifra — lo COMPARTIDO
+ *   3. armadura     la barra lateral y la barra superior
+ *   4. movimiento   las animaciones, y su apagado para quien lo pida
+ *   5. lo de abajo  lo que todavia es propio de un modulo concreto
+ *
+ * POR QUE ESTA PARTIDO ASI, que es la leccion cara de este proyecto: la
+ * primera version era un solo archivo donde cada modulo se escribia su propia
+ * tarjeta. Ocho tarjetas parecidas y ninguna igual — ni entre ellas ni al
+ * diseño. Ahora lo compartido vive en `piezas` y cambiarlo cambia las ocho
+ * pantallas a la vez.
+ *
+ * NI UN COLOR ESCRITO A MANO. Todo sale de las variables, incluidas las de
+ * marca que pone `marca.ts` encima. Hay una prueba que lo vigila.
  */
+
+import { armadura } from './estilo/armadura.js';
+import { cimientos } from './estilo/cimientos.js';
+import { movimiento } from './estilo/movimiento.js';
+import { piezas } from './estilo/piezas.js';
 
 const v = (nombre: string): string => `var(--neron-${nombre})`;
 
 export function estilosDelProducto(): string {
-  return `
-*, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; height: 100%; }
-body {
-  background: ${v('fondo')};
-  color: ${v('texto')};
-  font-family: ${v('familia')};
-  font-size: ${v('texto-normal')};
-  line-height: ${v('interlinea-normal')};
-  /* NUNCA scroll horizontal en toda la aplicacion. Si algo no cabe, se
-     resuelve dentro de ese componente, no empujando la pagina entera. */
-  overflow-x: hidden;
+  return [cimientos(), piezas(), armadura(), movimiento(), loQueTodaviaEsDeUnModulo()].join('\n');
 }
-#raiz { min-height: 100%; }
+
+function loQueTodaviaEsDeUnModulo(): string {
+  return `
 
 .terapias-hoja { color: ${v('marca')}; flex: none; }
 

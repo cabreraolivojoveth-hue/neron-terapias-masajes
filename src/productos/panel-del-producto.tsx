@@ -52,13 +52,13 @@ function Renglon({
   readonly children: ReactNode;
 }) {
   return (
-    <div className="cli-exp__renglon">
-      <span className="cli-exp__renglon-icono" aria-hidden="true">
+    <div className="pz-renglon pz-renglon--quieto">
+      <span className="pz-ficha" aria-hidden="true">
         <Icono nombre={icono} lado={18} />
       </span>
-      <div className="cli-exp__renglon-cuerpo">
-        <span className="cli-exp__etiqueta">{titulo}</span>
-        <div className="cli-exp__valor">{children}</div>
+      <div className="pz-dato">
+        <span className="tt-etiqueta">{titulo}</span>
+        <div className="pz-dato__valor">{children}</div>
       </div>
     </div>
   );
@@ -104,8 +104,8 @@ export function PanelDelProducto({
 
   if (!ficha && !cargando && !error) {
     return (
-      <aside className="cli-panel srv-detalle srv-detalle--vacio">
-        <p className="cli-vacio__texto">
+      <aside className="pz-tarjeta srv-detalle srv-detalle--vacio">
+        <p className="pz-vacio__texto">
           Toca un producto para ver su ficha, sus movimientos, sus ventas y sus proveedores.
         </p>
       </aside>
@@ -115,9 +115,9 @@ export function PanelDelProducto({
   const margen = ficha ? margenDe(ficha.precioCentavos, ficha.costoCentavos) : null;
 
   return (
-    <aside className="cli-panel srv-detalle" aria-label="Detalle del producto">
-      <header className="cli-panel__barra">
-        <h3 className="cli-panel__titulo">Detalle del producto</h3>
+    <aside className="pz-tarjeta srv-detalle" aria-label="Detalle del producto">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta">Detalle del producto</h3>
         <button
           type="button"
           className="srv-detalle__cerrar"
@@ -129,15 +129,15 @@ export function PanelDelProducto({
       </header>
 
       {error ? (
-        <div className="cli-error" role="alert">
-          <p className="cli-error__que">No pudimos cargar el producto.</p>
-          <p className="cli-error__detalle">{error}</p>
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar el producto.</p>
+          <p className="pz-error__detalle">{error}</p>
         </div>
       ) : cargando || !ficha ? (
-        <div className="cli-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando el producto</span>
           {[0, 1, 2].map((i) => (
-            <div key={i} className="terapias-silueta cli-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : (
@@ -157,7 +157,7 @@ export function PanelDelProducto({
                 <Icono nombre="paquete" lado={36} />
               </span>
             )}
-            <span className={`cli-estado prd-estado--${ficha.inventario} cur-cabecera__estado`}>
+            <span className={`pz-pastilla prd-estado--${ficha.inventario} cur-cabecera__estado`}>
               {COMO_SE_DICE_EL_STOCK[ficha.inventario]}
             </span>
           </div>
@@ -167,14 +167,14 @@ export function PanelDelProducto({
             {ficha.sku ? <span className="srv-detalle__lema">SKU: {ficha.sku}</span> : null}
           </div>
 
-          <div className="srv-pestanas" role="tablist" aria-label="Secciones del producto">
+          <div className="pz-segmentos" role="tablist" aria-label="Secciones del producto">
             {PESTANAS.map((p) => (
               <button
                 key={p.clave}
                 type="button"
                 role="tab"
                 aria-selected={pestana === p.clave}
-                className={`srv-pestana${pestana === p.clave ? ' srv-pestana--puesta' : ''}`}
+                className={`pz-segmento${pestana === p.clave ? ' pz-segmento--puesto' : ''}`}
                 onClick={() => setPestana(p.clave)}
               >
                 {p.etiqueta}
@@ -191,12 +191,12 @@ export function PanelDelProducto({
               <Renglon icono="recibo" titulo="Costo">
                 {/* `null` es "tu rol no ve costos", no "cuesta cero". */}
                 {ficha.costoCentavos === null ? (
-                  <span className="cli-falta">Tu rol no ve costos</span>
+                  <span className="tt-falta">Tu rol no ve costos</span>
                 ) : (
                   <>
                     {formatearMoneda(ficha.costoCentavos)}
                     {margen !== null ? (
-                      <span className="cli-exp__secundario"> · {margen}% de margen</span>
+                      <span className="tt-secundario"> · {margen}% de margen</span>
                     ) : null}
                   </>
                 )}
@@ -221,30 +221,30 @@ export function PanelDelProducto({
                     {ficha.categoria}
                   </span>
                 ) : (
-                  <span className="cli-falta">Sin categoría</span>
+                  <span className="tt-falta">Sin categoría</span>
                 )}
               </Renglon>
 
               <Renglon icono="bolsa" titulo="Proveedor principal">
                 {ficha.proveedores.find((p) => p.preferido)?.nombre ?? (
-                  <span className="cli-falta">Sin proveedor</span>
+                  <span className="tt-falta">Sin proveedor</span>
                 )}
               </Renglon>
 
               <Renglon icono="renglones" titulo="Código de barras">
-                {ficha.codigoBarras ?? <span className="cli-falta">Sin código</span>}
+                {ficha.codigoBarras ?? <span className="tt-falta">Sin código</span>}
               </Renglon>
 
               <Renglon icono="lugar" titulo="Ubicación">
-                {ficha.ubicacion ?? <span className="cli-falta">Sin ubicación</span>}
+                {ficha.ubicacion ?? <span className="tt-falta">Sin ubicación</span>}
               </Renglon>
 
               <Renglon icono="nota" titulo="Descripción">
                 {ficha.descripcion ? (
                   // Como TEXTO, nunca como HTML.
-                  <p className="srv-texto">{ficha.descripcion}</p>
+                  <p className="tt-libre">{ficha.descripcion}</p>
                 ) : (
-                  <span className="cli-falta">Sin descripción</span>
+                  <span className="tt-falta">Sin descripción</span>
                 )}
               </Renglon>
             </div>
@@ -263,7 +263,7 @@ export function PanelDelProducto({
           {pestana === 'ventas' ? (
             <div className="srv-detalle__cuerpo">
               {ficha.ventas.length === 0 ? (
-                <p className="cli-vacio__texto">
+                <p className="pz-vacio__texto">
                   Este producto todavía no se ha vendido. Aquí aparecerá cada venta con el precio
                   que se cobró ese día.
                 </p>
@@ -276,9 +276,9 @@ export function PanelDelProducto({
                         className="cur-alumno__quien"
                         onClick={() => onAbrirVenta(v.ventaId)}
                       >
-                        <span className="cat__texto">
-                          <span className="cat__nombre">{v.folio}</span>
-                          <span className="cat__uso">
+                        <span className="pz-renglon__cuerpo">
+                          <span className="pz-renglon__titulo">{v.folio}</span>
+                          <span className="pz-renglon__pie">
                             {v.fecha.slice(0, 10).split('-').reverse().join('/')}
                             {v.cliente ? ` · ${v.cliente}` : ' · Mostrador'}
                           </span>
@@ -313,12 +313,12 @@ export function PanelDelProducto({
 
           {puedeGestionar ? (
             <div className="srv-detalle__acciones">
-              <button type="button" className="cli-boton-principal" onClick={onEditar}>
+              <button type="button" className="pz-boton pz-boton--principal" onClick={onEditar}>
                 <Icono nombre="lapiz" lado={16} /> Editar producto
               </button>
               <button
                 type="button"
-                className={ficha.activo ? 'srv-boton-peligro' : 'cli-boton-suave'}
+                className={ficha.activo ? 'srv-boton-peligro' : 'pz-boton'}
                 onClick={onCambiarEstado}
               >
                 <Icono nombre={ficha.activo ? 'prohibido' : 'palomita'} lado={16} />{' '}

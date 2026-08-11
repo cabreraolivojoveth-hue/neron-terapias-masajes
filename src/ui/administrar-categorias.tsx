@@ -91,37 +91,37 @@ export function AdministrarCategorias({
     <Modal abierto={abierto} titulo={titulo} onCerrar={onCerrar}>
       <div className="cat">
         {cargando ? (
-          <div className="cli-cargando" aria-busy="true">
+          <div className="pz-cargando" aria-busy="true">
             <span className="neron-solo-lectores">Cargando las categorías</span>
-            <div className="terapias-silueta cli-cargando__renglon" />
+            <div className="pz-silueta" />
           </div>
         ) : categorias.length === 0 ? (
-          <p className="cli-vacio__texto">
+          <p className="pz-vacio__texto">
             Todavía no hay categorías. Sirven para agrupar y filtrar; un {que} puede vivir sin
             ninguna.
           </p>
         ) : (
-          <ul className="cat__lista">
+          <ul className="pz-lista">
             {categorias.map((c) => (
-              <li key={c.id} className="cat__renglon">
+              <li key={c.id} className="pz-renglon pz-renglon--quieto">
                 <span
                   className="cat__color"
                   aria-hidden="true"
                   {...(c.color ? { style: { background: c.color } } : {})}
                 />
-                <span className="cat__texto">
-                  <span className="cat__nombre">
+                <span className="pz-renglon__cuerpo">
+                  <span className="pz-renglon__titulo">
                     {c.nombre}
-                    {!c.activo ? <span className="cli-estado cli-estado--inactivo">Inactiva</span> : null}
+                    {!c.activo ? <span className="pz-pastilla pz-pastilla">Inactiva</span> : null}
                   </span>
                   {/* El numero de uso SIEMPRE visible: es lo que hace que
                       archivar sea una decision informada y no una sorpresa. */}
-                  <span className="cat__uso">{comoSeDiceElUso(c.enUso, que)}</span>
+                  <span className="pz-renglon__pie">{comoSeDiceElUso(c.enUso, que)}</span>
                 </span>
-                <span className="cat__acciones">
+                <span className="pz-encabezado__acciones">
                   <button
                     type="button"
-                    className="cli-boton-suave"
+                    className="pz-boton"
                     onClick={() =>
                       setEditando({
                         id: c.id,
@@ -138,7 +138,7 @@ export function AdministrarCategorias({
                   </button>
                   <button
                     type="button"
-                    className="cli-boton-suave"
+                    className="pz-boton"
                     onClick={() => setAArchivar(c)}
                   >
                     <Icono nombre="archivar" lado={14} /> Archivar
@@ -159,7 +159,7 @@ export function AdministrarCategorias({
               maxLength={60}
               {...(fallo ? { error: fallo } : {})}
             />
-            <div className="cli-ficha__par">
+            <div className="pz-dos">
               <Campo
                 etiqueta="Descripción"
                 value={editando.datos.descripcion}
@@ -183,7 +183,7 @@ export function AdministrarCategorias({
               />
               <span>Activa — se ofrece al capturar</span>
             </label>
-            <div className="cli-ficha__pie">
+            <div className="pz-ficha__pie">
               <Boton tono="contorno" type="button" onClick={() => setEditando(null)}>
                 Cancelar
               </Boton>
@@ -195,7 +195,7 @@ export function AdministrarCategorias({
         ) : (
           <button
             type="button"
-            className="cli-boton-principal"
+            className="pz-boton pz-boton--principal"
             onClick={() => {
               setFallo(null);
               setEditando({ id: null, datos: CATEGORIA_VACIA });
@@ -206,7 +206,7 @@ export function AdministrarCategorias({
         )}
 
         {error ? (
-          <p className="cli-ficha__error" role="alert">
+          <p className="pz-error__que" role="alert">
             {error}
           </p>
         ) : null}

@@ -32,13 +32,13 @@ function Renglon({
   readonly children: ReactNode;
 }) {
   return (
-    <div className="cli-exp__renglon">
-      <span className="cli-exp__renglon-icono" aria-hidden="true">
+    <div className="pz-renglon pz-renglon--quieto">
+      <span className="pz-ficha" aria-hidden="true">
         <Icono nombre={icono} lado={18} />
       </span>
-      <div className="cli-exp__renglon-cuerpo">
-        <span className="cli-exp__etiqueta">{titulo}</span>
-        <div className="cli-exp__valor">{children}</div>
+      <div className="pz-dato">
+        <span className="tt-etiqueta">{titulo}</span>
+        <div className="pz-dato__valor">{children}</div>
       </div>
     </div>
   );
@@ -46,9 +46,9 @@ function Renglon({
 
 function Cuenta({ n, que }: { readonly n: number; readonly que: string }) {
   return (
-    <span className="cli-exp__cuenta">
-      <span className="cli-exp__cuenta-numero">{n}</span>
-      <span className="cli-exp__cuenta-que">{que}</span>
+    <span className="pz-dato">
+      <span className="tt-dato">{n}</span>
+      <span className="tt-pie">{que}</span>
     </span>
   );
 }
@@ -80,22 +80,22 @@ export function Expediente({
   return (
     <Modal abierto={abierto} titulo={e?.nombre ?? 'Expediente'} onCerrar={onCerrar} ancho>
       {error ? (
-        <div className="cli-error" role="alert">
-          <p className="cli-error__que">No pudimos cargar el expediente.</p>
-          <p className="cli-error__detalle">{error}</p>
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar el expediente.</p>
+          <p className="pz-error__detalle">{error}</p>
         </div>
       ) : cargando || !e ? (
-        <div className="cli-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando el expediente</span>
           {[0, 1, 2].map((i) => (
-            <div key={i} className="terapias-silueta cli-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : (
-        <div className="cli-exp">
-          <div className="cli-exp__barra">
+        <div className="pz-columna">
+          <div className="pz-cabecera">
             <span
-              className={`cli-estado cli-estado--${e.archivado ? 'archivado' : 'activo'}`}
+              className={`pz-pastilla pz-pastilla--${e.archivado ? 'archivado' : 'activo'}`}
             >
               {e.archivado ? etiquetaDeEstadoDeCliente('archivado') : 'En el directorio'}
             </span>
@@ -103,15 +103,15 @@ export function Expediente({
 
           <Renglon icono="persona" titulo="Contacto">
             {e.telefono ? (
-              <a className="cli-exp__enlace" href={`tel:${e.telefono}`}>
+              <a className="pz-renglon__enlace" href={`tel:${e.telefono}`}>
                 {e.telefono}
               </a>
             ) : (
-              <span className="cli-falta">Sin teléfono registrado</span>
+              <span className="tt-falta">Sin teléfono registrado</span>
             )}
             {e.correo ? (
               <div>
-                <a className="cli-exp__enlace" href={`mailto:${e.correo}`}>
+                <a className="pz-renglon__enlace" href={`mailto:${e.correo}`}>
                   {e.correo}
                 </a>
               </div>
@@ -125,11 +125,11 @@ export function Expediente({
           ) : null}
 
           <Renglon icono="calendario" titulo="Cliente desde">
-            {e.clienteDesde ? fechaLarga(e.clienteDesde) : <span className="cli-falta">—</span>}
+            {e.clienteDesde ? fechaLarga(e.clienteDesde) : <span className="tt-falta">—</span>}
           </Renglon>
 
           <Renglon icono="persona" titulo="Terapeuta asignado">
-            {e.profesional ?? <span className="cli-falta">Sin asignar</span>}
+            {e.profesional ?? <span className="tt-falta">Sin asignar</span>}
           </Renglon>
 
           {/*
@@ -138,33 +138,33 @@ export function Expediente({
             se reagenda, la otra ya costó.
           */}
           <Renglon icono="barras" titulo="Historial de citas">
-            <div className="cli-exp__cuentas">
+            <div className="pz-tres">
               <Cuenta n={e.visitas} que={e.visitas === 1 ? 'visita' : 'visitas'} />
               <Cuenta n={e.canceladas} que="canceladas" />
               <Cuenta n={e.noAsistio} que="no asistió" />
             </div>
             {e.ultimaVisita ? (
-              <div className="cli-exp__secundario">
+              <div className="tt-secundario">
                 Última visita: {e.ultimaVisita.fecha} – {e.ultimaVisita.servicio}
               </div>
             ) : (
-              <div className="cli-exp__secundario">Todavía no ha tenido una sesión completada.</div>
+              <div className="tt-secundario">Todavía no ha tenido una sesión completada.</div>
             )}
           </Renglon>
 
           {e.proximaCita ? (
             <Renglon icono="reloj" titulo="Próxima cita">
               {e.proximaCita.fecha} · {e.proximaCita.hora}
-              <div className="cli-exp__secundario">{e.proximaCita.servicio}</div>
+              <div className="tt-secundario">{e.proximaCita.servicio}</div>
             </Renglon>
           ) : null}
 
           {e.servicios.length > 0 ? (
             <Renglon icono="bolsa" titulo="Servicios recibidos">
-              <ul className="cli-exp__servicios">
+              <ul className="pz-columna__servicios">
                 {e.servicios.map((s) => (
                   <li key={s.nombre}>
-                    {s.nombre} <span className="cli-exp__secundario">× {s.veces}</span>
+                    {s.nombre} <span className="tt-secundario">× {s.veces}</span>
                   </li>
                 ))}
               </ul>
@@ -178,15 +178,15 @@ export function Expediente({
           */}
           {puede('verFinanzas') ? (
             <Renglon icono="recibo" titulo="Compras y adeudo">
-              <div className="cli-exp__cuentas">
+              <div className="pz-tres">
                 <Cuenta n={e.compras} que={e.compras === 1 ? 'compra' : 'compras'} />
                 <Cuenta n={e.cursos} que={e.cursos === 1 ? 'curso' : 'cursos'} />
               </div>
-              <div className="cli-exp__secundario">
+              <div className="tt-secundario">
                 Total gastado: {formatearMoneda(e.totalGastado)}
               </div>
               <div
-                className={e.adeudo > 0 ? 'cli-exp__adeudo' : 'cli-exp__secundario'}
+                className={e.adeudo > 0 ? 'pz-columna__adeudo' : 'tt-secundario'}
               >
                 {e.adeudo > 0 ? `Adeudo: ${formatearMoneda(e.adeudo)}` : 'Sin adeudos'}
               </div>
@@ -197,43 +197,43 @@ export function Expediente({
             <Renglon icono="nota" titulo="Notas">
               {/* Como TEXTO, nunca como HTML: una nota es lo que alguien
                   escribio, y si se interpretara podria romper la pantalla. */}
-              <span className="cli-exp__notas">{e.notas}</span>
+              <span className="tt-libre">{e.notas}</span>
             </Renglon>
           ) : null}
 
-          <div className="cli-exp__acciones">
+          <div className="pz-encabezado__acciones">
             {puede('gestionarClientes') ? (
-              <button type="button" className="cli-boton-principal" onClick={() => onAccion('editar')}>
+              <button type="button" className="pz-boton pz-boton--principal" onClick={() => onAccion('editar')}>
                 <Icono nombre="lapiz" lado={16} /> Editar
               </button>
             ) : null}
             {puede('gestionarAgenda') ? (
-              <button type="button" className="cli-boton-suave" onClick={() => onAccion('cita')}>
+              <button type="button" className="pz-boton" onClick={() => onAccion('cita')}>
                 <Icono nombre="calendario" lado={16} /> Nueva cita
               </button>
             ) : null}
             {puede('cobrar') ? (
-              <button type="button" className="cli-boton-suave" onClick={() => onAccion('venta')}>
+              <button type="button" className="pz-boton" onClick={() => onAccion('venta')}>
                 <Icono nombre="bolsa" lado={16} /> Registrar venta
               </button>
             ) : null}
-            <button type="button" className="cli-boton-suave" onClick={() => onAccion('mensaje')}>
+            <button type="button" className="pz-boton" onClick={() => onAccion('mensaje')}>
               <Icono nombre="mensaje" lado={16} /> Enviar mensaje
             </button>
             <button
               type="button"
-              className="cli-boton-suave"
+              className="pz-boton"
               onClick={() => onAccion('recordatorio')}
             >
               <Icono nombre="reloj" lado={16} /> Crear recordatorio
             </button>
             {puede('gestionarCatalogo') ? (
-              <button type="button" className="cli-boton-suave" onClick={() => onAccion('curso')}>
+              <button type="button" className="pz-boton" onClick={() => onAccion('curso')}>
                 <Icono nombre="birrete" lado={16} /> Inscribir a curso
               </button>
             ) : null}
             {puede('gestionarClientes') ? (
-              <button type="button" className="cli-boton-suave" onClick={() => onAccion('archivar')}>
+              <button type="button" className="pz-boton" onClick={() => onAccion('archivar')}>
                 <Icono nombre="archivar" lado={16} /> {e.archivado ? 'Reactivar' : 'Archivar'}
               </button>
             ) : null}

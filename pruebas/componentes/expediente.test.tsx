@@ -105,7 +105,7 @@ describe('las acciones', () => {
 describe('los estados de la pantalla', () => {
   it('mientras carga muestra siluetas', () => {
     const { container } = render(<Expediente {...props} cargando expediente={null} />);
-    expect(container.querySelectorAll('.terapias-silueta').length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('.pz-silueta').length).toBeGreaterThan(0);
   });
 
   it('si falla se dice, en vez de mostrar un expediente a medias', () => {

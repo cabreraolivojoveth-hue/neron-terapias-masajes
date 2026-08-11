@@ -94,13 +94,13 @@ export function PanelLateral({
 
   return (
     <div className="cli-lateral">
-      <section className="cli-panel" aria-labelledby="cli-filtros-titulo">
-        <h3 className="cli-panel__titulo" id="cli-filtros-titulo">
+      <section className="pz-tarjeta" aria-labelledby="cli-filtros-titulo">
+        <h3 className="tt-tarjeta" id="cli-filtros-titulo">
           Filtros rápidos
         </h3>
 
-        <label className="cli-campo cli-campo--bloque">
-          <span className="cli-campo__etiqueta">Estado del cliente</span>
+        <label className="pz-campo pz-campo--bloque">
+          <span className="tt-etiqueta">Estado del cliente</span>
           <select value={estado} onChange={(e) => onEstado(e.target.value)}>
             <option value="">Todos</option>
             {ESTADOS_DE_CLIENTE.map((e) => (
@@ -111,8 +111,8 @@ export function PanelLateral({
           </select>
         </label>
 
-        <label className="cli-campo cli-campo--bloque">
-          <span className="cli-campo__etiqueta">Terapeuta asignado</span>
+        <label className="pz-campo pz-campo--bloque">
+          <span className="tt-etiqueta">Terapeuta asignado</span>
           <select value={profesionalId} onChange={(e) => onProfesional(e.target.value)}>
             <option value="">Todos</option>
             {profesionales.map((p) => (
@@ -123,8 +123,8 @@ export function PanelLateral({
           </select>
         </label>
 
-        <label className="cli-campo cli-campo--bloque">
-          <span className="cli-campo__etiqueta">Rango de visitas</span>
+        <label className="pz-campo pz-campo--bloque">
+          <span className="tt-etiqueta">Rango de visitas</span>
           <select value={rango} onChange={(e) => onRango(e.target.value)}>
             {RANGOS_DE_VISITAS.map((r) => (
               <option key={r.clave} value={r.clave}>
@@ -136,7 +136,7 @@ export function PanelLateral({
 
         <button
           type="button"
-          className="cli-boton-suave cli-boton-suave--ancho"
+          className="pz-boton pz-boton--ancho"
           onClick={onLimpiar}
           disabled={!hayFiltros}
         >
@@ -144,28 +144,28 @@ export function PanelLateral({
         </button>
       </section>
 
-      <section className="cli-panel" aria-labelledby="cli-seguimientos-titulo">
-        <header className="cli-panel__barra">
-          <h3 className="cli-panel__titulo" id="cli-seguimientos-titulo">
+      <section className="pz-tarjeta" aria-labelledby="cli-seguimientos-titulo">
+        <header className="pz-cabecera">
+          <h3 className="tt-tarjeta" id="cli-seguimientos-titulo">
             Recordatorios de seguimiento
           </h3>
-          <button type="button" className="cli-panel__enlace" onClick={onVerRecordatorios}>
+          <button type="button" className="pz-enlace" onClick={onVerRecordatorios}>
             Ver todos
           </button>
         </header>
 
         {cargandoSeguimientos ? (
-          <div className="cli-cargando" aria-busy="true">
+          <div className="pz-cargando" aria-busy="true">
             <span className="neron-solo-lectores">Cargando los seguimientos</span>
-            <div className="terapias-silueta cli-cargando__renglon" />
+            <div className="pz-silueta" />
           </div>
         ) : seguimientos.length === 0 ? (
-          <div className="cli-vacio cli-vacio--chico">
-            <span className="cli-vacio__icono" aria-hidden="true">
+          <div className="pz-vacio pz-vacio--chico">
+            <span className="pz-vacio__icono" aria-hidden="true">
               <Icono nombre="campana" lado={30} />
             </span>
-            <p className="cli-vacio__titulo">No hay recordatorios</p>
-            <p className="cli-vacio__texto">No tienes seguimientos pendientes</p>
+            <p className="pz-vacio__titulo">No hay recordatorios</p>
+            <p className="pz-vacio__texto">No tienes seguimientos pendientes</p>
           </div>
         ) : (
           <ul className="cli-lateral__lista">
@@ -190,28 +190,28 @@ export function PanelLateral({
         )}
       </section>
 
-      <section className="cli-panel" aria-labelledby="cli-cumples-titulo">
-        <header className="cli-panel__barra">
-          <h3 className="cli-panel__titulo" id="cli-cumples-titulo">
+      <section className="pz-tarjeta" aria-labelledby="cli-cumples-titulo">
+        <header className="pz-cabecera">
+          <h3 className="tt-tarjeta" id="cli-cumples-titulo">
             Cumpleaños próximos
           </h3>
-          <button type="button" className="cli-panel__enlace" onClick={onVerCumpleanos}>
+          <button type="button" className="pz-enlace" onClick={onVerCumpleanos}>
             Ver todos
           </button>
         </header>
 
         {cargandoCumpleanos ? (
-          <div className="cli-cargando" aria-busy="true">
+          <div className="pz-cargando" aria-busy="true">
             <span className="neron-solo-lectores">Cargando los cumpleaños</span>
-            <div className="terapias-silueta cli-cargando__renglon" />
+            <div className="pz-silueta" />
           </div>
         ) : cumpleanos.length === 0 ? (
-          <div className="cli-vacio cli-vacio--chico">
-            <span className="cli-vacio__icono" aria-hidden="true">
+          <div className="pz-vacio pz-vacio--chico">
+            <span className="pz-vacio__icono" aria-hidden="true">
               <Icono nombre="pastel" lado={30} />
             </span>
-            <p className="cli-vacio__titulo">No hay cumpleaños próximos</p>
-            <p className="cli-vacio__texto">Los cumpleaños aparecerán aquí</p>
+            <p className="pz-vacio__titulo">No hay cumpleaños próximos</p>
+            <p className="pz-vacio__texto">Los cumpleaños aparecerán aquí</p>
           </div>
         ) : (
           <ul className="cli-lateral__lista">

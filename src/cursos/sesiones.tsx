@@ -91,7 +91,7 @@ export function Sesiones({
   return (
     <div className="srv-detalle__cuerpo">
       {sesiones.length === 0 ? (
-        <p className="cli-vacio__texto">
+        <p className="pz-vacio__texto">
           Este curso todavía no tiene sesiones programadas. Cada sesión aparece en la Agenda del
           centro con su instructor y su horario.
         </p>
@@ -101,24 +101,24 @@ export function Sesiones({
             <li key={s.id} className="cur-sesion">
               <span className="cur-sesion__cuando">
                 <span className="cur-sesion__titulo">{tituloDeLaSesion(s, i)}</span>
-                <span className="cli-exp__secundario">
+                <span className="tt-secundario">
                   {fechaConMes(s.fecha)} · {s.horaInicio}–{s.horaFin}
                 </span>
-                <span className="cli-exp__secundario">
+                <span className="tt-secundario">
                   {/* Sin instructor propio se dice que hereda el del curso, en
                       vez de dejar el hueco como si faltara el dato. */}
                   {s.instructor ?? 'El instructor del curso'}
                   {s.lugar ? ` · ${s.lugar}` : ''}
                 </span>
               </span>
-              <span className={`cli-estado cur-ses--${s.estado}`}>
+              <span className={`pz-pastilla cur-ses--${s.estado}`}>
                 {COMO_SE_DICE_LA_SESION[s.estado]}
               </span>
               {puedeGestionar ? (
-                <span className="cat__acciones">
+                <span className="pz-encabezado__acciones">
                   <button
                     type="button"
-                    className="cli-boton-suave"
+                    className="pz-boton"
                     onClick={() =>
                       setEditando({
                         id: s.id,
@@ -138,7 +138,7 @@ export function Sesiones({
                   </button>
                   <button
                     type="button"
-                    className="cli-boton-suave"
+                    className="pz-boton"
                     onClick={() => setAQuitar(s)}
                   >
                     <Icono nombre="archivar" lado={14} /> Quitar
@@ -160,7 +160,7 @@ export function Sesiones({
               maxLength={120}
               ayuda="Vacío = se numera sola."
             />
-            <div className="cli-ficha__par">
+            <div className="pz-dos">
               <Campo
                 etiqueta="Fecha"
                 type="date"
@@ -179,7 +179,7 @@ export function Sesiones({
                 ]}
               />
             </div>
-            <div className="cli-ficha__par">
+            <div className="pz-dos">
               <Campo
                 etiqueta="Empieza"
                 type="time"
@@ -195,7 +195,7 @@ export function Sesiones({
                 obligatorio
               />
             </div>
-            <div className="cli-ficha__par">
+            <div className="pz-dos">
               <Campo
                 etiqueta="Lugar"
                 value={editando.datos.lugar}
@@ -216,17 +216,17 @@ export function Sesiones({
             </div>
 
             {fallo ? (
-              <p className="cli-ficha__error" role="alert">
+              <p className="pz-error__que" role="alert">
                 {fallo}
               </p>
             ) : null}
             {error ? (
-              <p className="cli-ficha__error" role="alert">
+              <p className="pz-error__que" role="alert">
                 {error}
               </p>
             ) : null}
 
-            <div className="cli-ficha__pie">
+            <div className="pz-ficha__pie">
               <Boton tono="contorno" type="button" onClick={() => setEditando(null)}>
                 Cancelar
               </Boton>
@@ -238,7 +238,7 @@ export function Sesiones({
         ) : (
           <button
             type="button"
-            className="cli-boton-principal"
+            className="pz-boton pz-boton--principal"
             onClick={() => {
               setFallo(null);
               setEditando({ id: null, datos: SESION_VACIA });

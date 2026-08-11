@@ -183,9 +183,12 @@ describe('ya dentro', () => {
     }
   });
 
-  it('se puede salir desde la barra superior', () => {
+  it('se puede salir desde el menu de la cuenta', async () => {
+    // Se mudo de la barra superior a la ficha de la persona, abajo en la barra
+    // lateral: es donde el diseño la pone y donde la gente la busca.
     conEstado('listo', ACCESO_DUENA);
-    expect(screen.getByRole('button', { name: 'Salir' })).toBeDefined();
+    await userEvent.click(screen.getByRole('button', { name: /Dueña/ }));
+    expect(screen.getByRole('button', { name: /cerrar sesión/i })).toBeDefined();
   });
 });
 

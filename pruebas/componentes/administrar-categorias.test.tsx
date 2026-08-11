@@ -93,7 +93,7 @@ describe('con categorias', () => {
 
   it('una categoria apagada se marca', () => {
     const { container } = pintar({ categorias: [{ ...UNA, activo: false }] });
-    expect(container.querySelector('.cli-estado--inactivo')?.textContent).toBe('Inactiva');
+    expect(container.querySelector('.pz-pastilla')?.textContent).toBe('Inactiva');
   });
 
   it('archivar PIDE confirmacion y repite a quien afecta', async () => {

@@ -89,48 +89,48 @@ export function EstadisticasDelDia({
   onVerReporte(): void;
 }) {
   return (
-    <section className="cli-panel" aria-labelledby="vta-estadisticas-titulo">
-      <header className="cli-panel__barra">
-        <h3 className="cli-panel__titulo" id="vta-estadisticas-titulo">
+    <section className="pz-tarjeta" aria-labelledby="vta-estadisticas-titulo">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta" id="vta-estadisticas-titulo">
           Estadísticas del día
         </h3>
-        <button type="button" className="cli-panel__enlace" onClick={onVerReporte}>
+        <button type="button" className="pz-enlace" onClick={onVerReporte}>
           Ver reporte completo
         </button>
       </header>
 
       <div className="vta-cifras">
         {cifrasDelDia(resumen).map((c) => (
-          <div key={c.clave} className={`cli-cifra cli-cifra--${c.categoria} vta-cifra`}>
-            <span className="cli-cifra__icono" aria-hidden="true">
+          <div key={c.clave} className={`pz-cifra pz-cifra--${c.categoria} vta-cifra`}>
+            <span className="pz-cifra__icono" aria-hidden="true">
               <Icono nombre={c.icono} lado={18} />
             </span>
-            <span className="cli-cifra__texto">
-              <span className="cli-cifra__etiqueta" title={c.queCuenta}>
+            <span className="pz-cifra__texto">
+              <span className="pz-cifra__etiqueta" title={c.queCuenta}>
                 {c.etiqueta}
               </span>
               <span
-                className="cli-cifra__valor"
+                className="pz-cifra__valor"
                 aria-busy={c.cargando ? 'true' : undefined}
                 aria-label={c.cargando ? `${c.etiqueta}: cargando` : `${c.etiqueta}: ${c.queCuenta}`}
               >
                 {c.valor}
               </span>
-              <span className="cli-cifra__pie">{c.pie || ' '}</span>
+              <span className="pz-cifra__pie">{c.pie || ' '}</span>
             </span>
           </div>
         ))}
       </div>
 
       {resumen && resumen.ticketPromedio !== null ? (
-        <p className="cli-exp__secundario">
+        <p className="tt-secundario">
           Ticket promedio: {formatearMoneda(resumen.ticketPromedio)} — lo cobrado entre las ventas
           cobradas.
         </p>
       ) : (
         // Sin ventas NO se pinta un ticket de cero: dividir entre cero no da
         // cero, no da nada. Se dice.
-        <p className="cli-exp__secundario">
+        <p className="tt-secundario">
           El ticket promedio aparece cuando haya al menos una venta cobrada hoy.
         </p>
       )}
@@ -150,20 +150,20 @@ export function UltimasDelDia({
   onAbrir(ventaId: string): void;
 }) {
   return (
-    <section className="cli-panel" aria-labelledby="vta-ultimas-titulo">
-      <h3 className="cli-panel__titulo" id="vta-ultimas-titulo">
+    <section className="pz-tarjeta" aria-labelledby="vta-ultimas-titulo">
+      <h3 className="tt-tarjeta" id="vta-ultimas-titulo">
         Últimas ventas del día
       </h3>
 
       {cargando ? (
-        <div className="cli-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando las ventas de hoy</span>
           {[0, 1].map((i) => (
-            <div key={i} className="terapias-silueta cli-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : ventas.length === 0 ? (
-        <p className="cli-vacio__texto">No hay ventas registradas hoy.</p>
+        <p className="pz-vacio__texto">No hay ventas registradas hoy.</p>
       ) : (
         <ul className="vta-ultimas">
           {ventas.slice(0, 5).map((v) => (
@@ -171,11 +171,11 @@ export function UltimasDelDia({
               <button type="button" className="vta-ultima__abrir" onClick={() => onAbrir(v.id)}>
                 <span className="vta-ultima__hora">{horaDeLaVenta(v.creadoEn)}</span>
                 <span className="vta-ultima__quien">
-                  {v.cliente ?? <span className="cli-falta">Mostrador</span>}
+                  {v.cliente ?? <span className="tt-falta">Mostrador</span>}
                 </span>
                 <span className="vta-ultima__folio">{v.folio}</span>
                 <span className="vta-ultima__total">{formatearMoneda(v.totalCentavos)}</span>
-                <span className={`cli-estado vta-estado--${v.estado}`}>
+                <span className={`pz-pastilla vta-estado--${v.estado}`}>
                   {COMO_SE_DICE_LA_VENTA[v.estado] ?? v.estado}
                 </span>
               </button>

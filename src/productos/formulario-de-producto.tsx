@@ -129,7 +129,7 @@ export function FormularioDeProducto({
 
   return (
     <Modal abierto={abierto} titulo={titulo} onCerrar={onCerrar}>
-      <form className="cli-ficha" onSubmit={enviar} noValidate>
+      <form className="pz-columna" onSubmit={enviar} noValidate>
         <Campo
           etiqueta="Nombre"
           value={v.nombre}
@@ -147,7 +147,7 @@ export function FormularioDeProducto({
           maxLength={1000}
         />
 
-        <div className="cli-ficha__par">
+        <div className="pz-dos">
           <Campo
             etiqueta="SKU"
             value={v.sku}
@@ -168,7 +168,7 @@ export function FormularioDeProducto({
           />
         </div>
 
-        <div className="cli-ficha__par">
+        <div className="pz-dos">
           <Campo
             etiqueta="Precio de venta"
             type="text"
@@ -194,7 +194,7 @@ export function FormularioDeProducto({
           ) : null}
         </div>
 
-        <div className="cli-ficha__par">
+        <div className="pz-dos">
           <Campo
             etiqueta="Stock mínimo"
             type="text"
@@ -221,7 +221,7 @@ export function FormularioDeProducto({
         </div>
 
         {!creando ? (
-          <p className="cli-ficha__duplicado-nota">
+          <p className="tt-secundario">
             El stock no se edita desde aquí. Para cambiarlo usa <strong>Ajustar inventario</strong>,
             que pide un motivo y deja el movimiento registrado.
           </p>
@@ -229,7 +229,7 @@ export function FormularioDeProducto({
 
         <button
           type="button"
-          className="cli-ficha__mas"
+          className="pz-columna__mas"
           aria-expanded={extras}
           onClick={() => setExtras((a) => !a)}
         >
@@ -238,7 +238,7 @@ export function FormularioDeProducto({
 
         {extras ? (
           <>
-            <div className="cli-ficha__par">
+            <div className="pz-dos">
               <Campo
                 etiqueta="Código de barras"
                 value={v.codigoBarras}
@@ -254,7 +254,7 @@ export function FormularioDeProducto({
               />
             </div>
 
-            <div className="cli-ficha__par">
+            <div className="pz-dos">
               <Campo
                 etiqueta="Ubicación"
                 value={v.ubicacion}
@@ -293,12 +293,12 @@ export function FormularioDeProducto({
         ) : null}
 
         {error ? (
-          <p className="cli-ficha__error" role="alert">
+          <p className="pz-error__que" role="alert">
             {error}
           </p>
         ) : null}
 
-        <div className="cli-ficha__pie">
+        <div className="pz-ficha__pie">
           <Boton tono="contorno" type="button" onClick={onCerrar}>
             Cancelar
           </Boton>

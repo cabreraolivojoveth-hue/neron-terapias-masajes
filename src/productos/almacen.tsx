@@ -219,23 +219,23 @@ export function Almacen() {
 
   return (
     <div className="cli srv prd">
-      <header className="cli-encabezado">
-        <div className="cli-encabezado__texto">
-          <h2 className="cli-encabezado__titulo">Productos</h2>
-          <p className="cli-encabezado__lema">Gestiona los productos que vendes en tu centro</p>
+      <header className="pz-encabezado">
+        <div className="pz-encabezado__texto">
+          <h2 className="tt-pagina">Productos</h2>
+          <p className="tt-lema">Gestiona los productos que vendes en tu centro</p>
         </div>
         {puedeGestionar ? (
-          <div className="srv-encabezado__acciones">
+          <div className="pz-encabezado__acciones">
             <button
               type="button"
-              className="cli-boton-suave"
+              className="pz-boton"
               onClick={() => setCategoriasAbiertas(true)}
             >
               <Icono nombre="cuadricula" lado={16} /> Categorías
             </button>
             <button
               type="button"
-              className="cli-boton-principal"
+              className="pz-boton pz-boton--principal"
               onClick={() => setFormulario({ inicial: PRODUCTO_VACIO })}
             >
               <Icono nombre="mas" lado={16} /> Nuevo producto
@@ -245,10 +245,10 @@ export function Almacen() {
       </header>
 
       {resumen.error ? (
-        <div className="cli-error" role="alert">
-          <p className="cli-error__que">No pudimos cargar el resumen del inventario.</p>
-          <p className="cli-error__detalle">{resumen.error}</p>
-          <button type="button" className="cli-boton-suave" onClick={resumen.recargar}>
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar el resumen del inventario.</p>
+          <p className="pz-error__detalle">{resumen.error}</p>
+          <button type="button" className="pz-boton" onClick={resumen.recargar}>
             Reintentar
           </button>
         </div>
@@ -256,7 +256,7 @@ export function Almacen() {
 
       <CifrasDeInventario resumen={resumen.datos} />
 
-      <div className="cli-cuerpo">
+      <div className="pz-cuerpo">
         <TablaDeProductos
           productos={lista.datos?.filas ?? []}
           total={lista.datos?.total ?? 0}
@@ -351,7 +351,7 @@ export function Almacen() {
         titulo="Nuevo proveedor"
         onCerrar={() => setNuevoProveedor(null)}
       >
-        <div className="cli-ficha">
+        <div className="pz-columna">
           <Campo
             etiqueta="Nombre"
             value={nuevoProveedor ?? ''}
@@ -360,11 +360,11 @@ export function Almacen() {
             maxLength={120}
           />
           {proveedor.error ? (
-            <p className="cli-ficha__error" role="alert">
+            <p className="pz-error__que" role="alert">
               {proveedor.error}
             </p>
           ) : null}
-          <div className="cli-ficha__pie">
+          <div className="pz-ficha__pie">
             <Boton tono="contorno" type="button" onClick={() => setNuevoProveedor(null)}>
               Cancelar
             </Boton>

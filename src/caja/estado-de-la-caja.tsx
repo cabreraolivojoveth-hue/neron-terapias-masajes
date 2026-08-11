@@ -51,44 +51,44 @@ export function EstadoDeLaCaja({
 
   return (
     <>
-      <section className="cli-panel" aria-labelledby="caja-estado-titulo">
-        <header className="cli-panel__barra">
-          <h3 className="cli-panel__titulo" id="caja-estado-titulo">
+      <section className="pz-tarjeta" aria-labelledby="caja-estado-titulo">
+        <header className="pz-cabecera">
+          <h3 className="tt-tarjeta" id="caja-estado-titulo">
             Estado de la caja
           </h3>
-          <span className="cli-estado caja-estado--abierta">Abierta</span>
+          <span className="pz-pastilla caja-estado--abierta">Abierta</span>
         </header>
 
-        <div className="cli-exp">
-          <p className="cli-persona__nombre">{caja.nombre}</p>
+        <div className="pz-columna">
+          <p className="pz-renglon__titulo">{caja.nombre}</p>
 
           <div className="caja-dato">
-            <span className="cli-exp__etiqueta">Abierta por</span>
-            <span className="cli-exp__valor">
-              {caja.abiertaPor ?? <span className="cli-falta">—</span>}
+            <span className="tt-etiqueta">Abierta por</span>
+            <span className="pz-dato__valor">
+              {caja.abiertaPor ?? <span className="tt-falta">—</span>}
             </span>
           </div>
           <div className="caja-dato">
-            <span className="cli-exp__etiqueta">Apertura</span>
-            <span className="cli-exp__valor">{cuandoSeAbrio(caja.abiertaEn)}</span>
+            <span className="tt-etiqueta">Apertura</span>
+            <span className="pz-dato__valor">{cuandoSeAbrio(caja.abiertaEn)}</span>
           </div>
           <div className="caja-dato">
-            <span className="cli-exp__etiqueta">Saldo inicial</span>
-            <span className="cli-exp__valor">
+            <span className="tt-etiqueta">Saldo inicial</span>
+            <span className="pz-dato__valor">
               {formatearMoneda(caja.saldoInicialCentavos)}
             </span>
           </div>
 
           {puedeMover ? (
-            <button type="button" className="cli-boton-suave cli-boton-suave--ancho" onClick={onCerrarCaja}>
+            <button type="button" className="pz-boton pz-boton--ancho" onClick={onCerrarCaja}>
               <Icono nombre="prohibido" lado={16} /> Cerrar caja
             </button>
           ) : null}
         </div>
       </section>
 
-      <section className="cli-panel" aria-labelledby="caja-resumen-titulo">
-        <h3 className="cli-panel__titulo" id="caja-resumen-titulo">
+      <section className="pz-tarjeta" aria-labelledby="caja-resumen-titulo">
+        <h3 className="tt-tarjeta" id="caja-resumen-titulo">
           Resumen del turno
         </h3>
 
@@ -114,33 +114,33 @@ export function EstadoDeLaCaja({
         {/* LO QUE NO ESTA EN EL CAJON. Se enseña aparte a proposito: es la
             cifra que hace que un corte cuadre o no. */}
         <div className="caja-aparte">
-          <span className="cli-exp__etiqueta">Cobrado por otras vías</span>
-          <span className="cli-exp__valor">{formatearMoneda(noEfectivo)}</span>
-          <span className="cli-exp__secundario">
+          <span className="tt-etiqueta">Cobrado por otras vías</span>
+          <span className="pz-dato__valor">{formatearMoneda(noEfectivo)}</span>
+          <span className="tt-secundario">
             Tarjeta y transferencia. Son ingresos del centro, pero no están en el cajón: no se
             cuentan en el corte.
           </span>
         </div>
 
         {/* LA DIFERENCIA NO EXISTE HASTA QUE ALGUIEN CUENTA. */}
-        <p className="cli-exp__secundario">
+        <p className="tt-secundario">
           La diferencia aparece al cerrar, cuando se compare con lo que se cuente en el cajón.
         </p>
       </section>
 
       {puedeMover ? (
-        <section className="cli-panel" aria-labelledby="caja-acciones-titulo">
-          <h3 className="cli-panel__titulo" id="caja-acciones-titulo">
+        <section className="pz-tarjeta" aria-labelledby="caja-acciones-titulo">
+          <h3 className="tt-tarjeta" id="caja-acciones-titulo">
             Acciones rápidas
           </h3>
           <div className="caja-acciones">
-            <button type="button" className="cli-boton-suave cli-boton-suave--ancho" onClick={onIngreso}>
+            <button type="button" className="pz-boton pz-boton--ancho" onClick={onIngreso}>
               <Icono nombre="mas" lado={16} /> Registrar ingreso
             </button>
-            <button type="button" className="cli-boton-suave cli-boton-suave--ancho" onClick={onRetiro}>
+            <button type="button" className="pz-boton pz-boton--ancho" onClick={onRetiro}>
               <Icono nombre="salida" lado={16} /> Registrar retiro
             </button>
-            <button type="button" className="cli-boton-suave cli-boton-suave--ancho" onClick={onHistorial}>
+            <button type="button" className="pz-boton pz-boton--ancho" onClick={onHistorial}>
               <Icono nombre="reloj" lado={16} /> Ver historial de cajas
             </button>
           </div>
@@ -180,16 +180,16 @@ export function CifrasDeLaCaja({ caja }: { readonly caja: CajaAbierta }) {
   ];
 
   return (
-    <section className="cli-cifras" aria-label="Cifras de la caja">
+    <section className="pz-cifras" aria-label="Cifras de la caja">
       {cifras.map((c) => (
-        <div key={c.clave} className={`cli-cifra cli-cifra--${c.categoria}`}>
-          <span className="cli-cifra__icono" aria-hidden="true">
+        <div key={c.clave} className={`pz-cifra pz-cifra--${c.categoria}`}>
+          <span className="pz-cifra__icono" aria-hidden="true">
             <Icono nombre="dinero" lado={20} />
           </span>
-          <span className="cli-cifra__texto">
-            <span className="cli-cifra__etiqueta">{c.etiqueta}</span>
-            <span className="cli-cifra__valor">{c.valor}</span>
-            <span className="cli-cifra__pie">{c.pie}</span>
+          <span className="pz-cifra__texto">
+            <span className="pz-cifra__etiqueta">{c.etiqueta}</span>
+            <span className="pz-cifra__valor">{c.valor}</span>
+            <span className="pz-cifra__pie">{c.pie}</span>
           </span>
         </div>
       ))}

@@ -86,7 +86,7 @@ function MenuDeAcciones({
       <button
         ref={boton}
         type="button"
-        className="cli-menu__boton"
+        className="pz-icono-boton"
         aria-expanded={abierto}
         aria-label={`Acciones para ${servicio.nombre}`}
         onClick={() => setAbierto((a) => !a)}
@@ -174,20 +174,20 @@ export function TablaDeServicios({
   const desde = total === 0 ? 0 : (pagina - 1) * porPagina + 1;
 
   return (
-    <section className="cli-panel cli-lista" aria-labelledby="srv-lista-titulo">
-      <header className="cli-panel__barra">
-        <h3 className="cli-panel__titulo" id="srv-lista-titulo">
+    <section className="pz-tarjeta pz-tarjeta--lista" aria-labelledby="srv-lista-titulo">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta" id="srv-lista-titulo">
           Lista de servicios
         </h3>
         <button
           type="button"
-          className={`cli-panel__enlace${filtrosAbiertos ? ' srv-filtro--puesto' : ''}`}
+          className={`pz-enlace${filtrosAbiertos ? ' pz-boton--puesto' : ''}`}
           aria-expanded={filtrosAbiertos}
           onClick={onFiltros}
         >
           <Icono nombre="filtros" lado={14} /> Filtrar
         </button>
-        <label className="cli-campo cli-campo--corto">
+        <label className="pz-campo pz-campo--corto">
           <span className="neron-solo-lectores">Estado del servicio</span>
           <select value={estado} onChange={(e) => onEstado(e.target.value)}>
             <option value="">Todos los estados</option>
@@ -198,16 +198,16 @@ export function TablaDeServicios({
       </header>
 
       {filtrosAbiertos ? (
-        <div className="srv-filtros">
-          <div className="cli-buscador">
-            <span className="cli-buscador__lupa" aria-hidden="true">
+        <div className="pz-filtros">
+          <div className="pz-buscador">
+            <span className="pz-buscador__lupa" aria-hidden="true">
               <Icono nombre="lupa" lado={16} />
             </span>
             {/* SIEMPRE pintado, en el mismo lugar del arbol: es lo que
                 sostiene el foco mientras la tabla de abajo cambia. */}
             <input
               type="search"
-              className="cli-buscador__campo"
+              className="pz-buscador__campo"
               autoComplete="off"
               placeholder="Buscar servicio…"
               aria-label="Buscar servicio por nombre, descripción o categoría"
@@ -215,8 +215,8 @@ export function TablaDeServicios({
               onChange={(e) => onBuscar(e.target.value)}
             />
           </div>
-          <label className="cli-campo">
-            <span className="cli-campo__etiqueta">Categoría</span>
+          <label className="pz-campo">
+            <span className="tt-etiqueta">Categoría</span>
             <select value={categoriaId} onChange={(e) => onCategoria(e.target.value)}>
               <option value="">Todas</option>
               {categorias.map((c) => (
@@ -230,60 +230,60 @@ export function TablaDeServicios({
       ) : null}
 
       {error ? (
-        <div className="cli-error" role="alert">
+        <div className="pz-error" role="alert">
           {/* VACIO y ERROR son estados distintos: decir "no hay servicios"
               cuando lo que fallo fue la red hace que alguien los capture otra vez. */}
-          <p className="cli-error__que">No pudimos cargar los servicios.</p>
-          <p className="cli-error__detalle">{error}</p>
-          <button type="button" className="cli-boton-suave" onClick={onReintentar}>
+          <p className="pz-error__que">No pudimos cargar los servicios.</p>
+          <p className="pz-error__detalle">{error}</p>
+          <button type="button" className="pz-boton" onClick={onReintentar}>
             Reintentar
           </button>
         </div>
       ) : cargando ? (
-        <div className="cli-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando los servicios</span>
           {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="terapias-silueta cli-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : servicios.length === 0 ? (
-        <div className="cli-vacio">
-          <span className="cli-vacio__icono" aria-hidden="true">
+        <div className="pz-vacio">
+          <span className="pz-vacio__icono" aria-hidden="true">
             <Icono nombre="bolsa" lado={44} />
           </span>
-          <p className="cli-vacio__titulo">
+          <p className="pz-vacio__titulo">
             {hayFiltros ? 'Ningún servicio coincide' : 'No hay servicios registrados'}
           </p>
-          <p className="cli-vacio__texto">
+          <p className="pz-vacio__texto">
             {hayFiltros
               ? 'Prueba con otro nombre o quita los filtros.'
               : 'Crea tu primer servicio para comenzar a gestionar citas y ventas.'}
           </p>
           {puedeGestionar && !hayFiltros ? (
-            <button type="button" className="cli-boton-principal" onClick={onNuevo}>
+            <button type="button" className="pz-boton pz-boton--principal" onClick={onNuevo}>
               <Icono nombre="mas" lado={16} /> Nuevo servicio
             </button>
           ) : null}
         </div>
       ) : (
         // El scroll horizontal vive DENTRO de la tabla, nunca en la pagina.
-        <div className="cli-tabla__marco">
-          <table className="cli-tabla">
+        <div className="pz-tabla__marco">
+          <table className="pz-tabla">
             <thead>
               <tr>
                 <th>Servicio</th>
                 <th>Categoría</th>
                 <th>Duración</th>
-                <th className="cli-tabla__numero">Precio</th>
+                <th className="pz-tabla__numero">Precio</th>
                 <th>Estado</th>
-                <th className="cli-tabla__acciones">Acciones</th>
+                <th className="pz-tabla__acciones">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {servicios.map((s) => (
-                <tr key={s.id} className={s.id === seleccionado ? 'cli-tabla__fila--marcada' : ''}>
+                <tr key={s.id} className={s.id === seleccionado ? 'pz-tabla__fila--marcada' : ''}>
                   <td>
-                    <button type="button" className="cli-persona" onClick={() => onAccion('ver', s)}>
+                    <button type="button" className="pz-renglon" onClick={() => onAccion('ver', s)}>
                       <span
                         className="srv-marca"
                         aria-hidden="true"
@@ -293,12 +293,12 @@ export function TablaDeServicios({
                       >
                         <Icono nombre="bolsa" lado={18} />
                       </span>
-                      <span className="srv-nombre">
-                        <span className="cli-persona__nombre">{s.nombre}</span>
+                      <span className="pz-renglon__cuerpo">
+                        <span className="pz-renglon__titulo">{s.nombre}</span>
                         {/* Sin descripcion NO se inventa un texto: se deja el
                             renglon limpio. */}
                         {s.descripcion ? (
-                          <span className="srv-descripcion">{s.descripcion}</span>
+                          <span className="pz-renglon__pie">{s.descripcion}</span>
                         ) : null}
                       </span>
                     </button>
@@ -314,11 +314,11 @@ export function TablaDeServicios({
                         {s.categoria}
                       </span>
                     ) : (
-                      <span className="cli-falta">Sin categoría</span>
+                      <span className="tt-falta">Sin categoría</span>
                     )}
                   </td>
                   <td>{s.duracionMin} min</td>
-                  <td className="cli-tabla__numero">
+                  <td className="pz-tabla__numero">
                     {s.enPromocion ? (
                       <span className="srv-precio">
                         <span className="srv-precio__hoy">
@@ -335,11 +335,11 @@ export function TablaDeServicios({
                     )}
                   </td>
                   <td>
-                    <span className={`cli-estado cli-estado--${s.activo ? 'activo' : 'inactivo'}`}>
+                    <span className={`pz-pastilla pz-pastilla--${s.activo ? 'activo' : 'inactivo'}`}>
                       {s.activo ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
-                  <td className="cli-tabla__acciones">
+                  <td className="pz-tabla__acciones">
                     <MenuDeAcciones servicio={s} permisos={permisos} onAccion={onAccion} />
                   </td>
                 </tr>
@@ -349,28 +349,28 @@ export function TablaDeServicios({
         </div>
       )}
 
-      <footer className="cli-pie">
-        <span className="cli-pie__cuenta">
+      <footer className="pz-pie">
+        <span className="pz-pie__cuenta">
           Mostrando {desde} a {desde === 0 ? 0 : desde + servicios.length - 1} de {total}{' '}
           {total === 1 ? 'servicio' : 'servicios'}
         </span>
 
-        <div className="cli-paginas" role="group" aria-label="Páginas">
+        <div className="pz-paginas" role="group" aria-label="Páginas">
           <button
             type="button"
-            className="cli-paginas__boton"
+            className="pz-pagina"
             aria-label="Página anterior"
             disabled={pagina <= 1}
             onClick={() => onPagina(pagina - 1)}
           >
             ‹
           </button>
-          <span className="cli-paginas__actual" aria-live="polite">
+          <span className="pz-paginas__actual" aria-live="polite">
             {pagina} de {paginas}
           </span>
           <button
             type="button"
-            className="cli-paginas__boton"
+            className="pz-pagina"
             aria-label="Página siguiente"
             disabled={pagina >= paginas}
             onClick={() => onPagina(pagina + 1)}
@@ -379,7 +379,7 @@ export function TablaDeServicios({
           </button>
         </div>
 
-        <label className="cli-campo cli-campo--corto">
+        <label className="pz-campo pz-campo--corto">
           <span className="neron-solo-lectores">Cuántos por página</span>
           <select value={porPagina} onChange={(e) => onPorPagina(Number(e.target.value))}>
             {POR_PAGINA.map((n) => (

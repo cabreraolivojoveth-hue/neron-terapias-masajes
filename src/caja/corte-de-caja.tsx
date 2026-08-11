@@ -63,7 +63,7 @@ export function CorteDeCaja({
 
   return (
     <Modal abierto={abierto} titulo={`Corte de ${caja.nombre}`} onCerrar={onCerrar}>
-      <div className="cli-ficha">
+      <div className="pz-columna">
         {paso === 'resumen' ? (
           <>
             <dl className="vta-totales">
@@ -89,13 +89,13 @@ export function CorteDeCaja({
 
             {/* LO QUE NO ESTA EN EL CAJON, dicho aparte para que nadie lo
                 busque entre los billetes. */}
-            <p className="cli-ficha__duplicado-nota">
+            <p className="tt-secundario">
               Entraron {formatearMoneda(caja.ingresosCentavos)} en total, pero solo{' '}
               {formatearMoneda(caja.efectivoEntroCentavos)} fueron en efectivo. La tarjeta y la
               transferencia van al banco: no se cuentan en el cajón.
             </p>
 
-            <div className="cli-ficha__pie">
+            <div className="pz-ficha__pie">
               <Boton tono="contorno" type="button" onClick={onCerrar}>
                 Cancelar
               </Boton>
@@ -119,7 +119,7 @@ export function CorteDeCaja({
 
             {/* EL ESPERADO NO SE ENSEÑA TODAVIA: ver la cifra objetivo antes de
                 contar hace que se "encuentre" justo esa cantidad. */}
-            <p className="cli-ficha__duplicado-nota">
+            <p className="tt-secundario">
               Cuenta primero. El sistema te dice la diferencia después — así el conteo es de verdad.
             </p>
 
@@ -130,7 +130,7 @@ export function CorteDeCaja({
               maxLength={300}
             />
 
-            <div className="cli-ficha__pie">
+            <div className="pz-ficha__pie">
               <Boton tono="contorno" type="button" onClick={() => setPaso('resumen')}>
                 Atrás
               </Boton>
@@ -166,24 +166,24 @@ export function CorteDeCaja({
             </dl>
 
             <div className={`caja-veredicto caja-veredicto--${como}`} role="status">
-              <span className="cli-exp__renglon-icono" aria-hidden="true">
+              <span className="pz-ficha" aria-hidden="true">
                 <Icono nombre={como === 'cuadra' ? 'palomita' : 'alerta'} lado={18} />
               </span>
-              <span className="cli-exp__valor">{comoSeDiceLaDiferencia(diferencia)}</span>
+              <span className="pz-dato__valor">{comoSeDiceLaDiferencia(diferencia)}</span>
             </div>
 
-            <p className="cli-ficha__duplicado-nota">
+            <p className="tt-secundario">
               Al cerrar, esta caja deja de recibir movimientos: no se podrá cobrar en efectivo hasta
               que se abra otra. El corte queda guardado tal cual y no se puede modificar después.
             </p>
 
             {error ? (
-              <p className="cli-ficha__error" role="alert">
+              <p className="pz-error__que" role="alert">
                 {error}
               </p>
             ) : null}
 
-            <div className="cli-ficha__pie">
+            <div className="pz-ficha__pie">
               <Boton tono="contorno" type="button" onClick={() => setPaso('conteo')}>
                 Atrás
               </Boton>

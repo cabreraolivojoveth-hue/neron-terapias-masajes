@@ -161,7 +161,7 @@ export function FormularioDeCurso({
 
   return (
     <Modal abierto={abierto} titulo={titulo} onCerrar={onCerrar}>
-      <form className="cli-ficha" onSubmit={enviar} noValidate>
+      <form className="pz-columna" onSubmit={enviar} noValidate>
         <Campo
           etiqueta="Nombre"
           value={v.nombre}
@@ -188,7 +188,7 @@ export function FormularioDeCurso({
           ayuda="Qué se aprende. Se ve en la ficha del curso."
         />
 
-        <div className="cli-ficha__par">
+        <div className="pz-dos">
           <Seleccion
             etiqueta="Categoría"
             value={v.categoriaId}
@@ -212,7 +212,7 @@ export function FormularioDeCurso({
           />
         </div>
 
-        <div className="cli-ficha__par">
+        <div className="pz-dos">
           <Campo
             etiqueta="Empieza"
             type="date"
@@ -231,7 +231,7 @@ export function FormularioDeCurso({
           />
         </div>
 
-        <div className="cli-ficha__par">
+        <div className="pz-dos">
           <Campo
             etiqueta="Precio"
             type="text"
@@ -255,7 +255,7 @@ export function FormularioDeCurso({
 
         <button
           type="button"
-          className="cli-ficha__mas"
+          className="pz-columna__mas"
           aria-expanded={extras}
           onClick={() => setExtras((a) => !a)}
         >
@@ -264,7 +264,7 @@ export function FormularioDeCurso({
 
         {extras ? (
           <>
-            <div className="cli-ficha__par">
+            <div className="pz-dos">
               <Seleccion
                 etiqueta="Modalidad"
                 value={v.modalidad}
@@ -326,12 +326,12 @@ export function FormularioDeCurso({
         ) : null}
 
         {error ? (
-          <p className="cli-ficha__error" role="alert">
+          <p className="pz-error__que" role="alert">
             {error}
           </p>
         ) : null}
 
-        <div className="cli-ficha__pie">
+        <div className="pz-ficha__pie">
           <Boton tono="contorno" type="button" onClick={onCerrar}>
             Cancelar
           </Boton>

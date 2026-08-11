@@ -90,23 +90,23 @@ export function Carrito({
     renglones.filter((r) => r.id === id).reduce((n, r) => n + r.cantidad, 0);
 
   return (
-    <section className="cli-panel" aria-labelledby="vta-carrito-titulo">
-      <header className="cli-panel__barra">
-        <h3 className="cli-panel__titulo" id="vta-carrito-titulo">
+    <section className="pz-tarjeta" aria-labelledby="vta-carrito-titulo">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta" id="vta-carrito-titulo">
           Agregar productos, servicios o cursos
         </h3>
       </header>
 
       <div className="vta-buscar">
-        <div className="cli-buscador">
-          <span className="cli-buscador__lupa" aria-hidden="true">
+        <div className="pz-buscador">
+          <span className="pz-buscador__lupa" aria-hidden="true">
             <Icono nombre="lupa" lado={16} />
           </span>
           {/* SIEMPRE pintado, en el mismo lugar del arbol: es lo que sostiene
               el foco mientras la lista de abajo cambia. */}
           <input
             type="search"
-            className="cli-buscador__campo"
+            className="pz-buscador__campo"
             autoComplete="off"
             placeholder="Buscar por nombre o código…"
             aria-label="Buscar servicio, producto o curso"
@@ -130,18 +130,18 @@ export function Carrito({
       </div>
 
       {error ? (
-        <div className="cli-error" role="alert">
-          <p className="cli-error__que">No pudimos cargar el catálogo.</p>
-          <p className="cli-error__detalle">{error}</p>
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar el catálogo.</p>
+          <p className="pz-error__detalle">{error}</p>
         </div>
       ) : busqueda || tipo ? (
         cargando ? (
-          <div className="cli-cargando" aria-busy="true">
+          <div className="pz-cargando" aria-busy="true">
             <span className="neron-solo-lectores">Buscando</span>
-            <div className="terapias-silueta cli-cargando__renglon" />
+            <div className="pz-silueta" />
           </div>
         ) : catalogo.length === 0 ? (
-          <p className="cli-vacio__texto">
+          <p className="pz-vacio__texto">
             Nada coincide. Los servicios, productos y cursos se dan de alta en su propio módulo.
           </p>
         ) : (
@@ -156,12 +156,12 @@ export function Carrito({
                     disabled={!puede}
                     onClick={() => onAgregar(c)}
                   >
-                    <span className="cli-exp__renglon-icono" aria-hidden="true">
+                    <span className="pz-ficha" aria-hidden="true">
                       <Icono nombre={ICONO_DEL_TIPO[c.tipo]} lado={18} />
                     </span>
-                    <span className="srv-nombre">
-                      <span className="cli-persona__nombre">{c.nombre}</span>
-                      <span className="srv-descripcion">
+                    <span className="pz-renglon__cuerpo">
+                      <span className="pz-renglon__titulo">{c.nombre}</span>
+                      <span className="pz-renglon__pie">
                         {COMO_SE_DICE_EL_TIPO[c.tipo]}
                         {c.codigo ? ` · ${c.codigo}` : ''}
                         {/* CUANTOS QUEDAN, aqui y no al final: el rechazo
@@ -181,51 +181,51 @@ export function Carrito({
       ) : null}
 
       {renglones.length === 0 ? (
-        <div className="cli-vacio cli-vacio--chico">
-          <span className="cli-vacio__icono" aria-hidden="true">
+        <div className="pz-vacio pz-vacio--chico">
+          <span className="pz-vacio__icono" aria-hidden="true">
             <Icono nombre="bolsa" lado={36} />
           </span>
-          <p className="cli-vacio__texto">
+          <p className="pz-vacio__texto">
             Busca arriba lo que se lleva. Puedes mezclar servicios, productos y cursos en una
             misma venta.
           </p>
         </div>
       ) : (
-        <div className="cli-tabla__marco">
-          <table className="cli-tabla">
+        <div className="pz-tabla__marco">
+          <table className="pz-tabla">
             <thead>
               <tr>
                 <th>Producto / Servicio / Curso</th>
                 <th>Tipo</th>
-                <th className="cli-tabla__numero">Precio</th>
+                <th className="pz-tabla__numero">Precio</th>
                 <th>Cantidad</th>
-                <th className="cli-tabla__numero">Descuento</th>
-                <th className="cli-tabla__numero">Total</th>
-                <th className="cli-tabla__acciones">Quitar</th>
+                <th className="pz-tabla__numero">Descuento</th>
+                <th className="pz-tabla__numero">Total</th>
+                <th className="pz-tabla__acciones">Quitar</th>
               </tr>
             </thead>
             <tbody>
               {renglones.map((r, i) => (
                 <tr key={`${r.tipo}:${r.id}:${i}`}>
                   <td>
-                    <span className="cli-persona">
-                      <span className="cli-exp__renglon-icono" aria-hidden="true">
+                    <span className="pz-renglon">
+                      <span className="pz-ficha" aria-hidden="true">
                         <Icono nombre={ICONO_DEL_TIPO[r.tipo]} lado={18} />
                       </span>
-                      <span className="cli-persona__nombre">{r.nombre}</span>
+                      <span className="pz-renglon__titulo">{r.nombre}</span>
                     </span>
                   </td>
                   <td>
-                    <span className={`cli-estado vta-tipo--${r.tipo}`}>
+                    <span className={`pz-pastilla vta-tipo--${r.tipo}`}>
                       {COMO_SE_DICE_EL_TIPO[r.tipo]}
                     </span>
                   </td>
-                  <td className="cli-tabla__numero">{formatearMoneda(r.precioCentavos)}</td>
+                  <td className="pz-tabla__numero">{formatearMoneda(r.precioCentavos)}</td>
                   <td>
                     <span className="vta-cantidad">
                       <button
                         type="button"
-                        className="cli-paginas__boton"
+                        className="pz-pagina"
                         aria-label={`Quitar uno de ${r.nombre}`}
                         disabled={r.cantidad <= 1}
                         onClick={() => onCantidad(i, r.cantidad - 1)}
@@ -235,7 +235,7 @@ export function Carrito({
                       <span className="vta-cantidad__valor">{r.cantidad}</span>
                       <button
                         type="button"
-                        className="cli-paginas__boton"
+                        className="pz-pagina"
                         aria-label={`Agregar uno de ${r.nombre}`}
                         // No se deja pasar del stock: el rechazo al final, con
                         // el cliente enfrente, es el peor momento.
@@ -246,7 +246,7 @@ export function Carrito({
                       </button>
                     </span>
                   </td>
-                  <td className="cli-tabla__numero">
+                  <td className="pz-tabla__numero">
                     <input
                       className="vta-descuento"
                       type="text"
@@ -259,13 +259,13 @@ export function Carrito({
                       placeholder="0"
                     />
                   </td>
-                  <td className="cli-tabla__numero">
+                  <td className="pz-tabla__numero">
                     <strong>{formatearMoneda(importeDelRenglon(r))}</strong>
                   </td>
-                  <td className="cli-tabla__acciones">
+                  <td className="pz-tabla__acciones">
                     <button
                       type="button"
-                      className="cli-menu__boton"
+                      className="pz-icono-boton"
                       aria-label={`Quitar ${r.nombre} de la venta`}
                       onClick={() => onQuitar(i)}
                     >
@@ -283,8 +283,8 @@ export function Carrito({
           localStorage la perderia al cambiar de equipo — y es justo donde se
           escribe "pendiente de agendar" o "pago en dos partes". */}
       {notaAbierta || notas ? (
-        <label className="cli-campo cli-campo--bloque">
-          <span className="cli-campo__etiqueta">Nota de la venta</span>
+        <label className="pz-campo pz-campo--bloque">
+          <span className="tt-etiqueta">Nota de la venta</span>
           <textarea
             className="vta-nota"
             rows={2}
@@ -296,7 +296,7 @@ export function Carrito({
         </label>
       ) : (
         <div className="vta-nota__pie">
-          <button type="button" className="cli-boton-suave" onClick={onAbrirNota}>
+          <button type="button" className="pz-boton" onClick={onAbrirNota}>
             <Icono nombre="mas" lado={16} /> Agregar nota a la venta
             <Icono nombre="nota" lado={16} />
           </button>

@@ -90,17 +90,17 @@ export function Movimientos({
     <div className="srv-detalle__cuerpo">
       <div className="prd-cifras">
         <span className="prd-cifra">
-          <span className="cli-exp__etiqueta">Stock actual</span>
+          <span className="tt-etiqueta">Stock actual</span>
           <span className="prd-cifra__valor">
             {ficha.stockActual} {ficha.unidad}
           </span>
         </span>
         <span className="prd-cifra">
-          <span className="cli-exp__etiqueta">Stock mínimo</span>
+          <span className="tt-etiqueta">Stock mínimo</span>
           <span className="prd-cifra__valor">{ficha.stockMinimo}</span>
         </span>
         <span className="prd-cifra">
-          <span className="cli-exp__etiqueta">Valor</span>
+          <span className="tt-etiqueta">Valor</span>
           {/* `null` es "no puedes ver costos", no "vale cero". */}
           <span className="prd-cifra__valor">
             {ficha.valorCentavos === null ? '—' : formatearMoneda(ficha.valorCentavos)}
@@ -135,17 +135,17 @@ export function Movimientos({
             />
 
             {fallo ? (
-              <p className="cli-ficha__error" role="alert">
+              <p className="pz-error__que" role="alert">
                 {fallo}
               </p>
             ) : null}
             {error ? (
-              <p className="cli-ficha__error" role="alert">
+              <p className="pz-error__que" role="alert">
                 {error}
               </p>
             ) : null}
 
-            <div className="cli-ficha__pie">
+            <div className="pz-ficha__pie">
               <Boton tono="contorno" type="button" onClick={() => setAjustando(false)}>
                 Cancelar
               </Boton>
@@ -157,7 +157,7 @@ export function Movimientos({
         ) : (
           <button
             type="button"
-            className="cli-boton-principal"
+            className="pz-boton pz-boton--principal"
             onClick={() => {
               setFallo(null);
               setAjustando(true);
@@ -169,7 +169,7 @@ export function Movimientos({
       ) : null}
 
       {ficha.movimientos.length === 0 ? (
-        <p className="cli-vacio__texto">
+        <p className="pz-vacio__texto">
           Todavía no hay movimientos. Cada entrada, salida y venta queda aquí con su fecha, su
           motivo y quién la hizo.
         </p>
@@ -182,17 +182,17 @@ export function Movimientos({
               >
                 {comoSeLeeLaCantidad(m.cantidad)}
               </span>
-              <span className="cat__texto">
-                <span className="cat__nombre">
+              <span className="pz-renglon__cuerpo">
+                <span className="pz-renglon__titulo">
                   {COMO_SE_DICE_EL_MOVIMIENTO[m.tipo] ?? m.tipo}
                 </span>
-                <span className="cat__uso">
+                <span className="pz-renglon__pie">
                   {/* ANTES y DESPUES, los dos: es lo que permite localizar un
                       descuadre leyendo la lista. */}
                   {m.stockAntes} → {m.stockDespues}
                   {m.motivo ? ` · ${m.motivo}` : ''}
                 </span>
-                <span className="cat__uso">
+                <span className="pz-renglon__pie">
                   {m.quien ?? 'El sistema'} · {m.cuando.slice(0, 10).split('-').reverse().join('/')}
                 </span>
               </span>

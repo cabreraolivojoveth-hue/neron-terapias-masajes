@@ -53,14 +53,14 @@ export function MovimientosDelDia({
   const ordenadas = ordenarPorClase(clases);
 
   return (
-    <section className="cli-panel" aria-labelledby="caja-dia-titulo">
-      <header className="cli-panel__barra">
-        <h3 className="cli-panel__titulo" id="caja-dia-titulo">
+    <section className="pz-tarjeta" aria-labelledby="caja-dia-titulo">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta" id="caja-dia-titulo">
           Movimientos de la caja
         </h3>
         <button
           type="button"
-          className="cli-panel__enlace"
+          className="pz-enlace"
           disabled={movimientos === 0}
           onClick={onExportar}
         >
@@ -69,14 +69,14 @@ export function MovimientosDelDia({
       </header>
 
       {cargando ? (
-        <div className="cli-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando los movimientos</span>
           {[0, 1].map((i) => (
-            <div key={i} className="terapias-silueta cli-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : ordenadas.length === 0 ? (
-        <p className="cli-vacio__texto">
+        <p className="pz-vacio__texto">
           Todavía no hay movimientos en esta caja. Aparecen solos en cuanto se cobre una venta o se
           registre un gasto.
         </p>
@@ -84,7 +84,7 @@ export function MovimientosDelDia({
         <ul className="caja-clases">
           {ordenadas.map((c) => (
             <li key={c.clase} className="caja-clase">
-              <span className="cli-cifra__icono" aria-hidden="true">
+              <span className="pz-cifra__icono" aria-hidden="true">
                 <Icono nombre={ICONO_DE_LA_CLASE[c.clase] ?? 'nota'} lado={18} />
               </span>
               <span className="caja-clase__que">
@@ -113,7 +113,7 @@ export function MovimientosDelDia({
             : formatearMoneda(netoCentavos)}
         </span>
       </footer>
-      <p className="cli-exp__secundario">
+      <p className="tt-secundario">
         El total es el neto: lo que entró menos lo que salió, con todas las formas de pago.
       </p>
     </section>

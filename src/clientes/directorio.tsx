@@ -200,15 +200,15 @@ export function Directorio() {
 
   return (
     <div className="cli">
-      <header className="cli-encabezado">
-        <div className="cli-encabezado__texto">
-          <h2 className="cli-encabezado__titulo">Clientes</h2>
-          <p className="cli-encabezado__lema">Gestiona y da seguimiento a tus clientes</p>
+      <header className="pz-encabezado">
+        <div className="pz-encabezado__texto">
+          <h2 className="tt-pagina">Clientes</h2>
+          <p className="tt-lema">Gestiona y da seguimiento a tus clientes</p>
         </div>
         {puedeGestionar ? (
           <button
             type="button"
-            className="cli-boton-principal"
+            className="pz-boton pz-boton--principal"
             onClick={() => setFicha({ inicial: FICHA_VACIA })}
           >
             <Icono nombre="mas" lado={16} /> Nuevo cliente
@@ -217,10 +217,10 @@ export function Directorio() {
       </header>
 
       {resumen.error ? (
-        <div className="cli-error" role="alert">
-          <p className="cli-error__que">No pudimos cargar el resumen de clientes.</p>
-          <p className="cli-error__detalle">{resumen.error}</p>
-          <button type="button" className="cli-boton-suave" onClick={resumen.recargar}>
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar el resumen de clientes.</p>
+          <p className="pz-error__detalle">{resumen.error}</p>
+          <button type="button" className="pz-boton" onClick={resumen.recargar}>
             Reintentar
           </button>
         </div>
@@ -228,7 +228,7 @@ export function Directorio() {
 
       <CifrasDeArriba resumen={resumen.datos} />
 
-      <div className="cli-cuerpo">
+      <div className="pz-cuerpo">
         <ListaDeClientes
           clientes={lista.datos?.filas ?? []}
           total={lista.datos?.total ?? 0}

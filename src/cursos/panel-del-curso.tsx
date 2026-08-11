@@ -85,13 +85,13 @@ function Renglon({
   readonly children: ReactNode;
 }) {
   return (
-    <div className="cli-exp__renglon">
-      <span className="cli-exp__renglon-icono" aria-hidden="true">
+    <div className="pz-renglon pz-renglon--quieto">
+      <span className="pz-ficha" aria-hidden="true">
         <Icono nombre={icono} lado={18} />
       </span>
-      <div className="cli-exp__renglon-cuerpo">
-        <span className="cli-exp__etiqueta">{titulo}</span>
-        <div className="cli-exp__valor">{children}</div>
+      <div className="pz-dato">
+        <span className="tt-etiqueta">{titulo}</span>
+        <div className="pz-dato__valor">{children}</div>
       </div>
     </div>
   );
@@ -147,8 +147,8 @@ export function PanelDelCurso({
 
   if (!ficha && !cargando && !error) {
     return (
-      <aside className="cli-panel srv-detalle srv-detalle--vacio">
-        <p className="cli-vacio__texto">
+      <aside className="pz-tarjeta srv-detalle srv-detalle--vacio">
+        <p className="pz-vacio__texto">
           Toca un curso para ver su ficha, sus alumnos, sus sesiones y su material.
         </p>
       </aside>
@@ -156,9 +156,9 @@ export function PanelDelCurso({
   }
 
   return (
-    <aside className="cli-panel srv-detalle" aria-label="Detalle del curso">
-      <header className="cli-panel__barra">
-        <h3 className="cli-panel__titulo">Detalle del curso</h3>
+    <aside className="pz-tarjeta srv-detalle" aria-label="Detalle del curso">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta">Detalle del curso</h3>
         <button
           type="button"
           className="srv-detalle__cerrar"
@@ -170,15 +170,15 @@ export function PanelDelCurso({
       </header>
 
       {error ? (
-        <div className="cli-error" role="alert">
-          <p className="cli-error__que">No pudimos cargar el curso.</p>
-          <p className="cli-error__detalle">{error}</p>
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar el curso.</p>
+          <p className="pz-error__detalle">{error}</p>
         </div>
       ) : cargando || !ficha ? (
-        <div className="cli-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando el curso</span>
           {[0, 1, 2].map((i) => (
-            <div key={i} className="terapias-silueta cli-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : (
@@ -200,7 +200,7 @@ export function PanelDelCurso({
                 <Icono nombre="birrete" lado={36} />
               </span>
             )}
-            <span className={`cli-estado cur-estado--${ficha.vida} cur-cabecera__estado`}>
+            <span className={`pz-pastilla cur-estado--${ficha.vida} cur-cabecera__estado`}>
               {COMO_SE_DICE_LA_VIDA[ficha.vida]}
             </span>
           </div>
@@ -212,14 +212,14 @@ export function PanelDelCurso({
             ) : null}
           </div>
 
-          <div className="srv-pestanas" role="tablist" aria-label="Secciones del curso">
+          <div className="pz-segmentos" role="tablist" aria-label="Secciones del curso">
             {PESTANAS.map((p) => (
               <button
                 key={p.clave}
                 type="button"
                 role="tab"
                 aria-selected={pestana === p.clave}
-                className={`srv-pestana${pestana === p.clave ? ' srv-pestana--puesta' : ''}`}
+                className={`pz-segmento${pestana === p.clave ? ' pz-segmento--puesto' : ''}`}
                 onClick={() => setPestana(p.clave)}
               >
                 {p.etiqueta}
@@ -240,12 +240,12 @@ export function PanelDelCurso({
                     {ficha.categoria}
                   </span>
                 ) : (
-                  <span className="cli-falta">Sin categoría</span>
+                  <span className="tt-falta">Sin categoría</span>
                 )}
               </Renglon>
 
               <Renglon icono="persona" titulo="Instructor">
-                {ficha.instructor ?? <span className="cli-falta">Sin asignar</span>}
+                {ficha.instructor ?? <span className="tt-falta">Sin asignar</span>}
               </Renglon>
 
               <Renglon icono="calendario" titulo="Fecha">
@@ -256,7 +256,7 @@ export function PanelDelCurso({
                     sesiones: ficha.sesiones.length,
                   }).cuando
                 ) : (
-                  <span className="cli-falta">Sin fecha</span>
+                  <span className="tt-falta">Sin fecha</span>
                 )}
               </Renglon>
 
@@ -266,7 +266,7 @@ export function PanelDelCurso({
                     fechaInicio: ficha.fechaInicio,
                     fechaFin: ficha.fechaFin,
                     sesiones: ficha.sesiones.length,
-                  }).cuanto || <span className="cli-falta">Sin definir</span>
+                  }).cuanto || <span className="tt-falta">Sin definir</span>
                 }
               </Renglon>
 
@@ -283,7 +283,7 @@ export function PanelDelCurso({
                   —" en un curso en linea hace pensar que falta un dato. */}
               {ficha.modalidad !== 'en_linea' ? (
                 <Renglon icono="lugar" titulo="Lugar">
-                  {ficha.lugar ?? <span className="cli-falta">Sin definir</span>}
+                  {ficha.lugar ?? <span className="tt-falta">Sin definir</span>}
                 </Renglon>
               ) : null}
 
@@ -291,7 +291,7 @@ export function PanelDelCurso({
                 <Renglon icono="mensaje" titulo="Enlace">
                   {ficha.enlace ? (
                     <a
-                      className="cli-exp__enlace"
+                      className="pz-renglon__enlace"
                       href={ficha.enlace}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -299,7 +299,7 @@ export function PanelDelCurso({
                       {ficha.enlace}
                     </a>
                   ) : (
-                    <span className="cli-falta">Sin definir</span>
+                    <span className="tt-falta">Sin definir</span>
                   )}
                 </Renglon>
               ) : null}
@@ -311,7 +311,7 @@ export function PanelDelCurso({
                 ) : (
                   <>
                     {ficha.cupo} alumnos
-                    <div className="cli-exp__secundario">
+                    <div className="tt-secundario">
                       {ficha.ocupados} inscritos
                       {ocupacionDe(ficha.cupo, ficha.ocupados) !== null
                         ? ` · ${ocupacionDe(ficha.cupo, ficha.ocupados)}% de ocupación`
@@ -329,9 +329,9 @@ export function PanelDelCurso({
               <Renglon icono="nota" titulo="Descripción">
                 {ficha.descripcion ? (
                   // Como TEXTO, nunca como HTML: es lo que alguien escribio.
-                  <p className="srv-texto">{ficha.descripcion}</p>
+                  <p className="tt-libre">{ficha.descripcion}</p>
                 ) : (
-                  <span className="cli-falta">Sin descripción</span>
+                  <span className="tt-falta">Sin descripción</span>
                 )}
               </Renglon>
 
@@ -383,12 +383,12 @@ export function PanelDelCurso({
 
           {puedeGestionar ? (
             <div className="srv-detalle__acciones">
-              <button type="button" className="cli-boton-principal" onClick={onEditar}>
+              <button type="button" className="pz-boton pz-boton--principal" onClick={onEditar}>
                 <Icono nombre="lapiz" lado={16} /> Editar curso
               </button>
               <button
                 type="button"
-                className={ficha.activo ? 'srv-boton-peligro' : 'cli-boton-suave'}
+                className={ficha.activo ? 'srv-boton-peligro' : 'pz-boton'}
                 onClick={onCambiarEstado}
               >
                 <Icono nombre={ficha.activo ? 'prohibido' : 'palomita'} lado={16} />{' '}

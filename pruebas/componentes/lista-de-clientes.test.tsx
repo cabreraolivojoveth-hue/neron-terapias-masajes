@@ -73,7 +73,7 @@ describe('VACIO y ERROR son estados distintos', () => {
 
   it('mientras carga muestra siluetas, no una lista vacia', () => {
     const { container } = render(<ListaDeClientes {...props} cargando />);
-    expect(container.querySelectorAll('.terapias-silueta').length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('.pz-silueta').length).toBeGreaterThan(0);
     expect(screen.queryByText('No hay clientes registrados')).toBeNull();
   });
 });
@@ -110,7 +110,7 @@ describe('la tabla', () => {
       <ListaDeClientes {...props} clientes={[cliente({ estado: 'inactivo' })]} total={1} />,
     );
     // La pastilla de la tabla, no la opcion del filtro que se llama igual.
-    const pastilla = container.querySelector('.cli-estado--inactivo');
+    const pastilla = container.querySelector('.pz-pastilla');
     expect(pastilla?.textContent).toBe('Inactivo');
   });
 });

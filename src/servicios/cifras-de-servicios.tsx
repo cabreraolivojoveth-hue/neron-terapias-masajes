@@ -94,22 +94,22 @@ export function cifrasDeServicios(r: ResumenDeServicios | null): CifraDeServicio
 
 export function CifrasDeServicios({ resumen }: { readonly resumen: ResumenDeServicios | null }) {
   return (
-    <section className="cli-cifras" aria-label="Resumen del catálogo">
+    <section className="pz-cifras" aria-label="Resumen del catálogo">
       {cifrasDeServicios(resumen).map((c) => (
-        <div key={c.clave} className={`cli-cifra cli-cifra--${c.categoria}`}>
-          <span className="cli-cifra__icono" aria-hidden="true">
+        <div key={c.clave} className={`pz-cifra pz-cifra--${c.categoria}`}>
+          <span className="pz-cifra__icono" aria-hidden="true">
             <Icono nombre={c.icono} lado={20} />
           </span>
-          <span className="cli-cifra__texto">
-            <span className="cli-cifra__etiqueta">{c.etiqueta}</span>
+          <span className="pz-cifra__texto">
+            <span className="pz-cifra__etiqueta">{c.etiqueta}</span>
             <span
-              className="cli-cifra__valor"
+              className="pz-cifra__valor"
               aria-busy={c.cargando ? 'true' : undefined}
               aria-label={c.cargando ? `${c.etiqueta}: cargando` : undefined}
             >
               {c.valor}
             </span>
-            <span className="cli-cifra__pie">{c.pie || ' '}</span>
+            <span className="pz-cifra__pie">{c.pie || ' '}</span>
           </span>
         </div>
       ))}

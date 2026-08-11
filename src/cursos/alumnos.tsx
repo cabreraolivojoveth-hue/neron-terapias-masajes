@@ -107,29 +107,29 @@ export function Alumnos({
     return (
       <li className="cur-alumno">
         <button type="button" className="cur-alumno__quien" onClick={() => onAbrirCliente(a.clienteId)}>
-          <span className="cli-persona__inicial" aria-hidden="true">
+          <span className="pz-inicial" aria-hidden="true">
             {a.nombre.slice(0, 1).toUpperCase()}
           </span>
-          <span className="srv-nombre">
-            <span className="cli-persona__nombre">{a.nombre}</span>
-            {a.telefono ? <span className="srv-descripcion">{a.telefono}</span> : null}
+          <span className="pz-renglon__cuerpo">
+            <span className="pz-renglon__titulo">{a.nombre}</span>
+            {a.telefono ? <span className="pz-renglon__pie">{a.telefono}</span> : null}
           </span>
         </button>
         <span className="cur-alumno__estados">
-          <span className={`cli-estado cur-insc--${a.estado}`}>
+          <span className={`pz-pastilla cur-insc--${a.estado}`}>
             {COMO_SE_DICE_LA_INSCRIPCION[a.estado]}
           </span>
           {/* El dinero se dice APARTE: se puede estar inscrito y deber. */}
-          <span className={`cli-estado ${a.pagada ? 'cli-estado--activo' : 'cur-insc--debe'}`}>
+          <span className={`pz-pastilla ${a.pagada ? 'pz-pastilla--exito' : 'cur-insc--debe'}`}>
             {a.pagada ? 'Pagado' : 'Sin pago'}
           </span>
         </span>
         {puedeGestionar ? (
-          <span className="cat__acciones">
+          <span className="pz-encabezado__acciones">
             {a.estado === 'lista_espera' ? (
               <button
                 type="button"
-                className="cli-boton-suave"
+                className="pz-boton"
                 onClick={() => onCambiarEstado(a.id, 'inscrito')}
               >
                 Confirmar
@@ -138,14 +138,14 @@ export function Alumnos({
             {a.estado === 'inscrito' ? (
               <button
                 type="button"
-                className="cli-boton-suave"
+                className="pz-boton"
                 onClick={() => onCambiarEstado(a.id, 'asistio')}
               >
                 Asistió
               </button>
             ) : null}
             {a.estado !== 'cancelado' ? (
-              <button type="button" className="cli-boton-suave" onClick={() => setADarDeBaja(a)}>
+              <button type="button" className="pz-boton" onClick={() => setADarDeBaja(a)}>
                 Dar de baja
               </button>
             ) : null}
@@ -158,7 +158,7 @@ export function Alumnos({
   return (
     <div className="srv-detalle__cuerpo">
       <div className="cur-alumnos__cabeza">
-        <span className="cli-exp__etiqueta">
+        <span className="tt-etiqueta">
           {ficha.cupo === null
             ? `${ocupan.length} inscritos · sin límite de cupo`
             : `${ocupan.length} de ${ficha.cupo} lugares`}
@@ -166,7 +166,7 @@ export function Alumnos({
         {puedeGestionar ? (
           <button
             type="button"
-            className="cli-boton-suave"
+            className="pz-boton"
             onClick={() => setInscribiendo((a) => !a)}
           >
             <Icono nombre="personaMas" lado={14} /> Inscribir alumno
@@ -177,18 +177,18 @@ export function Alumnos({
       {inscribiendo ? (
         <div className="cat__forma">
           {avisoDeCupo(ficha) ? (
-            <p className="cli-ficha__duplicado-nota" role="status">
+            <p className="tt-secundario" role="status">
               {avisoDeCupo(ficha)}
             </p>
           ) : null}
-          <div className="cli-buscador">
-            <span className="cli-buscador__lupa" aria-hidden="true">
+          <div className="pz-buscador">
+            <span className="pz-buscador__lupa" aria-hidden="true">
               <Icono nombre="lupa" lado={16} />
             </span>
             {/* Se busca en CLIENTES. No hay una lista de alumnos aparte. */}
             <input
               type="search"
-              className="cli-buscador__campo"
+              className="pz-buscador__campo"
               autoComplete="off"
               placeholder="Buscar cliente por nombre o teléfono…"
               aria-label="Buscar cliente para inscribir"
@@ -198,27 +198,27 @@ export function Alumnos({
           </div>
 
           {clientes.length === 0 ? (
-            <p className="cli-vacio__texto">
+            <p className="pz-vacio__texto">
               {escrito
                 ? 'Ningún cliente coincide. Puedes darlo de alta y volver.'
                 : 'Escribe un nombre para buscarlo en tu lista de clientes.'}
             </p>
           ) : (
-            <ul className="cat__lista">
+            <ul className="pz-lista">
               {clientes.map((c) => (
-                <li key={c.id} className="cat__renglon">
-                  <span className="cli-persona__inicial" aria-hidden="true">
+                <li key={c.id} className="pz-renglon pz-renglon--quieto">
+                  <span className="pz-inicial" aria-hidden="true">
                     {c.nombre.slice(0, 1).toUpperCase()}
                   </span>
-                  <span className="cat__texto">
-                    <span className="cat__nombre">{c.nombre}</span>
-                    {c.telefono ? <span className="cat__uso">{c.telefono}</span> : null}
+                  <span className="pz-renglon__cuerpo">
+                    <span className="pz-renglon__titulo">{c.nombre}</span>
+                    {c.telefono ? <span className="pz-renglon__pie">{c.telefono}</span> : null}
                   </span>
-                  <span className="cat__acciones">
+                  <span className="pz-encabezado__acciones">
                     {/* Ya inscrito NO se ofrece otra vez: la base lo rechazaria
                         y el mensaje llegaria despues del clic. */}
                     {yaInscritos.has(c.id) ? (
-                      <span className="cli-falta">Ya inscrito</span>
+                      <span className="tt-falta">Ya inscrito</span>
                     ) : (
                       <Boton
                         tono="principal"
@@ -235,12 +235,12 @@ export function Alumnos({
             </ul>
           )}
 
-          <button type="button" className="cli-boton-suave" onClick={onNuevoCliente}>
+          <button type="button" className="pz-boton" onClick={onNuevoCliente}>
             <Icono nombre="mas" lado={14} /> Es alguien nuevo: darlo de alta
           </button>
 
           {error ? (
-            <p className="cli-ficha__error" role="alert">
+            <p className="pz-error__que" role="alert">
               {error}
             </p>
           ) : null}
@@ -248,7 +248,7 @@ export function Alumnos({
       ) : null}
 
       {ficha.alumnos.length === 0 ? (
-        <p className="cli-vacio__texto">
+        <p className="pz-vacio__texto">
           Todavía no hay nadie inscrito. Los alumnos salen de tu lista de clientes: quien toma un
           curso y quien viene a una sesión son la misma persona.
         </p>
@@ -266,7 +266,7 @@ export function Alumnos({
               creer que el curso esta mas lleno de lo que esta. */}
           {esperan.length > 0 ? (
             <>
-              <span className="cli-exp__etiqueta">En lista de espera ({esperan.length})</span>
+              <span className="tt-etiqueta">En lista de espera ({esperan.length})</span>
               <ul className="cur-alumnos">
                 {esperan.map((a) => (
                   <Renglon key={a.id} a={a} />
@@ -277,7 +277,7 @@ export function Alumnos({
 
           {bajas.length > 0 ? (
             <>
-              <span className="cli-exp__etiqueta">Bajas ({bajas.length})</span>
+              <span className="tt-etiqueta">Bajas ({bajas.length})</span>
               <ul className="cur-alumnos">
                 {bajas.map((a) => (
                   <Renglon key={a.id} a={a} />

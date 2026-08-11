@@ -88,7 +88,7 @@ export function RegistrarMovimiento({
       titulo={esRetiro ? 'Registrar retiro' : 'Registrar ingreso'}
       onCerrar={onCerrar}
     >
-      <div className="cli-ficha">
+      <div className="pz-columna">
         <Campo
           etiqueta="Monto"
           type="text"
@@ -116,8 +116,8 @@ export function RegistrarMovimiento({
           ayuda="Para agrupar en reportes: “Gastos operativos”, “Fondo fijo”."
         />
 
-        <label className="cli-campo cli-campo--bloque">
-          <span className="cli-campo__etiqueta">Método de pago</span>
+        <label className="pz-campo pz-campo--bloque">
+          <span className="tt-etiqueta">Método de pago</span>
           <select value={metodo} onChange={(e) => setMetodo(e.target.value as MetodoDeCaja)}>
             {METODOS_DE_CAJA.map((m) => (
               <option key={m} value={m}>
@@ -128,7 +128,7 @@ export function RegistrarMovimiento({
         </label>
 
         {/* SOLO EL EFECTIVO TOCA EL CAJON, y se dice por adelantado. */}
-        <p className="cli-ficha__duplicado-nota">
+        <p className="tt-secundario">
           {metodo === 'efectivo'
             ? esRetiro
               ? `Sale del cajón. Ahora hay ${formatearMoneda(efectivoDisponible)}.`
@@ -143,20 +143,20 @@ export function RegistrarMovimiento({
           maxLength={300}
         />
 
-        <div className="cli-exp__renglon">
-          <div className="cli-exp__renglon-cuerpo">
-            <span className="cli-exp__etiqueta">Responsable</span>
-            <span className="cli-exp__valor">{quien}</span>
+        <div className="pz-renglon pz-renglon--quieto">
+          <div className="pz-dato">
+            <span className="tt-etiqueta">Responsable</span>
+            <span className="pz-dato__valor">{quien}</span>
           </div>
         </div>
 
         {error ? (
-          <p className="cli-ficha__error" role="alert">
+          <p className="pz-error__que" role="alert">
             {error}
           </p>
         ) : null}
 
-        <div className="cli-ficha__pie">
+        <div className="pz-ficha__pie">
           <Boton tono="contorno" type="button" onClick={onCerrar}>
             Cancelar
           </Boton>
@@ -174,7 +174,7 @@ export function RegistrarMovimiento({
         </div>
 
         {problema ? (
-          <p className="cli-exp__secundario" role="status">
+          <p className="tt-secundario" role="status">
             {problema}
           </p>
         ) : null}

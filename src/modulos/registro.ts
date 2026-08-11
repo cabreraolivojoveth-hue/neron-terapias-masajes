@@ -13,6 +13,8 @@
  */
 
 /** Las capacidades propias de Terapias. Las administrativas vienen de la base. */
+import type { NombreDeIcono } from '../ui/iconos.js';
+
 export const CAPACIDADES_DE_TERAPIAS = [
   'gestionarClientes',
   'gestionarAgenda',
@@ -39,6 +41,14 @@ export interface ModuloDelProducto {
    * la base no le entrega nada. Esconder el boton es cortesia, no seguridad.
    */
   readonly capacidad: string | null;
+  /**
+   * El dibujo del menu.
+   *
+   * Va AQUI y no en el marco por la misma razon que la etiqueta y el permiso:
+   * una segunda lista en otro archivo se desincroniza, y el sintoma seria un
+   * modulo sin icono que nadie sabe de donde sale.
+   */
+  readonly icono: NombreDeIcono;
   readonly sueltoArriba?: boolean;
   /** En que bloque llega. Mientras tanto, la pantalla lo dice con honestidad. */
   readonly bloque: number;
@@ -50,6 +60,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
   {
     id: 'inicio',
     etiqueta: 'Inicio',
+    icono: 'casa',
     capacidad: null,
     sueltoArriba: true,
     bloque: 8,
@@ -59,6 +70,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
   {
     id: 'agenda',
     etiqueta: 'Agenda',
+    icono: 'calendario',
     capacidad: 'gestionarAgenda',
     bloque: 4,
     promesa: 'El calendario del centro. Agendar, mover, confirmar y marcar quien asistio.',
@@ -66,6 +78,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
   {
     id: 'clientes',
     etiqueta: 'Clientes',
+    icono: 'personas',
     capacidad: 'gestionarClientes',
     bloque: 2,
     promesa: 'Los pacientes y su historial: datos de contacto, citas anteriores y notas.',
@@ -73,6 +86,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
   {
     id: 'servicios',
     etiqueta: 'Servicios',
+    icono: 'flor',
     capacidad: 'gestionarCatalogo',
     bloque: 3,
     promesa: 'El catalogo: Reiki, Biomagnetismo, Limpieza Energetica. Duracion y precio de cada uno.',
@@ -80,6 +94,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
   {
     id: 'cursos',
     etiqueta: 'Cursos',
+    icono: 'birrete',
     capacidad: 'gestionarCatalogo',
     bloque: 3,
     promesa: 'Los talleres con fecha, cupo y los inscritos.',
@@ -87,6 +102,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
   {
     id: 'productos',
     etiqueta: 'Productos',
+    icono: 'paquete',
     capacidad: 'gestionarInventario',
     bloque: 5,
     promesa: 'Aceites, inciensos y velas. Existencias, costo, precio y el aviso de cuando se acaban.',
@@ -94,6 +110,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
   {
     id: 'ventas',
     etiqueta: 'Ventas',
+    icono: 'carrito',
     capacidad: 'cobrar',
     bloque: 6,
     promesa: 'Cobrar servicios, productos y cursos. El ticket y su forma de pago.',
@@ -101,6 +118,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
   {
     id: 'caja',
     etiqueta: 'Caja',
+    icono: 'cajon',
     capacidad: 'verFinanzas',
     bloque: 6,
     promesa: 'El dinero que entra y sale, con la operacion que lo produjo. No se edita: se agrega.',
@@ -108,6 +126,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
   {
     id: 'gastos',
     etiqueta: 'Gastos',
+    icono: 'moneda',
     capacidad: 'verFinanzas',
     bloque: 7,
     promesa: 'Renta, insumos, servicios. Cada gasto alimenta la caja solo.',
@@ -115,6 +134,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
   {
     id: 'recordatorios',
     etiqueta: 'Recordatorios',
+    icono: 'campana',
     capacidad: null,
     bloque: 7,
     promesa: 'Lo pendiente, ligado a la cita, el paciente o la venta de donde salio.',
@@ -136,6 +156,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
   {
     id: 'mensajes',
     etiqueta: 'Mensajes',
+    icono: 'mensaje',
     capacidad: null,
     bloque: 11,
     promesa:
@@ -144,6 +165,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
   {
     id: 'reportes',
     etiqueta: 'Reportes',
+    icono: 'barras',
     capacidad: 'verFinanzas',
     bloque: 9,
     promesa: 'Ingresos por periodo, servicios mas dados, ticket promedio, comparaciones.',
@@ -151,6 +173,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
   {
     id: 'configuracion',
     etiqueta: 'Configuración',
+    icono: 'engrane',
     capacidad: 'gestionarConfiguracion',
     bloque: 10,
     promesa: 'Datos del centro, horarios, usuarios, roles y permisos.',

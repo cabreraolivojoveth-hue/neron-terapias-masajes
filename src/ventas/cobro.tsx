@@ -111,8 +111,8 @@ export function PagoRapido({
   onEscoger(clave: string): void;
 }) {
   return (
-    <section className="cli-panel" aria-labelledby="vta-rapido-titulo">
-      <h3 className="cli-panel__titulo" id="vta-rapido-titulo">
+    <section className="pz-tarjeta" aria-labelledby="vta-rapido-titulo">
+      <h3 className="tt-tarjeta" id="vta-rapido-titulo">
         Método de pago rápido
       </h3>
       <div className="vta-metodos__botones" role="group" aria-label="Método de pago rápido">
@@ -158,8 +158,8 @@ export function AplicarDescuento({
   const valdria = descuentoEscrito(escrito, comoPorcentaje, subtotalCentavos);
 
   return (
-    <section className="cli-panel" aria-labelledby="vta-descuento-titulo">
-      <h3 className="cli-panel__titulo" id="vta-descuento-titulo">
+    <section className="pz-tarjeta" aria-labelledby="vta-descuento-titulo">
+      <h3 className="tt-tarjeta" id="vta-descuento-titulo">
         Aplicar descuento
       </h3>
 
@@ -180,7 +180,7 @@ export function AplicarDescuento({
             onChange={(e) => onEscrito(e.target.value.replace(/[^\d]/g, ''))}
             placeholder="0"
           />
-          <label className="cli-campo cli-campo--corto">
+          <label className="pz-campo pz-campo--corto">
             <span className="neron-solo-lectores">Cómo se aplica el descuento</span>
             <select
               value={comoPorcentaje ? 'porcentaje' : 'monto'}
@@ -192,7 +192,7 @@ export function AplicarDescuento({
           </label>
           <button
             type="button"
-            className="cli-boton-suave"
+            className="pz-boton"
             disabled={valdria <= 0}
             onClick={() => onAplicar(valdria)}
           >
@@ -200,13 +200,13 @@ export function AplicarDescuento({
           </button>
         </div>
       ) : (
-        <p className="cli-exp__secundario">
+        <p className="tt-secundario">
           Tu rol no aplica descuentos. Quien administra el centro puede hacerlo.
         </p>
       )}
 
       {puede && valdria > 0 ? (
-        <p className="cli-ficha__duplicado-nota" role="status">
+        <p className="tt-secundario" role="status">
           Quedaría un descuento de {formatearMoneda(valdria)} sobre el subtotal.
         </p>
       ) : null}
@@ -265,8 +265,8 @@ export function Cobro({
   const listo = sePuedeCobrar(renglones, descuentoCentavos, pagos);
 
   return (
-    <aside className="cli-panel vta-cobro" aria-labelledby="vta-resumen-titulo">
-      <h3 className="cli-panel__titulo" id="vta-resumen-titulo">
+    <aside className="pz-tarjeta vta-cobro" aria-labelledby="vta-resumen-titulo">
+      <h3 className="tt-tarjeta" id="vta-resumen-titulo">
         Resumen de la venta
       </h3>
 
@@ -299,7 +299,7 @@ export function Cobro({
       </div>
 
       <div className="vta-metodos">
-        <span className="cli-exp__etiqueta" id="vta-metodo-titulo">
+        <span className="tt-etiqueta" id="vta-metodo-titulo">
           Método de pago
         </span>
         <div className="vta-metodos__rejilla" role="group" aria-labelledby="vta-metodo-titulo">
@@ -321,7 +321,7 @@ export function Cobro({
           porque es ahi donde dos renglones se convierten en el pago mixto. */}
       {metodoPuesto === 'mixto' || pagos.length > 1 ? (
         <div className="vta-reparto">
-          <p className="cli-ficha__duplicado-nota">
+          <p className="tt-secundario">
             Agrega un renglón por cada forma en que te paguen. Dos renglones son el pago mixto: así
             el corte de caja sabe cuánto entró de cada cosa.
           </p>
@@ -330,7 +330,7 @@ export function Cobro({
               <button
                 key={m}
                 type="button"
-                className="cli-boton-suave"
+                className="pz-boton"
                 onClick={() => onAgregarPago(m)}
               >
                 <Icono nombre={ICONO_DEL_METODO[m]} lado={14} /> {COMO_SE_DICE_EL_METODO[m]}
@@ -358,7 +358,7 @@ export function Cobro({
               />
               <button
                 type="button"
-                className="cli-menu__boton"
+                className="pz-icono-boton"
                 aria-label={`Quitar el pago en ${COMO_SE_DICE_EL_METODO[p.metodo]}`}
                 onClick={() => onQuitarPago(i)}
               >
@@ -371,8 +371,8 @@ export function Cobro({
 
       {enEfectivo > 0 ? (
         <div className="vta-efectivo">
-          <label className="cli-campo cli-campo--bloque">
-            <span className="cli-campo__etiqueta">Pago recibido</span>
+          <label className="pz-campo pz-campo--bloque">
+            <span className="tt-etiqueta">Pago recibido</span>
             <span className="vta-descuento-general">
               <span className="vta-descuento__signo" aria-hidden="true">
                 $
@@ -389,11 +389,11 @@ export function Cobro({
             </span>
           </label>
           <div className="vta-cambio">
-            <span className="cli-exp__etiqueta">Cambio</span>
+            <span className="tt-etiqueta">Cambio</span>
             <span className="vta-cambio__valor">{formatearMoneda(cambio)}</span>
           </div>
           {/* EL CAMBIO NO ES UN EGRESO: a la caja entra lo aplicado. */}
-          <p className="cli-ficha__duplicado-nota">
+          <p className="tt-secundario">
             El cambio no se registra como salida: a la caja entran{' '}
             {formatearMoneda(enEfectivo)} en efectivo.
           </p>
@@ -401,7 +401,7 @@ export function Cobro({
       ) : null}
 
       {falta !== 0 && pagos.length > 0 ? (
-        <p className="cli-ficha__duplicado-nota" role="status">
+        <p className="tt-secundario" role="status">
           {falta > 0
             ? `Faltan ${formatearMoneda(falta)}.`
             : `Se pasan ${formatearMoneda(-falta)}. Baja los montos: el cambio se calcula con el efectivo recibido, no pagando de más.`}
@@ -409,7 +409,7 @@ export function Cobro({
       ) : null}
 
       {error ? (
-        <p className="cli-ficha__error" role="alert">
+        <p className="pz-error__que" role="alert">
           {error}
         </p>
       ) : null}
@@ -417,7 +417,7 @@ export function Cobro({
       {/* SI LO QUE FALTA ES LA CAJA, se lleva ahi en vez de dejar a quien
           cobra releyendo el error con el cliente enfrente. */}
       {faltaLaCaja(error) ? (
-        <button type="button" className="cli-boton-suave cli-boton-suave--ancho" onClick={onIrACaja}>
+        <button type="button" className="pz-boton pz-boton--ancho" onClick={onIrACaja}>
           Ir a Caja y abrirla
         </button>
       ) : null}
@@ -443,12 +443,12 @@ export function Cobro({
       </div>
 
       {!listo && renglones.length > 0 ? (
-        <p className="cli-exp__secundario">
+        <p className="tt-secundario">
           {porQueNoSePuedeCobrar(renglones, descuentoCentavos, pagos)}
         </p>
       ) : null}
 
-      <span className="cli-exp__secundario">
+      <span className="tt-secundario">
         Pagado {formatearMoneda(pagado)} de {formatearMoneda(total)}
       </span>
     </aside>

@@ -83,7 +83,7 @@ export function Material({
   return (
     <div className="srv-detalle__cuerpo">
       {material.length === 0 ? (
-        <p className="cli-vacio__texto">
+        <p className="pz-vacio__texto">
           Este curso todavía no tiene material. Aquí van las guías, las presentaciones y los
           enlaces que se reparten.
         </p>
@@ -91,14 +91,14 @@ export function Material({
         <ul className="cur-material">
           {material.map((m) => (
             <li key={m.id} className="cur-material__renglon">
-              <span className="cli-exp__renglon-icono" aria-hidden="true">
+              <span className="pz-ficha" aria-hidden="true">
                 <Icono nombre={ICONO_DEL_TIPO[m.tipo]} lado={18} />
               </span>
-              <span className="cat__texto">
-                <span className="cat__nombre">
+              <span className="pz-renglon__cuerpo">
+                <span className="pz-renglon__titulo">
                   {m.url ? (
                     <a
-                      className="cli-exp__enlace"
+                      className="pz-renglon__enlace"
                       href={m.url}
                       target="_blank"
                       // `noreferrer` va junto con `noopener`: sin el, la pagina
@@ -113,19 +113,19 @@ export function Material({
                   {/* La marca de "interno" SIEMPRE visible: es lo que impide
                       mandarle al grupo las notas del instructor. */}
                   {!m.visibleParaAlumnos ? (
-                    <span className="cli-estado cur-insc--debe">Solo el equipo</span>
+                    <span className="pz-pastilla cur-insc--debe">Solo el equipo</span>
                   ) : null}
                 </span>
-                <span className="cat__uso">
+                <span className="pz-renglon__pie">
                   {COMO_SE_DICE_EL_TIPO[m.tipo]}
                   {m.descripcion ? ` · ${m.descripcion}` : ''}
                 </span>
               </span>
               {puedeGestionar ? (
-                <span className="cat__acciones">
+                <span className="pz-encabezado__acciones">
                   <button
                     type="button"
-                    className="cli-boton-suave"
+                    className="pz-boton"
                     onClick={() =>
                       setEditando({
                         id: m.id,
@@ -141,7 +141,7 @@ export function Material({
                   >
                     <Icono nombre="lapiz" lado={14} /> Editar
                   </button>
-                  <button type="button" className="cli-boton-suave" onClick={() => setAQuitar(m)}>
+                  <button type="button" className="pz-boton" onClick={() => setAQuitar(m)}>
                     <Icono nombre="archivar" lado={14} /> Quitar
                   </button>
                 </span>
@@ -162,7 +162,7 @@ export function Material({
               maxLength={160}
               {...(fallo ? { error: fallo } : {})}
             />
-            <div className="cli-ficha__par">
+            <div className="pz-dos">
               <Seleccion
                 etiqueta="Tipo"
                 value={editando.datos.tipo}
@@ -201,12 +201,12 @@ export function Material({
             </label>
 
             {error ? (
-              <p className="cli-ficha__error" role="alert">
+              <p className="pz-error__que" role="alert">
                 {error}
               </p>
             ) : null}
 
-            <div className="cli-ficha__pie">
+            <div className="pz-ficha__pie">
               <Boton tono="contorno" type="button" onClick={() => setEditando(null)}>
                 Cancelar
               </Boton>
@@ -218,7 +218,7 @@ export function Material({
         ) : (
           <button
             type="button"
-            className="cli-boton-principal"
+            className="pz-boton pz-boton--principal"
             onClick={() => {
               setFallo(null);
               setEditando({ id: null, datos: MATERIAL_VACIO });

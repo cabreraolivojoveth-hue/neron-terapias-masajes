@@ -9,10 +9,11 @@
  * modulo nuevo no obliga a tocar este archivo.
  */
 
-import { Marco, ProveedorDeNavegacion, resolverMenu, useNavegacion } from '@neron/base/marco';
+import { ProveedorDeNavegacion, resolverMenu, useNavegacion } from '@neron/base/marco';
 import { Boton } from '@neron/base/ui';
 import { useEffect, type ReactNode } from 'react';
 import { ProveedorDeSesion, useSesion, useTardaDemasiado } from './identidad/sesion.js';
+import { Armazon } from './marco/armazon.js';
 import { Hoja } from './marco/hoja.js';
 import { MarcaVisible } from './marco/marca-visible.js';
 import { Buscador } from './marco/buscador.js';
@@ -151,12 +152,12 @@ function Interior() {
   }, [alcanzable, ir]);
 
   return (
-    <Marco
+    <Armazon
       menu={menu}
-      nombreDelNegocio={NOMBRE_DEL_PRODUCTO}
       nombreDeLaPersona={acceso.nombre}
       rolDeLaPersona={acceso.rolEtiqueta}
       logo={<MarcaVisible />}
+      onSalir={() => void cerrarSesion()}
       pintarModulo={(modulo) =>
         // Cada modulo que llega se engancha aqui. Los que faltan siguen
         // diciendo la verdad en vez de fingir con datos inventados.
@@ -193,9 +194,6 @@ function Interior() {
           <CampanaDeAvisos onIr={(modulo, parametros) =>
             ir(modulo, parametros ? { parametros: { ...parametros } } : {})
           } />
-          <Boton tono="contorno" onClick={() => void cerrarSesion()}>
-            Salir
-          </Boton>
         </>
       }
       alFallar={(error, donde) => {

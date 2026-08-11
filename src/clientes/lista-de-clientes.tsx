@@ -120,7 +120,7 @@ function MenuDeAcciones({
       <button
         ref={boton}
         type="button"
-        className="cli-menu__boton"
+        className="pz-icono-boton"
         aria-expanded={abierto}
         aria-label={`Acciones para ${cliente.nombre}`}
         onClick={() => setAbierto((a) => !a)}
@@ -218,16 +218,16 @@ export function ListaDeClientes({
   const todosMarcados = clientes.length > 0 && marcados.length === clientes.length;
 
   return (
-    <section className="cli-panel cli-lista" aria-labelledby="cli-lista-titulo">
-      <header className="cli-panel__barra">
-        <h3 className="cli-panel__titulo" id="cli-lista-titulo">
+    <section className="pz-tarjeta pz-tarjeta--lista" aria-labelledby="pz-tarjeta--lista-titulo">
+      <header className="pz-cabecera">
+        <h3 className="tt-tarjeta" id="pz-tarjeta--lista-titulo">
           Lista de clientes
         </h3>
       </header>
 
-      <div className="cli-herramientas">
-        <div className="cli-buscador">
-          <span className="cli-buscador__lupa" aria-hidden="true">
+      <div className="pz-encabezado__acciones">
+        <div className="pz-buscador">
+          <span className="pz-buscador__lupa" aria-hidden="true">
             <Icono nombre="lupa" lado={16} />
           </span>
           {/*
@@ -236,7 +236,7 @@ export function ListaDeClientes({
           */}
           <input
             type="search"
-            className="cli-buscador__campo"
+            className="pz-buscador__campo"
             autoComplete="off"
             placeholder="Buscar cliente…"
             aria-label="Buscar cliente por nombre, teléfono o correo"
@@ -245,7 +245,7 @@ export function ListaDeClientes({
           />
         </div>
 
-        <label className="cli-campo">
+        <label className="pz-campo">
           <span className="neron-solo-lectores">Estado del cliente</span>
           <select value={estado} onChange={(e) => onEstado(e.target.value)}>
             <option value="">Todos los estados</option>
@@ -257,7 +257,7 @@ export function ListaDeClientes({
           </select>
         </label>
 
-        <label className="cli-campo">
+        <label className="pz-campo">
           <span className="neron-solo-lectores">Terapeuta asignado</span>
           <select value={profesionalId} onChange={(e) => onProfesional(e.target.value)}>
             <option value="">Todos los terapeutas</option>
@@ -296,61 +296,61 @@ export function ListaDeClientes({
           <span>
             {marcados.length} {marcados.length === 1 ? 'seleccionado' : 'seleccionados'}
           </span>
-          <button type="button" className="cli-boton-suave" onClick={() => setConfirmar(true)}>
+          <button type="button" className="pz-boton" onClick={() => setConfirmar(true)}>
             <Icono nombre="archivar" lado={15} /> Archivar
           </button>
-          <button type="button" className="cli-boton-suave" onClick={() => setMarcados([])}>
+          <button type="button" className="pz-boton" onClick={() => setMarcados([])}>
             Quitar selección
           </button>
         </div>
       ) : null}
 
       {error ? (
-        <div className="cli-error" role="alert">
+        <div className="pz-error" role="alert">
           {/* VACIO y ERROR son estados distintos. Decir "no hay clientes"
               cuando lo que fallo fue la red hace que alguien los capture otra
               vez. */}
-          <p className="cli-error__que">No pudimos cargar los clientes.</p>
-          <p className="cli-error__detalle">{error}</p>
-          <button type="button" className="cli-boton-suave" onClick={onReintentar}>
+          <p className="pz-error__que">No pudimos cargar los clientes.</p>
+          <p className="pz-error__detalle">{error}</p>
+          <button type="button" className="pz-boton" onClick={onReintentar}>
             Reintentar
           </button>
         </div>
       ) : cargando ? (
-        <div className="cli-cargando" aria-busy="true">
+        <div className="pz-cargando" aria-busy="true">
           <span className="neron-solo-lectores">Cargando los clientes</span>
           {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="terapias-silueta cli-cargando__renglon" />
+            <div key={i} className="pz-silueta" />
           ))}
         </div>
       ) : clientes.length === 0 ? (
-        <div className="cli-vacio">
-          <span className="cli-vacio__icono" aria-hidden="true">
+        <div className="pz-vacio">
+          <span className="pz-vacio__icono" aria-hidden="true">
             <Icono nombre="personas" lado={44} />
           </span>
-          <p className="cli-vacio__titulo">
+          <p className="pz-vacio__titulo">
             {busqueda || estado || profesionalId
               ? 'Ningún cliente coincide con lo que buscas'
               : 'No hay clientes registrados'}
           </p>
-          <p className="cli-vacio__texto">
+          <p className="pz-vacio__texto">
             {busqueda || estado || profesionalId
               ? 'Prueba con otro nombre o quita los filtros.'
               : 'Comienza agregando tu primer cliente'}
           </p>
           {puedeGestionar && !busqueda && !estado && !profesionalId ? (
-            <button type="button" className="cli-boton-principal" onClick={onNuevo}>
+            <button type="button" className="pz-boton pz-boton--principal" onClick={onNuevo}>
               <Icono nombre="mas" lado={16} /> Nuevo cliente
             </button>
           ) : null}
         </div>
       ) : vista === 'lista' ? (
         // El scroll horizontal vive DENTRO de la tabla, nunca en la pagina.
-        <div className="cli-tabla__marco">
-          <table className="cli-tabla">
+        <div className="pz-tabla__marco">
+          <table className="pz-tabla">
             <thead>
               <tr>
-                <th className="cli-tabla__marca">
+                <th className="pz-tabla__marca">
                   <input
                     type="checkbox"
                     checked={todosMarcados}
@@ -361,15 +361,15 @@ export function ListaDeClientes({
                 <th>Cliente</th>
                 <th>Contacto</th>
                 <th>Última visita</th>
-                <th className="cli-tabla__numero">Visitas</th>
+                <th className="pz-tabla__numero">Visitas</th>
                 <th>Estado</th>
-                <th className="cli-tabla__acciones">Acciones</th>
+                <th className="pz-tabla__acciones">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {clientes.map((c) => (
-                <tr key={c.id} className={marcados.includes(c.id) ? 'cli-tabla__fila--marcada' : ''}>
-                  <td className="cli-tabla__marca">
+                <tr key={c.id} className={marcados.includes(c.id) ? 'pz-tabla__fila--marcada' : ''}>
+                  <td className="pz-tabla__marca">
                     <input
                       type="checkbox"
                       checked={marcados.includes(c.id)}
@@ -378,26 +378,26 @@ export function ListaDeClientes({
                     />
                   </td>
                   <td>
-                    <button type="button" className="cli-persona" onClick={() => onAccion('ver', c)}>
-                      <span className="cli-persona__inicial" aria-hidden="true">
+                    <button type="button" className="pz-renglon" onClick={() => onAccion('ver', c)}>
+                      <span className="pz-inicial" aria-hidden="true">
                         {iniciales(c.nombre)}
                       </span>
-                      <span className="cli-persona__nombre">{c.nombre}</span>
+                      <span className="pz-renglon__titulo">{c.nombre}</span>
                     </button>
                   </td>
                   <td>
                     <Contacto cliente={c} />
                   </td>
                   <td>
-                    {c.ultimaVisita ?? <span className="cli-falta">Sin visitas</span>}
+                    {c.ultimaVisita ?? <span className="tt-falta">Sin visitas</span>}
                   </td>
-                  <td className="cli-tabla__numero">{c.visitas}</td>
+                  <td className="pz-tabla__numero">{c.visitas}</td>
                   <td>
-                    <span className={`cli-estado cli-estado--${c.estado}`}>
+                    <span className={`pz-pastilla pz-pastilla--${c.estado}`}>
                       {etiquetaDeEstadoDeCliente(c.estado)}
                     </span>
                   </td>
-                  <td className="cli-tabla__acciones">
+                  <td className="pz-tabla__acciones">
                     <MenuDeAcciones cliente={c} permisos={permisos} onAccion={onAccion} />
                   </td>
                 </tr>
@@ -410,12 +410,12 @@ export function ListaDeClientes({
           {clientes.map((c) => (
             <li key={c.id}>
               <button type="button" className="cli-carta" onClick={() => onAccion('ver', c)}>
-                <span className="cli-carta__inicial" aria-hidden="true">
+                <span className="pz-inicial" aria-hidden="true">
                   {iniciales(c.nombre)}
                 </span>
                 <span className="cli-carta__nombre">{c.nombre}</span>
                 <Contacto cliente={c} />
-                <span className={`cli-estado cli-estado--${c.estado}`}>
+                <span className={`pz-pastilla pz-pastilla--${c.estado}`}>
                   {etiquetaDeEstadoDeCliente(c.estado)}
                 </span>
                 <span className="cli-carta__dato">
@@ -428,15 +428,15 @@ export function ListaDeClientes({
         </ul>
       )}
 
-      <footer className="cli-pie">
-        <span className="cli-pie__cuenta">
+      <footer className="pz-pie">
+        <span className="pz-pie__cuenta">
           Mostrando {clientes.length} de {total} {total === 1 ? 'cliente' : 'clientes'}
         </span>
 
-        <div className="cli-paginas" role="group" aria-label="Páginas">
+        <div className="pz-paginas" role="group" aria-label="Páginas">
           <button
             type="button"
-            className="cli-paginas__boton"
+            className="pz-pagina"
             aria-label="Primera página"
             disabled={pagina <= 1}
             onClick={() => onPagina(1)}
@@ -445,19 +445,19 @@ export function ListaDeClientes({
           </button>
           <button
             type="button"
-            className="cli-paginas__boton"
+            className="pz-pagina"
             aria-label="Página anterior"
             disabled={pagina <= 1}
             onClick={() => onPagina(pagina - 1)}
           >
             ‹
           </button>
-          <span className="cli-paginas__actual" aria-live="polite">
+          <span className="pz-paginas__actual" aria-live="polite">
             {pagina} de {paginas}
           </span>
           <button
             type="button"
-            className="cli-paginas__boton"
+            className="pz-pagina"
             aria-label="Página siguiente"
             disabled={pagina >= paginas}
             onClick={() => onPagina(pagina + 1)}
@@ -466,7 +466,7 @@ export function ListaDeClientes({
           </button>
           <button
             type="button"
-            className="cli-paginas__boton"
+            className="pz-pagina"
             aria-label="Última página"
             disabled={pagina >= paginas}
             onClick={() => onPagina(paginas)}
@@ -475,7 +475,7 @@ export function ListaDeClientes({
           </button>
         </div>
 
-        <label className="cli-campo cli-campo--corto">
+        <label className="pz-campo pz-campo--corto">
           <span className="neron-solo-lectores">Cuántos por página</span>
           <select value={porPagina} onChange={(e) => onPorPagina(Number(e.target.value))}>
             {POR_PAGINA.map((n) => (
@@ -514,7 +514,7 @@ export function ListaDeClientes({
 /** Teléfono y correo, y cuando falta alguno se DICE en vez de dejar un guion. */
 function Contacto({ cliente }: { readonly cliente: ClienteEnLista }) {
   if (!cliente.telefono && !cliente.correo) {
-    return <span className="cli-falta">Sin datos de contacto</span>;
+    return <span className="tt-falta">Sin datos de contacto</span>;
   }
   return (
     <span className="cli-contacto">

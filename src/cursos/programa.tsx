@@ -287,25 +287,25 @@ export function Programa() {
 
   return (
     <div className="cli srv cur">
-      <header className="cli-encabezado">
-        <div className="cli-encabezado__texto">
-          <h2 className="cli-encabezado__titulo">Cursos</h2>
-          <p className="cli-encabezado__lema">
+      <header className="pz-encabezado">
+        <div className="pz-encabezado__texto">
+          <h2 className="tt-pagina">Cursos</h2>
+          <p className="tt-lema">
             Gestiona los cursos, talleres y formaciones que ofreces
           </p>
         </div>
         {puedeGestionar ? (
-          <div className="srv-encabezado__acciones">
+          <div className="pz-encabezado__acciones">
             <button
               type="button"
-              className="cli-boton-suave"
+              className="pz-boton"
               onClick={() => setCategoriasAbiertas(true)}
             >
               <Icono nombre="cuadricula" lado={16} /> Categorías
             </button>
             <button
               type="button"
-              className="cli-boton-principal"
+              className="pz-boton pz-boton--principal"
               onClick={() => setFormulario({ inicial: CURSO_VACIO })}
             >
               <Icono nombre="mas" lado={16} /> Nuevo curso
@@ -315,10 +315,10 @@ export function Programa() {
       </header>
 
       {resumen.error ? (
-        <div className="cli-error" role="alert">
-          <p className="cli-error__que">No pudimos cargar el resumen de cursos.</p>
-          <p className="cli-error__detalle">{resumen.error}</p>
-          <button type="button" className="cli-boton-suave" onClick={resumen.recargar}>
+        <div className="pz-error" role="alert">
+          <p className="pz-error__que">No pudimos cargar el resumen de cursos.</p>
+          <p className="pz-error__detalle">{resumen.error}</p>
+          <button type="button" className="pz-boton" onClick={resumen.recargar}>
             Reintentar
           </button>
         </div>
@@ -326,7 +326,7 @@ export function Programa() {
 
       <CifrasDeCursos resumen={resumen.datos} />
 
-      <div className="cli-cuerpo">
+      <div className="pz-cuerpo">
         <TablaDeCursos
           cursos={lista.datos?.filas ?? []}
           total={lista.datos?.total ?? 0}
