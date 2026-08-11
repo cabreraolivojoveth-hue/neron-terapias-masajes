@@ -469,17 +469,19 @@ export function PuntoDeVenta({
           <p className="tt-lema">Registra ventas de servicios, productos y cursos</p>
         </div>
         )}
+        {/*
+          AQUI HABIA DOS BOTONES QUE HACIAN LO MISMO.
+
+          "Nueva cotizacion" y "Nueva venta" corrian EXACTAMENTE el mismo codigo
+          —limpiar el carrito e ir a Cobrar—, uno pegado al otro. De ahi que
+          "Nueva venta" pareciera un boton sin funcion: estando ya en Cobrar con
+          el carrito vacio, limpiar nada y quedarse donde estas no se ve.
+
+          Se queda uno. Y no se perdio nada: una cotizacion es una venta que se
+          guarda como cotizacion, y ese boton ya vive al final del cobro, que es
+          donde se decide — cuando ya esta armado lo que se va a cotizar.
+        */}
         <div className="pz-encabezado__acciones">
-          <button
-            type="button"
-            className="pz-boton"
-            onClick={() => {
-              limpiarCarrito();
-              setPestana('nueva');
-            }}
-          >
-            <Icono nombre="nota" lado={16} /> Nueva cotización
-          </button>
           <div className="pz-buscador">
             <span className="pz-buscador__lupa" aria-hidden="true">
               <Icono nombre="lupa" lado={16} />

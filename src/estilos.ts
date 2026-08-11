@@ -2365,14 +2365,47 @@ function loQueTodaviaEsDeUnModulo(): string {
 .caja-diferencia--sobra  { color: ${v('advertencia')}; }
 .caja-diferencia--falta  { color: ${v('peligro')}; }
 
+/*
+ * EL VEREDICTO DEL CORTE. Es lo unico que le importa a quien acaba de contar el
+ * cajon, asi que se lee de un golpe: la marca grande, la palabra, y la cifra.
+ *
+ * Antes era una tirita con la frase en letra normal debajo de una lista de tres
+ * numeros: para saber si cuadraba habia que restar con la vista. Al final del
+ * dia y con prisa, eso es justo cuando se equivoca uno.
+ */
 .caja-veredicto {
-  display: flex; align-items: center; gap: ${v('espacio-2')};
-  padding: ${v('espacio-3')};
-  border-radius: ${v('radio-sistema')};
+  display: flex; align-items: center; gap: ${v('espacio-4')};
+  padding: ${v('espacio-5')};
+  border-radius: ${c('radio-tarjeta')};
   border: 1px solid ${v('borde')};
   background: ${v('superficie-tenue')};
   min-width: 0;
 }
+.caja-veredicto__marca {
+  flex: none;
+  width: 52px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: ${c('radio-pastilla')};
+  background: ${v('superficie-elevada')};
+}
+.caja-veredicto__texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.caja-veredicto__que { font-size: ${v('texto-grande')}; font-weight: ${v('peso-fuerte')}; }
+/* La cifra en grande: es el numero que se va a anotar o a buscar. */
+.caja-veredicto__cuanto {
+  font-size: ${v('texto-titulo')};
+  font-weight: ${v('peso-fuerte')};
+  font-variant-numeric: ${v('cifra-numeros')};
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.caja-veredicto--cuadra .caja-veredicto__que,
+.caja-veredicto--cuadra .caja-veredicto__marca { color: ${v('exito')}; }
+.caja-veredicto--sobra .caja-veredicto__que,
+.caja-veredicto--sobra .caja-veredicto__cuanto,
+.caja-veredicto--sobra .caja-veredicto__marca { color: ${v('advertencia')}; }
+.caja-veredicto--falta .caja-veredicto__que,
+.caja-veredicto--falta .caja-veredicto__cuanto,
+.caja-veredicto--falta .caja-veredicto__marca { color: ${v('peligro')}; }
 .caja-veredicto--cuadra { border-color: ${v('exito')};       background: ${v('exito-tenue')}; }
 .caja-veredicto--sobra  { border-color: ${v('advertencia')}; background: ${v('advertencia-tenue')}; }
 .caja-veredicto--falta  { border-color: ${v('peligro')};     background: ${v('peligro-tenue')}; }

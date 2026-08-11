@@ -14,12 +14,13 @@
  */
 
 import { formatearMoneda } from '@neron/base/utils';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Categoria } from '../datos/categorias.js';
 import type { CursoEnLista, VidaDeCurso } from '../datos/cursos.js';
 import { estaLleno } from '../datos/cursos.js';
 import { diaYMes, diasEntreInclusive, fechaConMes } from '../ui/fechas-en-palabras.js';
 import { Icono } from '../ui/iconos.js';
+import { MenuDeAcciones } from '../ui/menu.js';
 
 /** Como se lee el estado de un curso. */
 export const COMO_SE_DICE_LA_VIDA: Readonly<Record<VidaDeCurso, string>> = {
@@ -106,74 +107,6 @@ export function accionesPara(
 
 /* ------------------------------------------------------------------ */
 
-function MenuDeAcciones({
-  curso,
-  permisos,
-  onAccion,
-}: {
-  readonly curso: CursoEnLista;
-  readonly permisos: Readonly<Record<string, boolean>>;
-  readonly onAccion: (clave: string, c: CursoEnLista) => void;
-}) {
-  const [abierto, setAbierto] = useState(false);
-  const caja = useRef<HTMLDivElement | null>(null);
-  const boton = useRef<HTMLButtonElement | null>(null);
-  const acciones = accionesPara(permisos, curso);
-
-  useEffect(() => {
-    if (!abierto) return;
-    // `mousedown` y no `click`: con `click` el primer toque fuera se pierde.
-    const afuera = (e: MouseEvent): void => {
-      if (caja.current && !caja.current.contains(e.target as Node)) setAbierto(false);
-    };
-    const escape = (e: KeyboardEvent): void => {
-      if (e.key !== 'Escape') return;
-      setAbierto(false);
-      boton.current?.focus();
-    };
-    document.addEventListener('mousedown', afuera);
-    document.addEventListener('keydown', escape);
-    return () => {
-      document.removeEventListener('mousedown', afuera);
-      document.removeEventListener('keydown', escape);
-    };
-  }, [abierto]);
-
-  if (acciones.length === 0) return null;
-
-  return (
-    <div className="cli-menu" ref={caja}>
-      <button
-        ref={boton}
-        type="button"
-        className="pz-icono-boton"
-        aria-expanded={abierto}
-        aria-label={`Acciones para ${curso.nombre}`}
-        onClick={() => setAbierto((a) => !a)}
-      >
-        <Icono nombre="puntos" lado={18} />
-      </button>
-      {abierto ? (
-        <div className="cli-menu__panel" role="menu">
-          {acciones.map((a) => (
-            <button
-              key={a.clave}
-              type="button"
-              role="menuitem"
-              className="cli-menu__opcion"
-              onClick={() => {
-                setAbierto(false);
-                onAccion(a.clave, curso);
-              }}
-            >
-              {a.etiqueta}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 /** La miniatura. Sin imagen NO se carga una de ejemplo: va un icono neutro. */
 function Portada({ curso }: { readonly curso: CursoEnLista }) {
@@ -489,7 +422,11 @@ export function TablaDeCursos({
                         </span>
                       </td>
                       <td className="pz-tabla__acciones">
-                        <MenuDeAcciones curso={c} permisos={permisos} onAccion={onAccion} />
+                        <MenuDeAcciones
+                      de={c.nombre}
+                      opciones={accionesPara(permisos, c)}
+                      onEscoger={(clave) => onAccion(clave, c)}
+                    />
                       </td>
                     </tr>
                   );

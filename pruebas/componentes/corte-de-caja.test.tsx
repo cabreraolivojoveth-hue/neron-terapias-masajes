@@ -83,22 +83,38 @@ describe('el conteo', () => {
 });
 
 describe('la diferencia', () => {
+  /**
+   * EL VEREDICTO SE DICE CON PALABRAS Y EN GRANDE, no como un renglon mas.
+   *
+   * Antes la diferencia era una linea de una lista de tres y la frase iba debajo
+   * en letra chica: para saber si cuadraba habia que restar con la vista. Al
+   * final del dia y con prisa, eso es cuando uno se equivoca. Ahora el titulo
+   * dice QUE paso y la cifra dice CUANTO, sin signos que interpretar.
+   */
   it('un faltante se dice con palabras, no solo en rojo', async () => {
     pintar();
     await contar('1600');
-    expect(screen.getByText('Faltan $50.00.')).toBeTruthy();
+    expect(screen.getByText('Falta dinero')).toBeTruthy();
+    expect(screen.getByText('$50.00')).toBeTruthy();
+    // Y se dice de donde sale, para no tener que confiar a ciegas.
+    expect(screen.getByText(/Contaste \$1,600\.00 y se esperaban \$1,650\.00/)).toBeTruthy();
   });
 
   it('un sobrante tambien', async () => {
-    pintar();
+    const { container } = pintar();
     await contar('1700');
-    expect(screen.getByText('Sobran $50.00.')).toBeTruthy();
+    expect(screen.getByText('Sobra dinero')).toBeTruthy();
+    /* Se pregunta por la cifra DEL VEREDICTO y no por el texto suelto: cuando
+       sobra, el mismo importe aparece tambien en la lista de comprobacion de
+       abajo y "$50.00" saldria dos veces. */
+    expect(container.querySelector('.caja-veredicto__cuanto')?.textContent).toBe('$50.00');
   });
 
-  it('cuando cuadra, lo dice', async () => {
+  it('cuando cuadra, lo dice y NO enseña una cifra que no hay', async () => {
     pintar();
     await contar('1650');
-    expect(screen.getByText('La caja cuadra.')).toBeTruthy();
+    expect(screen.getByText('La caja cuadra')).toBeTruthy();
+    expect(screen.getByText('Lo que contaste es exactamente lo que se esperaba.')).toBeTruthy();
   });
 
   it('avisa que despues de cerrar no se puede cobrar en efectivo', async () => {

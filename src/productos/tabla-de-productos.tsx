@@ -13,11 +13,12 @@
  */
 
 import { formatearMoneda } from '@neron/base/utils';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Categoria } from '../datos/categorias.js';
 import type { EstadoDeStock, ProductoEnLista } from '../datos/productos.js';
 import { COMO_SE_DICE_EL_STOCK } from '../datos/productos.js';
-import { Icono } from '../ui/iconos.js';
+import { Icono, type NombreDeIcono } from '../ui/iconos.js';
+import { MenuDeAcciones } from '../ui/menu.js';
 
 export const PESTANAS_DE_INVENTARIO: readonly { clave: string; etiqueta: string }[] = [
   { clave: '', etiqueta: 'Todos' },
@@ -30,6 +31,8 @@ export interface AccionDeProducto {
   readonly clave: string;
   readonly etiqueta: string;
   readonly capacidad: string | null;
+  readonly icono?: NombreDeIcono;
+  readonly peligro?: boolean;
 }
 
 /** Lo que no se puede hacer NO se muestra, ni en gris. */
@@ -38,13 +41,32 @@ export function accionesPara(
   producto: ProductoEnLista,
 ): AccionDeProducto[] {
   const todas: AccionDeProducto[] = [
-    { clave: 'ver', etiqueta: 'Ver detalle', capacidad: null },
-    { clave: 'editar', etiqueta: 'Editar', capacidad: 'gestionarInventario' },
-    { clave: 'ajustar', etiqueta: 'Ajustar inventario', capacidad: 'gestionarInventario' },
+    { clave: 'ver', etiqueta: 'Ver detalle', capacidad: null, icono: 'lupa' },
+    { clave: 'editar', etiqueta: 'Editar', capacidad: 'gestionarInventario', icono: 'lapiz' },
+    {
+      clave: 'ajustar', etiqueta: 'Ajustar inventario',
+      capacidad: 'gestionarInventario', icono: 'paquete',
+    },
     {
       clave: 'estado',
       etiqueta: producto.activo ? 'Desactivar' : 'Activar',
       capacidad: 'gestionarInventario',
+      icono: producto.activo ? 'prohibido' : 'palomita',
+    },
+    /*
+     * ELIMINAR ES DISTINTO DE DESACTIVAR, y hasta ahora solo estaba lo segundo.
+     *
+     * Desactivar saca el producto del catalogo pero conserva su historial: lo que
+     * ya se vendio sigue cuadrando. Eliminar es para lo que NUNCA debio existir
+     * —un producto capturado por error, una prueba— y por eso la base solo lo
+     * deja borrar cuando no tiene ni una venta detras. Si la tiene, contesta que
+     * no y la pantalla ofrece desactivarlo.
+     *
+     * Va en rojo y separada del resto: pegada a "Editar" se aprieta por error.
+     */
+    {
+      clave: 'eliminar', etiqueta: 'Eliminar',
+      capacidad: 'gestionarInventario', icono: 'basura', peligro: true,
     },
   ];
   return todas.filter((a) => a.capacidad === null || permisos[a.capacidad] === true);
@@ -57,74 +79,6 @@ export function textoDelCosto(costo: number | null): string {
 
 /* ------------------------------------------------------------------ */
 
-function MenuDeAcciones({
-  producto,
-  permisos,
-  onAccion,
-}: {
-  readonly producto: ProductoEnLista;
-  readonly permisos: Readonly<Record<string, boolean>>;
-  readonly onAccion: (clave: string, p: ProductoEnLista) => void;
-}) {
-  const [abierto, setAbierto] = useState(false);
-  const caja = useRef<HTMLDivElement | null>(null);
-  const boton = useRef<HTMLButtonElement | null>(null);
-  const acciones = accionesPara(permisos, producto);
-
-  useEffect(() => {
-    if (!abierto) return;
-    // `mousedown` y no `click`: con `click` el primer toque fuera se pierde.
-    const afuera = (e: MouseEvent): void => {
-      if (caja.current && !caja.current.contains(e.target as Node)) setAbierto(false);
-    };
-    const escape = (e: KeyboardEvent): void => {
-      if (e.key !== 'Escape') return;
-      setAbierto(false);
-      boton.current?.focus();
-    };
-    document.addEventListener('mousedown', afuera);
-    document.addEventListener('keydown', escape);
-    return () => {
-      document.removeEventListener('mousedown', afuera);
-      document.removeEventListener('keydown', escape);
-    };
-  }, [abierto]);
-
-  if (acciones.length === 0) return null;
-
-  return (
-    <div className="cli-menu" ref={caja}>
-      <button
-        ref={boton}
-        type="button"
-        className="pz-icono-boton"
-        aria-expanded={abierto}
-        aria-label={`Acciones para ${producto.nombre}`}
-        onClick={() => setAbierto((a) => !a)}
-      >
-        <Icono nombre="puntos" lado={18} />
-      </button>
-      {abierto ? (
-        <div className="cli-menu__panel" role="menu">
-          {acciones.map((a) => (
-            <button
-              key={a.clave}
-              type="button"
-              role="menuitem"
-              className="cli-menu__opcion"
-              onClick={() => {
-                setAbierto(false);
-                onAccion(a.clave, producto);
-              }}
-            >
-              {a.etiqueta}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 /** La miniatura. Sin imagen NO se carga una de ejemplo: va un icono neutro. */
 function Miniatura({ producto }: { readonly producto: ProductoEnLista }) {
@@ -396,7 +350,11 @@ export function TablaDeProductos({
                       ) : null}
                     </td>
                     <td className="pz-tabla__acciones">
-                      <MenuDeAcciones producto={p} permisos={permisos} onAccion={onAccion} />
+                      <MenuDeAcciones
+                      de={p.nombre}
+                      opciones={accionesPara(permisos, p)}
+                      onEscoger={(clave) => onAccion(clave, p)}
+                    />
                     </td>
                   </tr>
                 ))}

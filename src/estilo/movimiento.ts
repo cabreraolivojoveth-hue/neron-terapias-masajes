@@ -89,6 +89,13 @@ export function movimiento(): string {
   to   { opacity: 1; transform: none; }
 }
 
+/* Un menu BROTA de su tirador: crece un poco desde la esquina de donde sale, en
+   vez de aparecer de golpe en medio de la nada. */
+@keyframes mv-brota {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
 @keyframes mv-late {
   0%, 100% { transform: scale(1); }
   50%      { transform: scale(1.12); }

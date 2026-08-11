@@ -14,9 +14,10 @@
  */
 
 import { formatearMoneda } from '@neron/base/utils';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Categoria, ServicioEnLista } from '../datos/servicios.js';
 import { Icono } from '../ui/iconos.js';
+import { MenuDeAcciones } from '../ui/menu.js';
 
 export interface AccionDeServicio {
   readonly clave: string;
@@ -46,74 +47,6 @@ export function accionesPara(
 
 /* ------------------------------------------------------------------ */
 
-function MenuDeAcciones({
-  servicio,
-  permisos,
-  onAccion,
-}: {
-  readonly servicio: ServicioEnLista;
-  readonly permisos: Readonly<Record<string, boolean>>;
-  readonly onAccion: (clave: string, s: ServicioEnLista) => void;
-}) {
-  const [abierto, setAbierto] = useState(false);
-  const caja = useRef<HTMLDivElement | null>(null);
-  const boton = useRef<HTMLButtonElement | null>(null);
-  const acciones = accionesPara(permisos, servicio);
-
-  useEffect(() => {
-    if (!abierto) return;
-    // `mousedown` y no `click`: con `click` el primer toque fuera se pierde.
-    const afuera = (e: MouseEvent): void => {
-      if (caja.current && !caja.current.contains(e.target as Node)) setAbierto(false);
-    };
-    const escape = (e: KeyboardEvent): void => {
-      if (e.key !== 'Escape') return;
-      setAbierto(false);
-      boton.current?.focus();
-    };
-    document.addEventListener('mousedown', afuera);
-    document.addEventListener('keydown', escape);
-    return () => {
-      document.removeEventListener('mousedown', afuera);
-      document.removeEventListener('keydown', escape);
-    };
-  }, [abierto]);
-
-  if (acciones.length === 0) return null;
-
-  return (
-    <div className="cli-menu" ref={caja}>
-      <button
-        ref={boton}
-        type="button"
-        className="pz-icono-boton"
-        aria-expanded={abierto}
-        aria-label={`Acciones para ${servicio.nombre}`}
-        onClick={() => setAbierto((a) => !a)}
-      >
-        <Icono nombre="puntos" lado={18} />
-      </button>
-      {abierto ? (
-        <div className="cli-menu__panel" role="menu">
-          {acciones.map((a) => (
-            <button
-              key={a.clave}
-              type="button"
-              role="menuitem"
-              className="cli-menu__opcion"
-              onClick={() => {
-                setAbierto(false);
-                onAccion(a.clave, servicio);
-              }}
-            >
-              {a.etiqueta}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 
@@ -340,7 +273,11 @@ export function TablaDeServicios({
                     </span>
                   </td>
                   <td className="pz-tabla__acciones">
-                    <MenuDeAcciones servicio={s} permisos={permisos} onAccion={onAccion} />
+                    <MenuDeAcciones
+                      de={s.nombre}
+                      opciones={accionesPara(permisos, s)}
+                      onEscoger={(clave) => onAccion(clave, s)}
+                    />
                   </td>
                 </tr>
               ))}

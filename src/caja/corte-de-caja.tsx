@@ -35,6 +35,19 @@ export function comoSeDiceLaDiferencia(centavos: number): string {
   return `Faltan ${formatearMoneda(-centavos)}.`;
 }
 
+/**
+ * El titulo del veredicto: tres palabras y ninguna ambigua.
+ *
+ * "Diferencia: −$500" obliga a interpretar un signo. "Faltan" y "Sobran" se
+ * entienden sin pensar, que es lo que hace falta al final del dia con prisa por
+ * irse — y son las dos cosas que se atienden distinto: lo que sobra se investiga,
+ * lo que falta se busca.
+ */
+export function tituloDelVeredicto(como: 'cuadra' | 'sobra' | 'falta'): string {
+  if (como === 'cuadra') return 'La caja cuadra';
+  return como === 'sobra' ? 'Sobra dinero' : 'Falta dinero';
+}
+
 export interface PropiedadesDelCorte {
   readonly abierto: boolean;
   readonly caja: CajaAbierta;
@@ -146,6 +159,43 @@ export function CorteDeCaja({
           </>
         ) : (
           <>
+            {/*
+              EL VEREDICTO ES EL PROTAGONISTA DEL PASO, no una tirita al final.
+              Antes la diferencia era un renglon mas de una lista de tres y la
+              frase iba debajo en letra chica: quien acaba de contar el cajon
+              tenia que leer tres numeros y restarlos con la vista para saber lo
+              unico que le importa — si cuadra, si sobra o si falta.
+              Ahora se lee de un golpe y sin restar nada.
+            */}
+            <div className={`caja-veredicto caja-veredicto--${como} mv-entra`} role="status">
+              <span className="caja-veredicto__marca" aria-hidden="true">
+                <Icono
+                  nombre={como === 'cuadra' ? 'palomita' : como === 'sobra' ? 'mas' : 'alerta'}
+                  lado={26}
+                />
+              </span>
+              <span className="caja-veredicto__texto">
+                <span className="caja-veredicto__que">{tituloDelVeredicto(como)}</span>
+                {como === 'cuadra' ? (
+                  <span className="tt-secundario">
+                    Lo que contaste es exactamente lo que se esperaba.
+                  </span>
+                ) : (
+                  <>
+                    <span className="caja-veredicto__cuanto">
+                      {formatearMoneda(Math.abs(diferencia))}
+                    </span>
+                    <span className="tt-secundario">
+                      Contaste {formatearMoneda(contadoCentavos)} y se esperaban{' '}
+                      {formatearMoneda(esperado)}.
+                    </span>
+                  </>
+                )}
+              </span>
+            </div>
+
+            {/* El detalle queda, pero debajo y en pequeño: es la comprobacion de
+                donde salio el veredicto, no la noticia. */}
             <dl className="vta-totales">
               <div>
                 <dt>Esperado</dt>
@@ -164,13 +214,6 @@ export function CorteDeCaja({
                 </dd>
               </div>
             </dl>
-
-            <div className={`caja-veredicto caja-veredicto--${como}`} role="status">
-              <span className="pz-ficha" aria-hidden="true">
-                <Icono nombre={como === 'cuadra' ? 'palomita' : 'alerta'} lado={18} />
-              </span>
-              <span className="pz-dato__valor">{comoSeDiceLaDiferencia(diferencia)}</span>
-            </div>
 
             <p className="tt-secundario">
               Al cerrar, esta caja deja de recibir movimientos: no se podrá cobrar en efectivo hasta

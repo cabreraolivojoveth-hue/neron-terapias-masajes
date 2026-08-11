@@ -574,3 +574,25 @@ export async function desligarProveedor(id: string): Promise<void> {
 export const LO_QUE_TOCA_UN_PRODUCTO = [
   'productos', 'proveedores', 'categorias', 'ventas', PREFIJO_DE_INICIO,
 ] as const;
+
+/**
+ * DA DE BAJA UN PRODUCTO QUE NUNCA DEBIO EXISTIR.
+ *
+ * NO es lo mismo que desactivarlo, y la diferencia importa: desactivar lo saca
+ * del catalogo y conserva su historial —lo que ya se vendio sigue cuadrando—;
+ * eliminar es para un producto capturado por error, una prueba, un duplicado.
+ *
+ * LA BASE SE NIEGA SI YA SE VENDIO, y hace bien: borrarlo dejaria renglones de
+ * venta apuntando a la nada, el ticket de un cliente no se podria reconstruir y
+ * el total de un mes ya cerrado cambiaria solo. En ese caso contesta diciendo
+ * cuantas veces se vendio y que lo que corresponde es desactivarlo.
+ */
+export async function eliminarProducto(productoId: string): Promise<void> {
+  const { error } = await supabase().rpc('eliminar_producto', { p_producto: productoId });
+  reventar(error, 'eliminar el producto');
+}
+
+/** Si la base se nego porque el producto ya tiene ventas detras. */
+export function seVendioYNoSePuedeBorrar(error: string | null): boolean {
+  return error !== null && /no se puede eliminar/i.test(error);
+}

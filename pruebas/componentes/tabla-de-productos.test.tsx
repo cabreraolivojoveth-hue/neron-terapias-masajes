@@ -54,9 +54,12 @@ describe('las acciones', () => {
       .toEqual(['ver']);
   });
 
-  it('con permiso salen las cuatro, y el estado se voltea', () => {
+  it('con permiso salen las cinco, y el estado se voltea', () => {
     const con = accionesPara({ gestionarInventario: true }, PRODUCTO);
-    expect(con.map((a) => a.clave)).toEqual(['ver', 'editar', 'ajustar', 'estado']);
+    /* Eliminar se agrego porque solo estaba "Desactivar", y no son lo mismo:
+       desactivar saca el producto del catalogo conservando su historial;
+       eliminar es para lo que nunca debio existir. */
+    expect(con.map((a) => a.clave)).toEqual(['ver', 'editar', 'ajustar', 'estado', 'eliminar']);
     expect(con.find((a) => a.clave === 'estado')?.etiqueta).toBe('Desactivar');
     const apagado = accionesPara({ gestionarInventario: true }, { ...PRODUCTO, activo: false });
     expect(apagado.find((a) => a.clave === 'estado')?.etiqueta).toBe('Activar');

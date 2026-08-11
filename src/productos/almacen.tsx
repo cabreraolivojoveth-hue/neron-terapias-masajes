@@ -39,6 +39,8 @@ import {
   traerProveedores,
   traerResumenDeProductos,
   LO_QUE_TOCA_UN_PRODUCTO,
+  eliminarProducto,
+  seVendioYNoSePuedeBorrar,
   type DatosDeProducto,
   type EstadoDeStock,
   type FichaDeProducto,
@@ -109,6 +111,10 @@ export function Almacen() {
   const [abierto, setAbierto] = useState<string | null>(null);
   const [categoriasAbiertas, setCategoriasAbiertas] = useState(false);
   const [aCambiarEstado, setACambiarEstado] = useState(false);
+  /* El producto que se va a eliminar. Se guarda ENTERO y no solo su id: la
+     confirmacion tiene que poder decir su nombre, y si solo tuviera el id
+     habria que volver a buscarlo para escribir la pregunta. */
+  const [aEliminar, setAEliminar] = useState<ProductoEnLista | null>(null);
   const [nuevoProveedor, setNuevoProveedor] = useState<string | null>(null);
 
   useEffect(() => {
@@ -172,6 +178,7 @@ export function Almacen() {
   const proveedor = useOperacion(guardarProveedor, [...LO_QUE_TOCA_UN_PRODUCTO]);
   const categoria = useOperacion(guardarCategoria, [...LO_QUE_TOCA_UN_PRODUCTO]);
   const bajaDeCategoria = useOperacion(archivarCategoria, [...LO_QUE_TOCA_UN_PRODUCTO]);
+  const baja = useOperacion(eliminarProducto, [...LO_QUE_TOCA_UN_PRODUCTO]);
 
   /** EL RECADO DE QUIEN NOS MANDO, que se consume UNA sola vez. */
   const recadoLeido = useRef(false);
@@ -194,6 +201,10 @@ export function Almacen() {
   async function hacer(clave: string, producto: ProductoEnLista): Promise<void> {
     if (clave === 'ver') {
       setAbierto(producto.id);
+      return;
+    }
+    if (clave === 'eliminar') {
+      setAEliminar(producto);
       return;
     }
     if (clave === 'ajustar') {
@@ -411,6 +422,46 @@ export function Almacen() {
           {loQuePasaAlApagarElProducto(enFicha)} No se borra nada: sus ventas, sus movimientos y los
           reportes lo siguen encontrando.
         </p>
+      </Confirmacion>
+
+      {/*
+        ELIMINAR ES OTRA COSA QUE DESACTIVAR, y la pregunta lo dice.
+        Desactivar conserva el historial; esto es para lo que nunca debio
+        existir. Si el producto ya se vendio, la BASE se niega —no esta
+        pantalla— y contesta cuantas veces, para que la salida sea desactivarlo.
+      */}
+      <Confirmacion
+        abierto={aEliminar !== null}
+        titulo="Eliminar producto"
+        confirmar="Eliminar"
+        destructivo
+        onConfirmar={() => {
+          const cual = aEliminar;
+          if (!cual) return;
+          void baja.ejecutar(cual.id).then((r) => {
+            // Solo se cierra si de verdad se borro. Cerrar cuando la base se
+            // nego dejaria a la persona sin saber por que sigue ahi.
+            if (r !== null) setAEliminar(null);
+          });
+        }}
+        onCancelar={() => setAEliminar(null)}
+      >
+        <p>
+          Se va a eliminar <strong>{aEliminar?.nombre}</strong> del catálogo, con sus movimientos
+          de inventario y sus proveedores.
+        </p>
+        <p>
+          Esto es para un producto capturado por error. Si ya lo vendiste alguna vez, no se va a
+          poder: lo que corresponde entonces es <strong>desactivarlo</strong>, para sacarlo del
+          catálogo sin perder lo que ya cuadró.
+        </p>
+        {baja.error ? (
+          <p className="pz-error__que" role="alert">
+            {seVendioYNoSePuedeBorrar(baja.error)
+              ? baja.error
+              : `No se pudo eliminar: ${baja.error}`}
+          </p>
+        ) : null}
       </Confirmacion>
     </div>
   );

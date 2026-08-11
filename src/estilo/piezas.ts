@@ -880,6 +880,94 @@ export function piezas(): string {
 }
 
 /* ================================================================ */
+/* EL MENU DE ACCIONES DE UN RENGLON                                 */
+/* ================================================================ */
+/*
+ * VIVE AQUI Y NO EN LA HOJA DE UN MODULO, y esa es toda la leccion.
+ *
+ * Servicios, Cursos y Productos usaban un menu cuyas clases vivian en la hoja de
+ * CLIENTES. El dia que esa hoja se limpio —porque Clientes ya no lo usaba— los
+ * tres menus se quedaron sin estilo a la vez: texto pelon, sin caja, sin sombra,
+ * encimado contra el borde de la tabla. Y no fallo nada: ni los tipos, ni las
+ * catorce guardias, ni las mil doscientas pruebas. Se vio en una foto.
+ *
+ * Una pieza que usan tres modulos es una pieza COMPARTIDA. Aqui no se la puede
+ * llevar la limpieza de nadie.
+ */
+.pz-menu { position: relative; display: inline-flex; flex: none; }
+
+/* El tirador gira un poco al abrir: dice "yo abri esto". */
+.pz-menu__tirador[aria-expanded='true'] {
+  background: ${v('superficie-tenue')};
+  color: ${v('texto')};
+}
+
+.pz-menu__panel {
+  /*
+   * FIJO A LA VENTANA, no colgado del tirador. El tirador vive dentro del marco
+   * de la tabla, que lleva "overflow-x: auto" para que una tabla ancha se
+   * desplace sin mover la pagina — y un contenedor que desplaza RECORTA, en los
+   * dos ejes, aunque solo se le pida uno. En el ultimo renglon de la tabla, la
+   * ultima opcion del menu salia cortada por la mitad; y la ultima opcion es la
+   * de eliminar. El sitio exacto lo pone "menu.tsx" al abrir.
+   */
+  position: fixed;
+  /*
+   * Por encima del velo (40) y de la barra lateral (50) de la base. Si quedara
+   * debajo, el menu simplemente no aparece — y se busca el error en el
+   * componente, que esta bien.
+   */
+  z-index: 60;
+  min-width: 210px;
+  padding: ${v('espacio-1')};
+  display: flex; flex-direction: column; gap: 2px;
+  background: ${v('superficie-elevada')};
+  border: 1px solid ${c('borde-tarjeta')};
+  border-radius: ${c('radio-tarjeta')};
+  box-shadow: ${c('sombra-alta')};
+  /* Entra desde el tirador, que es de donde parece que sale. */
+  transform-origin: top right;
+  animation: mv-brota ${v('movimiento-instantaneo')} ${v('movimiento-curva')} backwards;
+}
+/* Si no cabe abajo se abre hacia arriba: un menu que se sale por el pie obliga a
+   desplazar para leer la ultima opcion, que suele ser la de borrar. */
+.pz-menu__panel--arriba { transform-origin: bottom right; }
+
+.pz-menu__opcion {
+  display: flex; align-items: center; gap: ${v('espacio-3')};
+  min-height: 40px;
+  padding: 0 ${v('espacio-3')};
+  border: none; border-radius: 10px;
+  background: transparent; color: ${v('texto')};
+  font-family: ${v('familia')}; font-size: ${v('texto-chico')};
+  text-align: left; cursor: pointer; white-space: nowrap;
+  transition: background ${v('movimiento-curva')} ${v('movimiento-instantaneo')},
+              color ${v('movimiento-curva')} ${v('movimiento-instantaneo')};
+}
+.pz-menu__opcion:hover { background: ${v('marca-tenue')}; color: ${v('marca')}; }
+.pz-menu__opcion:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
+.pz-menu__icono { display: flex; flex: none; color: ${v('texto-tenue')}; }
+.pz-menu__opcion:hover .pz-menu__icono { color: ${v('marca')}; }
+
+/*
+ * LA DE BORRAR VA EN ROJO Y SEPARADA. Pegada a "Editar" se aprieta por error, y
+ * es la unica del menu que no se puede deshacer sola.
+ */
+.pz-menu__opcion--peligro {
+  color: ${v('peligro')};
+  margin-top: ${v('espacio-1')};
+  padding-top: ${v('espacio-2')};
+  border-top: 1px solid ${c('borde-tenue')};
+  border-radius: 0 0 10px 10px;
+}
+.pz-menu__opcion--peligro .pz-menu__icono { color: ${v('peligro')}; }
+.pz-menu__opcion--peligro:hover {
+  background: ${v('peligro-tenue')};
+  color: ${v('peligro')};
+}
+.pz-menu__opcion--peligro:hover .pz-menu__icono { color: ${v('peligro')}; }
+
+/* ================================================================ */
 /* LO QUE FLOTA ENCIMA: velos, modales y confirmaciones              */
 /* ================================================================ */
 /*
