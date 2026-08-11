@@ -5,3 +5,4 @@ dist/
 !.env.ejemplo
 *.local
 .DS_Store
+capturas/

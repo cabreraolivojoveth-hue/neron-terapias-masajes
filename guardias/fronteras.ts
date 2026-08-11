@@ -457,6 +457,44 @@ function guardiaTodaOperacionRefrescaInicio(): void {
 }
 
 /* ------------------------------------------------------------------ */
+/* 12 — La vitrina no se cuela al producto                             */
+/* ------------------------------------------------------------------ */
+/**
+ * `pruebas-visuales/` levanta la aplicacion con un SERVIDOR FALSO para poder
+ * fotografiarla y compararla contra el diseño. Es utileria de revision, como
+ * los datos de una prueba.
+ *
+ * Si `src` importara cualquier cosa de ahi, esa utileria viajaria al navegador
+ * de un centro de verdad: la pantalla ensañaria pacientes inventados y cifras
+ * que no existen, y —lo peor— se veria perfectamente normal. Es exactamente el
+ * fallo que la regla numero uno del producto existe para evitar.
+ *
+ * `tsconfig.build.json` ya solo compila `src`, asi que hoy no cabria. Esta
+ * guardia esta para el dia que alguien agregue la carpeta a esa lista sin
+ * pensar en esto.
+ */
+function guardiaLaVitrinaNoSeCuela(): void {
+  for (const archivo of FUENTE) {
+    const limpio = sinComentarios(readFileSync(archivo, 'utf8'));
+    if (/pruebas-visuales/.test(limpio)) {
+      fallar(archivo, 'importa algo de pruebas-visuales/',
+        'Esa carpeta trae un servidor falso con datos inventados, para poder mirar la pantalla. ' +
+        'Si viaja al producto, un centro de verdad ve pacientes que no existen — y se ve normal, ' +
+        'que es lo que lo hace grave.');
+    }
+  }
+
+  const paquete = JSON.parse(readFileSync(join(RAIZ, 'tsconfig.build.json'), 'utf8')) as {
+    include?: string[];
+  };
+  if ((paquete.include ?? []).some((x) => x.includes('pruebas-visuales'))) {
+    fallar('tsconfig.build.json', 'compila pruebas-visuales/ dentro del producto',
+      'Lo que se publica sale de `src` y de nada mas. La vitrina es utileria de revision: ' +
+      'quitala de la lista.');
+  }
+}
+
+/* ------------------------------------------------------------------ */
 
 const GUARDIAS = [
   { nombre: 'ni un dato de ejemplo', correr: guardiaSinDatosDeEjemplo },
@@ -470,6 +508,7 @@ const GUARDIAS = [
   { nombre: 'el candado apunta a la misma base que el package.json', correr: guardiaCandadoAlDiaConLaBase },
   { nombre: 'las capacidades del producto llegan al portero', correr: guardiaCapacidadesLleganAlPortero },
   { nombre: 'toda operacion refresca el tablero de Inicio', correr: guardiaTodaOperacionRefrescaInicio },
+  { nombre: 'la vitrina no se cuela al producto', correr: guardiaLaVitrinaNoSeCuela },
 ];
 
 for (const g of GUARDIAS) g.correr();

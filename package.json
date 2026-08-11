@@ -11,7 +11,9 @@
     "pruebas": "vitest run",
     "fronteras": "tsx guardias/fronteras.ts",
     "consistencia": "tsx scripts/consistencia.ts",
-    "ataques": "tsx pruebas-bd/ataques.ts"
+    "ataques": "tsx pruebas-bd/ataques.ts",
+    "vitrina": "vite --config pruebas-visuales/vite.config.ts",
+    "capturas": "tsx scripts/capturas.ts"
   },
   "dependencies": {
     "@neron/base": "git+https://github.com/cabreraolivojoveth-hue/base-neronprogramas.git#v1.1.0",
@@ -29,6 +31,7 @@
     "@vitejs/plugin-react": "^5.1.1",
     "happy-dom": "^20.11.1",
     "pg": "^8.22.0",
+    "playwright": "^1.62.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^7.2.4",
