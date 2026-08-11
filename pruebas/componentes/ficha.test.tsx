@@ -169,11 +169,47 @@ describe('guardar', () => {
     expect(screen.getByText('Escribe el nombre del cliente.')).toBeTruthy();
   });
 
-  it('lo secundario empieza plegado', () => {
-    // Un formulario de alta con diez campos visibles hace que se capture
-    // menos, no mas.
+  it('lo clinico empieza plegado, y cada seccion dice que trae', () => {
+    /**
+     * Un formulario de alta con veinte campos a la vista hace que se capture
+     * MENOS, no mas: se abandona a la mitad. Plegado, dar de alta a alguien son
+     * cuatro campos.
+     *
+     * Y el tirador dice QUE hay dentro sin abrirlo. Antes decia "Información
+     * adicional", que no dice nada — y en un centro de terapias lo que alguien
+     * tiene NO es informacion adicional.
+     */
     render(<FichaDeCliente {...props} />);
-    expect(screen.queryByLabelText(/Notas/)).toBeNull();
-    expect(screen.getByRole('button', { name: /Información adicional/ })).toBeTruthy();
+    expect(screen.queryByLabelText(/Notas generales/)).toBeNull();
+    expect(screen.queryByLabelText(/Padecimientos/)).toBeNull();
+
+    expect(screen.getByRole('button', { name: /Ficha de salud/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Contacto de emergencia/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Datos y cómo llegó/ })).toBeTruthy();
+    // "Información adicional" ya no existe: no decia nada.
+    expect(screen.queryByRole('button', { name: /Información adicional/ })).toBeNull();
+  });
+
+  it('al abrir la ficha de salud salen los campos clinicos', async () => {
+    render(<FichaDeCliente {...props} />);
+    await userEvent.click(screen.getByRole('button', { name: /Ficha de salud/ }));
+    for (const campo of [
+      /Contraindicaciones/, /Padecimientos/, /Alergias/, /Medicamentos/,
+      /Cirugías o lesiones/, /Embarazo o lactancia/, /Presión preferida/,
+    ]) {
+      expect(screen.getByLabelText(campo), String(campo)).toBeTruthy();
+    }
+  });
+
+  it('lo clinico se guarda tal cual, con sus saltos de linea', async () => {
+    // Lo clinico conserva lo que se escribio: aplanarlo en un parrafo lo vuelve
+    // ilegible justo cuando hay que leerlo rapido, antes de una sesion.
+    const guardar = vi.fn();
+    render(<FichaDeCliente {...props} onGuardar={guardar} />);
+    await userEvent.type(screen.getByLabelText(/Nombre/), 'Alguien');
+    await userEvent.click(screen.getByRole('button', { name: /Ficha de salud/ }));
+    await userEvent.type(screen.getByLabelText(/Contraindicaciones/), 'Nada de presión firme');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    expect(guardar.mock.calls[0]?.[0]?.contraindicaciones).toBe('Nada de presión firme');
   });
 });

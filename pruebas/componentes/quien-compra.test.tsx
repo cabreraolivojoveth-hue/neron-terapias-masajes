@@ -28,6 +28,10 @@ const EXPEDIENTE: ExpedienteDeCliente = {
   profesionalId: null, profesional: null,
   visitas: 3, canceladas: 0, noAsistio: 0, ultimaVisita: null, proximaCita: null,
   compras: 2, totalGastado: 150000, adeudo: 0, cursos: 0, servicios: [],
+  padecimientos: null, alergias: null, medicamentos: null, cirugias: null,
+  embarazo: null, contraindicaciones: null, presionPreferida: null, aromasEvitar: null,
+  direccion: null, ocupacion: null, contactoEmergencia: null, telefonoEmergencia: null,
+  comoNosConocio: null, referidoPor: null, sesiones: [],
 };
 
 function pintar(extra: Partial<React.ComponentProps<typeof QuienCompra>> = {}) {

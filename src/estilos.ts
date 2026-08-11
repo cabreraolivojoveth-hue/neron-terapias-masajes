@@ -446,6 +446,18 @@ function loQueTodaviaEsDeUnModulo(): string {
 }
 .agenda-cita--compacta > span,
 .agenda-cita__cuerpo > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/*
+ * LA HORA Y EL NOMBRE COMPARTEN RENGLON. El alto del bloque lo fija la duracion
+ * de la cita, y con tres renglones el servicio salia cortado. La hora va antes y
+ * en tono tenue: es la referencia, el nombre es lo que se busca.
+ */
+.agenda-cita__linea {
+  display: flex; align-items: baseline; gap: ${v('espacio-2')}; min-width: 0;
+}
+.agenda-cita__linea .agenda-cita__hora { flex: none; }
+.agenda-cita__linea .agenda-cita__quien {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .agenda-cita__cuerpo { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .agenda-cita__marca {
   display: flex; flex: none;
@@ -1295,6 +1307,57 @@ function loQueTodaviaEsDeUnModulo(): string {
  * lo decide su contenido.
  */
 .cli-exp--vacio { align-self: stretch; justify-content: center; min-height: 300px; }
+
+/*
+ * EL AVISO CLINICO. Va arriba de todo y solo aparece cuando hay algo que avisar:
+ * una franja permanente que casi siempre esta vacia se deja de mirar en una
+ * semana, y entonces no avisa de nada.
+ */
+.cli-aviso {
+  display: flex; align-items: flex-start; gap: ${v('espacio-3')};
+  padding: ${v('espacio-4')};
+  border: 1px solid ${v('advertencia')};
+  border-left-width: 4px;
+  border-radius: ${c('radio-control')};
+  background: ${v('advertencia-tenue')};
+  min-width: 0;
+  animation: mv-entra ${v('movimiento-normal')} ${v('movimiento-curva')} backwards;
+}
+.cli-aviso__marca { flex: none; display: flex; color: ${v('advertencia')}; }
+.cli-aviso__cuerpo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cli-aviso__titulo {
+  font-size: ${v('texto-micro')}; font-weight: ${v('peso-fuerte')};
+  color: ${v('advertencia')}; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.cli-aviso__linea {
+  margin: 0; font-size: ${v('texto-chico')};
+  overflow-wrap: anywhere;
+}
+
+/*
+ * LAS NOTAS DE CADA SESION. Se leen de arriba hacia abajo como un diario, con
+ * una linea de tiempo a la izquierda: sin ella, veinte notas seguidas se ven
+ * como un solo parrafo largo y no se distingue donde acaba una sesion.
+ */
+.cli-sesiones {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: ${v('espacio-4')};
+}
+.cli-sesion {
+  position: relative;
+  padding-left: ${v('espacio-4')};
+  border-left: 2px solid ${c('borde-tarjeta')};
+  min-width: 0;
+}
+.cli-sesion::before {
+  content: '';
+  position: absolute; left: -5px; top: 4px;
+  width: 8px; height: 8px;
+  border-radius: ${c('radio-pastilla')};
+  background: ${v('marca')};
+}
+.cli-sesion__cuenta { display: none; }
+.cli-sesion__cuando { display: flex; flex-direction: column; gap: 1px; margin-bottom: ${v('espacio-2')}; }
 
 .cli-exp__adeudo { color: ${v('peligro')}; font-weight: ${v('peso-fuerte')}; }
 

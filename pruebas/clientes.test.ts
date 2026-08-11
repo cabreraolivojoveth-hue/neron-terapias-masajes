@@ -14,6 +14,7 @@ vi.mock('../src/supabase.js', () => ({
 }));
 
 const {
+  DATOS_VACIOS,
   LO_QUE_TOCA_UN_CLIENTE,
   RESUMEN_DE_CLIENTES_VACIO,
   etiquetaDeEstadoDeCliente,
@@ -24,10 +25,9 @@ const {
   ordenarResumenDeClientes,
 } = await import('../src/datos/clientes.js');
 
-const ficha = (c: Record<string, string> = {}) => ({
-  nombre: '', telefono: '', correo: '', fechaNacimiento: '', notas: '', profesionalId: '',
-  ...c,
-});
+/* Parte del vacio canonico: con veinte campos, escribirlos aqui garantiza que
+   uno se quede corto al agregar el siguiente. */
+const ficha = (c: Partial<typeof DATOS_VACIOS> = {}) => ({ ...DATOS_VACIOS, ...c });
 
 describe('normalizar antes de guardar', () => {
   it('junta los espacios del nombre', () => {

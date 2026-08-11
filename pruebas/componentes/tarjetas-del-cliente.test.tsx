@@ -22,6 +22,10 @@ const exp = (c: Partial<ExpedienteDeCliente> = {}): ExpedienteDeCliente => ({
   ultimaVisita: { fecha: '10/07/2026', servicio: 'Sesión' },
   proximaCita: null, compras: 2, totalGastado: 150000, adeudo: 50000, cursos: 1,
   servicios: [{ nombre: 'Sesión', veces: 3 }],
+  padecimientos: null, alergias: null, medicamentos: null, cirugias: null,
+  embarazo: null, contraindicaciones: null, presionPreferida: null, aromasEvitar: null,
+  direccion: null, ocupacion: null, contactoEmergencia: null, telefonoEmergencia: null,
+  comoNosConocio: null, referidoPor: null, sesiones: [],
   ...c,
 });
 

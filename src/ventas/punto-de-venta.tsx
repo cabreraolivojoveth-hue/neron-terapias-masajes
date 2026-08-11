@@ -454,7 +454,11 @@ export function PuntoDeVenta({
   return (
     /* Dentro del Mostrador no es una pantalla: es el cuerpo de una pestaña. Sin
        "mv-pantalla" no vuelve a animar la entrada encima de la del padre. */
-    <div className={sinEncabezado ? 'vta' : 'cli srv vta mv-pantalla'}>
+    <div
+      className={
+        sinEncabezado ? 'pz-pantalla vta' : 'pz-pantalla vta mv-pantalla'
+      }
+    >
       {/*
         DENTRO DEL MOSTRADOR SE VA EL TITULO, PERO NO LAS ACCIONES.
 

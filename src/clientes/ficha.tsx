@@ -17,9 +17,10 @@
  */
 
 import { AreaDeTexto, Boton, Campo, Modal, Seleccion } from '@neron/base/ui';
+import { Plegable } from '../ui/plegable.js';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ProfesionalBreve } from '../datos/citas.js';
-import type { DatosDeCliente, PosibleDuplicado } from '../datos/clientes.js';
+import { DATOS_VACIOS, type DatosDeCliente, type PosibleDuplicado } from '../datos/clientes.js';
 
 /* ------------------------------------------------------------------ */
 /* Las validaciones, puras y probables sin navegador                   */
@@ -94,14 +95,9 @@ export function validarCliente(datos: DatosDeCliente, hoy: Date = new Date()): C
   return errores;
 }
 
-export const FICHA_VACIA: DatosDeCliente = {
-  nombre: '',
-  telefono: '',
-  correo: '',
-  fechaNacimiento: '',
-  notas: '',
-  profesionalId: '',
-};
+/* El vacio canonico vive con el tipo, en la capa de datos: con veinte campos,
+   tenerlo escrito en dos sitios garantiza que uno se quede corto. */
+export const FICHA_VACIA: DatosDeCliente = DATOS_VACIOS;
 
 /* ------------------------------------------------------------------ */
 
@@ -139,6 +135,8 @@ export function FichaDeCliente({
   const [errores, setErrores] = useState<CamposConError>({});
   const [duplicado, setDuplicado] = useState<PosibleDuplicado | null>(null);
   const [extras, setExtras] = useState(false);
+  const [salud, setSalud] = useState(false);
+  const [emergencia, setEmergencia] = useState(false);
 
   const poner = <K extends keyof DatosDeCliente>(k: K, valor: DatosDeCliente[K]): void =>
     setV((a) => ({ ...a, [k]: valor }));
@@ -247,27 +245,167 @@ export function FichaDeCliente({
           />
         </div>
 
-        {/* Lo secundario va plegado: un formulario de alta con diez campos
-            visibles hace que se capture menos, no más. */}
-        <button
-          type="button"
-          className="pz-columna__mas"
-          aria-expanded={extras}
-          onClick={() => setExtras((a) => !a)}
+        {/*
+          LO CLINICO VA PLEGADO, PERO NO ESCONDIDO.
+          Un formulario de alta con veinte campos a la vista hace que se capture
+          MENOS, no mas: se abandona a la mitad. Plegado, dar de alta a alguien
+          son cuatro campos, y lo demas se completa en su expediente cuando hay
+          tiempo — que es como pasa de verdad en un mostrador.
+          El boton era un "button" pelon sin estilo del sistema. Ahora es una
+          pieza compartida con su flecha que gira, igual que todo lo demas.
+        */}
+        <Plegable
+          titulo="Ficha de salud"
+          detalle="Lo que hay que saber antes de una sesión"
+          abierto={salud}
+          onAlternar={() => setSalud((a) => !a)}
         >
-          {extras ? '− Ocultar información adicional' : '+ Información adicional'}
-        </button>
-
-        {extras ? (
+          {/*
+            ESTO NO ES "INFORMACION ADICIONAL": en un centro de terapias es lo
+            primero que hay que saber. Dar un descontracturante a quien trae una
+            hernia reciente, usar lavanda con quien es alergico o presion firme a
+            quien toma anticoagulantes son daños de verdad, y ninguno se ve en la
+            cara. Por eso las contraindicaciones van primero y aparte.
+          */}
           <AreaDeTexto
-            etiqueta="Notas"
+            etiqueta="Contraindicaciones"
+            value={v.contraindicaciones}
+            onChange={(e) => poner('contraindicaciones', e.target.value)}
+            rows={2}
+            maxLength={2000}
+            ayuda="Lo que NO se le puede hacer. Es lo primero que se lee antes de atenderla."
+          />
+          <div className="pz-dos">
+            <AreaDeTexto
+              etiqueta="Padecimientos"
+              value={v.padecimientos}
+              onChange={(e) => poner('padecimientos', e.target.value)}
+              rows={2}
+              maxLength={2000}
+              ayuda="Diabetes, hipertensión, hernias, migraña…"
+            />
+            <AreaDeTexto
+              etiqueta="Alergias"
+              value={v.alergias}
+              onChange={(e) => poner('alergias', e.target.value)}
+              rows={2}
+              maxLength={2000}
+              ayuda="Aceites, aromas, látex, medicamentos."
+            />
+          </div>
+          <div className="pz-dos">
+            <AreaDeTexto
+              etiqueta="Medicamentos"
+              value={v.medicamentos}
+              onChange={(e) => poner('medicamentos', e.target.value)}
+              rows={2}
+              maxLength={2000}
+              ayuda="Los que toma hoy. Algunos cambian la presión que se puede aplicar."
+            />
+            <AreaDeTexto
+              etiqueta="Cirugías o lesiones"
+              value={v.cirugias}
+              onChange={(e) => poner('cirugias', e.target.value)}
+              rows={2}
+              maxLength={2000}
+              ayuda="Y hace cuánto. Una cirugía reciente cambia todo."
+            />
+          </div>
+          <div className="pz-dos">
+            <Seleccion
+              etiqueta="Embarazo o lactancia"
+              value={v.embarazo}
+              onChange={(e) => poner('embarazo', e.target.value)}
+              ayuda="Cambia los aceites y las posiciones que se pueden usar."
+              opciones={[
+                { valor: '', texto: 'Sin especificar' },
+                { valor: 'no', texto: 'No' },
+                { valor: 'si', texto: 'Embarazo' },
+                { valor: 'lactancia', texto: 'Lactancia' },
+              ]}
+            />
+            <Seleccion
+              etiqueta="Presión preferida"
+              value={v.presionPreferida}
+              onChange={(e) => poner('presionPreferida', e.target.value)}
+              ayuda="Para no tener que preguntarlo en cada sesión."
+              opciones={[
+                { valor: '', texto: 'Sin preferencia' },
+                { valor: 'suave', texto: 'Suave' },
+                { valor: 'media', texto: 'Media' },
+                { valor: 'firme', texto: 'Firme' },
+              ]}
+            />
+          </div>
+          <Campo
+            etiqueta="Aromas que evitar"
+            value={v.aromasEvitar}
+            onChange={(e) => poner('aromasEvitar', e.target.value)}
+            ayuda="Los que le molestan aunque no sean alergia."
+          />
+        </Plegable>
+
+        <Plegable
+          titulo="Contacto de emergencia"
+          detalle="A quién llamar si algo pasa durante una sesión"
+          abierto={emergencia}
+          onAlternar={() => setEmergencia((a) => !a)}
+        >
+          <div className="pz-dos">
+            <Campo
+              etiqueta="Nombre"
+              value={v.contactoEmergencia}
+              onChange={(e) => poner('contactoEmergencia', e.target.value)}
+            />
+            <Campo
+              etiqueta="Teléfono"
+              type="tel"
+              value={v.telefonoEmergencia}
+              onChange={(e) => poner('telefonoEmergencia', e.target.value)}
+            />
+          </div>
+        </Plegable>
+
+        <Plegable
+          titulo="Datos y cómo llegó"
+          detalle="Dirección, ocupación y de dónde nos conoce"
+          abierto={extras}
+          onAlternar={() => setExtras((a) => !a)}
+        >
+          <div className="pz-dos">
+            <Campo
+              etiqueta="Ocupación"
+              value={v.ocupacion}
+              onChange={(e) => poner('ocupacion', e.target.value)}
+              ayuda="A qué se dedica: explica muchas tensiones."
+            />
+            <Campo
+              etiqueta="Cómo nos conoció"
+              value={v.comoNosConocio}
+              onChange={(e) => poner('comoNosConocio', e.target.value)}
+            />
+          </div>
+          <div className="pz-dos">
+            <Campo
+              etiqueta="Referido por"
+              value={v.referidoPor}
+              onChange={(e) => poner('referidoPor', e.target.value)}
+            />
+            <Campo
+              etiqueta="Dirección"
+              value={v.direccion}
+              onChange={(e) => poner('direccion', e.target.value)}
+            />
+          </div>
+          <AreaDeTexto
+            etiqueta="Notas generales"
             value={v.notas}
             onChange={(e) => poner('notas', e.target.value)}
             rows={4}
             maxLength={4000}
-            ayuda="Lo que necesites recordar de esta persona."
+            ayuda="Lo que necesites recordar de esta persona. Las notas de cada sesión se escriben en su cita."
           />
-        ) : null}
+        </Plegable>
 
         {error ? (
           <p className="pz-error__que" role="alert">

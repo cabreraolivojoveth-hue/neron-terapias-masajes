@@ -34,7 +34,7 @@ import {
   type ProfesionalBreve,
   type ServicioBreve,
 } from '../datos/citas.js';
-import { crearCliente } from '../datos/clientes.js';
+import { DATOS_VACIOS, crearCliente } from '../datos/clientes.js';
 import { useSesion } from '../identidad/sesion.js';
 import { ControlesDeAgenda } from './controles.js';
 import { ventanaDelDia } from './disposicion.js';
@@ -418,10 +418,12 @@ export function Agenda() {
              * y terapeuta asignado se completan despues en su expediente.
              */
             altaCliente.ejecutar(negocio, {
+              /* Se parte del vacio canonico: el alta rapida solo pregunta el
+                 nombre y el contacto, y lo clinico se completa despues en su
+                 expediente. Escribir los campos a mano aqui obligaria a volver
+                 cada vez que se agregue uno. */
+              ...DATOS_VACIOS,
               ...datos,
-              fechaNacimiento: '',
-              notas: '',
-              profesionalId: '',
             })
           }
           onCerrar={() => setFormulario(null)}

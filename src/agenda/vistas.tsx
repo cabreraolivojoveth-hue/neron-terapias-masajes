@@ -120,14 +120,23 @@ function ColumnaDelDia({
             </span>
           ) : null}
 
+          {/*
+            DOS RENGLONES, NO TRES. El alto del bloque lo fija la DURACION de la
+            cita —media hora son cincuenta y tres pixeles— y tres renglones de
+            texto piden sesenta y dos: el nombre del servicio salia cortado por
+            la mitad, tapado por el borde de abajo. Con la hora y el nombre en el
+            mismo renglon caben los dos y ya no se recorta nada.
+          */}
           <span className="agenda-cita__cuerpo">
             {/* En 24 horas, como el diseño. "09:00 a. m. – 10:00 a. m." ocupa
                 el doble en un bloque que ya va apretado, y en una agenda de
                 trabajo nadie duda de si las nueve son de la mañana. */}
+            <span className="agenda-cita__linea">
             <span className="agenda-cita__hora">
               {cita.horaInicio} – {cita.horaFin}
             </span>
             <span className="agenda-cita__quien">{cita.cliente}</span>
+            </span>
             {!compacta ? <span className="agenda-cita__que">{cita.servicio}</span> : null}
           </span>
 

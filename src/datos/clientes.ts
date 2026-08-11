@@ -96,6 +96,15 @@ export interface ServicioRecibido {
   readonly veces: number;
 }
 
+/** Una sesion ya dada, con lo que se anoto de ella. */
+export interface SesionDelExpediente {
+  readonly id: string;
+  readonly fecha: Fecha;
+  readonly servicio: string;
+  readonly profesional: string | null;
+  readonly notas: string;
+}
+
 export interface ExpedienteDeCliente {
   readonly id: string;
   readonly nombre: string;
@@ -122,6 +131,31 @@ export interface ExpedienteDeCliente {
   readonly adeudo: number;
   readonly cursos: number;
   readonly servicios: readonly ServicioRecibido[];
+
+  /* --- Lo clinico. Se lee ANTES de la sesion ----------------------- */
+  readonly padecimientos: string | null;
+  readonly alergias: string | null;
+  readonly medicamentos: string | null;
+  readonly cirugias: string | null;
+  readonly embarazo: string | null;
+  readonly contraindicaciones: string | null;
+  readonly presionPreferida: string | null;
+  readonly aromasEvitar: string | null;
+  readonly direccion: string | null;
+  readonly ocupacion: string | null;
+  readonly contactoEmergencia: string | null;
+  readonly telefonoEmergencia: string | null;
+  readonly comoNosConocio: string | null;
+  readonly referidoPor: string | null;
+
+  /**
+   * LAS NOTAS DE CADA SESION, de la mas reciente a la mas vieja.
+   *
+   * No viven en el cliente: son de la CITA, donde se escribieron. Es lo que deja
+   * llegar a la cuarta sesion sabiendo que se hizo en las tres anteriores en vez
+   * de volver a preguntar.
+   */
+  readonly sesiones: readonly SesionDelExpediente[];
 }
 
 export interface FiltrosDeClientes {
@@ -325,6 +359,32 @@ export async function traerExpediente(
       const x = s as Record<string, unknown>;
       return { nombre: texto(x['nombre']), veces: numero(x['veces']) };
     }),
+
+    padecimientos: opcional(c['padecimientos']),
+    alergias: opcional(c['alergias']),
+    medicamentos: opcional(c['medicamentos']),
+    cirugias: opcional(c['cirugias']),
+    embarazo: opcional(c['embarazo']),
+    contraindicaciones: opcional(c['contraindicaciones']),
+    presionPreferida: opcional(c['presionPreferida']),
+    aromasEvitar: opcional(c['aromasEvitar']),
+    direccion: opcional(c['direccion']),
+    ocupacion: opcional(c['ocupacion']),
+    contactoEmergencia: opcional(c['contactoEmergencia']),
+    telefonoEmergencia: opcional(c['telefonoEmergencia']),
+    comoNosConocio: opcional(c['comoNosConocio']),
+    referidoPor: opcional(c['referidoPor']),
+
+    sesiones: lista(c['sesiones']).map((x) => {
+      const z = x as Record<string, unknown>;
+      return {
+        id: texto(z['id']),
+        fecha: deBase(String(z['fecha']).slice(0, 10)),
+        servicio: texto(z['servicio']),
+        profesional: opcional(z['profesional']),
+        notas: texto(z['notas']),
+      };
+    }),
   };
 }
 
@@ -372,6 +432,19 @@ export async function traerSeguimientos(negocio: string, limite = 4): Promise<Se
 /* Operaciones                                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * LO QUE SE CAPTURA DE UNA PERSONA, y por que la mitad es clinico.
+ *
+ * En un centro de terapias, lo que alguien TIENE no es informacion adicional:
+ * es lo primero que hay que saber. Dar un descontracturante a quien trae una
+ * hernia reciente, usar lavanda con quien es alergico, o presion firme a quien
+ * toma anticoagulantes son daños de verdad, y ninguno se ve en la cara.
+ *
+ * Todo es texto libre y no listas cerradas a proposito: un catalogo de
+ * padecimientos hay que mantenerlo, y el dia que llegue uno que no esta se
+ * captura en el campo equivocado o no se captura. Lo que importa es que QUEDE
+ * ESCRITO y que se lea antes de la sesion.
+ */
 export interface DatosDeCliente {
   readonly nombre: string;
   readonly telefono: string;
@@ -379,7 +452,41 @@ export interface DatosDeCliente {
   readonly fechaNacimiento: string;
   readonly notas: string;
   readonly profesionalId: string;
+  /* --- Lo clinico: se lee ANTES de tocar a alguien ----------------- */
+  readonly padecimientos: string;
+  readonly alergias: string;
+  readonly medicamentos: string;
+  readonly cirugias: string;
+  /** "", "no", "si" o "lactancia". Cambia aceites y posiciones. */
+  readonly embarazo: string;
+  readonly contraindicaciones: string;
+  /* --- Como se le atiende ------------------------------------------ */
+  /** "", "suave", "media" o "firme". */
+  readonly presionPreferida: string;
+  readonly aromasEvitar: string;
+  /* --- Quien es y como llegó --------------------------------------- */
+  readonly direccion: string;
+  readonly ocupacion: string;
+  readonly contactoEmergencia: string;
+  readonly telefonoEmergencia: string;
+  readonly comoNosConocio: string;
+  readonly referidoPor: string;
 }
+
+/**
+ * UNA FICHA EN BLANCO, y vive aqui junto al tipo y no en el formulario.
+ *
+ * Con veinte campos, cada sitio que necesitaba una ficha vacia la escribia a
+ * mano — y al agregar un campo habia que acordarse de todos. Aqui es uno solo:
+ * el que falte lo caza el compilador.
+ */
+export const DATOS_VACIOS: DatosDeCliente = {
+  nombre: '', telefono: '', correo: '', fechaNacimiento: '', notas: '', profesionalId: '',
+  padecimientos: '', alergias: '', medicamentos: '', cirugias: '', embarazo: '',
+  contraindicaciones: '', presionPreferida: '', aromasEvitar: '',
+  direccion: '', ocupacion: '', contactoEmergencia: '', telefonoEmergencia: '',
+  comoNosConocio: '', referidoPor: '',
+};
 
 /**
  * Se NORMALIZA antes de guardar, y no es cosmetica.
@@ -393,15 +500,13 @@ export interface DatosDeCliente {
  * telefono" y "telefono en blanco" serian dos cosas distintas en la base y
  * ninguna consulta las trataria igual.
  */
-export function normalizar(datos: DatosDeCliente): {
-  nombre: string;
-  telefono: string | null;
-  correo: string | null;
-  fecha_nacimiento: string | null;
-  notas: string | null;
-  profesional_id: string | null;
-} {
+export function normalizar(datos: DatosDeCliente): Record<string, string | null> {
   const limpio = (v: string): string => v.trim().replace(/\s+/g, ' ');
+  /* Lo clinico conserva sus saltos de linea, igual que las notas: aplanar
+     "hernia L4
+rodilla derecha" en un parrafo lo vuelve ilegible justo cuando
+     hay que leerlo rapido. */
+  const libre = (v: string): string | null => v.trim() || null;
   return {
     nombre: limpio(datos.nombre),
     telefono: limpio(datos.telefono) || null,
@@ -411,6 +516,21 @@ export function normalizar(datos: DatosDeCliente): {
     // orillas. Aplanarlas convertiria una lista en un parrafo.
     notas: datos.notas.trim() || null,
     profesional_id: datos.profesionalId || null,
+
+    padecimientos: libre(datos.padecimientos),
+    alergias: libre(datos.alergias),
+    medicamentos: libre(datos.medicamentos),
+    cirugias: libre(datos.cirugias),
+    embarazo: datos.embarazo || null,
+    contraindicaciones: libre(datos.contraindicaciones),
+    presion_preferida: datos.presionPreferida || null,
+    aromas_evitar: libre(datos.aromasEvitar),
+    direccion: libre(datos.direccion),
+    ocupacion: limpio(datos.ocupacion) || null,
+    contacto_emergencia: limpio(datos.contactoEmergencia) || null,
+    telefono_emergencia: limpio(datos.telefonoEmergencia) || null,
+    como_nos_conocio: limpio(datos.comoNosConocio) || null,
+    referido_por: limpio(datos.referidoPor) || null,
   };
 }
 
@@ -429,7 +549,7 @@ export async function crearCliente(negocio: string, datos: DatosDeCliente): Prom
     telefono: opcional(creado['telefono']),
     correo: opcional(creado['correo']),
     fechaNacimiento: null,
-    profesionalId: fila.profesional_id,
+    profesionalId: fila['profesional_id'] ?? null,
     profesional: null,
     visitas: 0,
     ultimaVisita: null,

@@ -6516,3 +6516,155 @@ grant execute on function public.eliminar_producto(uuid) to authenticated;
 comment on function public.eliminar_producto is
   'Da de baja un producto que nunca debio existir. Se niega si ya se vendio: en ese caso lo que '
   'corresponde es desactivarlo, porque borrarlo dejaria renglones de venta apuntando a la nada.';
+
+-- =====================================================================
+-- EL EXPEDIENTE CLINICO DE UN CLIENTE
+-- =====================================================================
+--
+-- POR QUE ESTO NO ES "INFORMACION ADICIONAL": en un centro de terapias, lo que
+-- una persona tiene es lo PRIMERO que hay que saber, no un dato de relleno.
+-- Dar un masaje descontracturante a alguien con una hernia reciente, usar
+-- lavanda con quien es alergico, o aplicar presion firme a quien toma
+-- anticoagulantes son daños de verdad — y ninguno se ve en la cara.
+--
+-- CADA COLUMNA ES TEXTO LIBRE Y NO UNA LISTA CERRADA, a proposito. Un catalogo
+-- de padecimientos obligaria a mantenerlo y, el dia que llegue uno que no esta,
+-- se captura en el campo equivocado o no se captura. Aqui lo que importa es que
+-- QUEDE ESCRITO y que se lea antes de la sesion.
+--
+-- SE AGREGAN CON "if not exists" una por una: correr esto dos veces no hace
+-- nada, y en una base que ya tiene clientes no se pierde ni un dato.
+--
+alter table cliente add column if not exists padecimientos       text;
+alter table cliente add column if not exists alergias            text;
+alter table cliente add column if not exists medicamentos        text;
+alter table cliente add column if not exists cirugias            text;
+alter table cliente add column if not exists embarazo            text;
+alter table cliente add column if not exists contraindicaciones  text;
+alter table cliente add column if not exists direccion           text;
+alter table cliente add column if not exists ocupacion           text;
+alter table cliente add column if not exists contacto_emergencia text;
+alter table cliente add column if not exists telefono_emergencia text;
+alter table cliente add column if not exists como_nos_conocio    text;
+alter table cliente add column if not exists referido_por        text;
+alter table cliente add column if not exists presion_preferida   text;
+alter table cliente add column if not exists aromas_evitar       text;
+
+comment on column cliente.contraindicaciones is
+  'Lo que NO se le puede hacer a esta persona. Es la columna mas importante de la tabla: se lee '
+  'antes de tocarla, y por eso el expediente la enseña arriba y aparte.';
+comment on column cliente.embarazo is
+  'no, si o lactancia. Cambia que aceites y que posiciones se pueden usar, asi que no es un dato '
+  'mas: es una contraindicacion con nombre propio.';
+
+-- El expediente ahora tambien trae lo clinico Y el historial de notas de sesion.
+create or replace function public.expediente_del_cliente(
+  p_cliente uuid, p_hoy date default current_date
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select jsonb_build_object(
+    'id', c.id,
+    'nombre', c.nombre,
+    'telefono', c.telefono,
+    'correo', c.correo,
+    'fechaNacimiento', c.fecha_nacimiento,
+    'notas', c.notas,
+    'clienteDesde', c.creado_en,
+    'archivado', c.eliminado,
+    'profesionalId', c.profesional_id,
+    'profesional', (select m.nombre from membresia m where m.id = c.profesional_id),
+    -- Lo clinico. Va junto y con nombres claros: quien lo lee esta a punto de
+    -- ponerle las manos encima a alguien.
+    'padecimientos', c.padecimientos,
+    'alergias', c.alergias,
+    'medicamentos', c.medicamentos,
+    'cirugias', c.cirugias,
+    'embarazo', c.embarazo,
+    'contraindicaciones', c.contraindicaciones,
+    'direccion', c.direccion,
+    'ocupacion', c.ocupacion,
+    'contactoEmergencia', c.contacto_emergencia,
+    'telefonoEmergencia', c.telefono_emergencia,
+    'comoNosConocio', c.como_nos_conocio,
+    'referidoPor', c.referido_por,
+    'presionPreferida', c.presion_preferida,
+    'aromasEvitar', c.aromas_evitar,
+    'visitas', (select count(*) from cita v
+                 where v.cliente_id = c.id and v.estado = 'completada' and not v.eliminado),
+    'canceladas', (select count(*) from cita v
+                    where v.cliente_id = c.id and v.estado = 'cancelada' and not v.eliminado),
+    'noAsistio', (select count(*) from cita v
+                   where v.cliente_id = c.id and v.estado = 'no_asistio' and not v.eliminado),
+    'ultimaVisita', (select jsonb_build_object('fecha', v.fecha, 'servicio', s.nombre)
+                      from cita v join servicio s on s.id = v.servicio_id
+                      where v.cliente_id = c.id and v.estado = 'completada' and not v.eliminado
+                      order by v.fecha desc, v.hora_inicio desc limit 1),
+    'proximaCita', (select jsonb_build_object('id', v.id, 'fecha', v.fecha,
+                                              'hora', v.hora_inicio, 'servicio', s.nombre)
+                     from cita v join servicio s on s.id = v.servicio_id
+                     where v.cliente_id = c.id and not v.eliminado
+                       and v.estado in ('pendiente', 'confirmada') and v.fecha >= p_hoy
+                     order by v.fecha, v.hora_inicio limit 1),
+    'compras', (select count(*) from venta ve
+                 where ve.cliente_id = c.id and ve.estado = 'cobrada' and not ve.eliminado),
+    'totalGastado', coalesce((select sum(ve.total_centavos) from venta ve
+                               where ve.cliente_id = c.id and ve.estado = 'cobrada'
+                                 and not ve.eliminado), 0),
+    'adeudo', greatest(coalesce((
+      select sum(ve.total_centavos - coalesce((
+        select sum(pg.monto_centavos) from pago pg where pg.venta_id = ve.id
+      ), 0))
+      from venta ve
+      where ve.cliente_id = c.id and ve.estado = 'cobrada' and not ve.eliminado
+    ), 0), 0),
+    'cursos', (select count(*) from inscripcion i
+                where i.cliente_id = c.id and i.estado <> 'cancelado'),
+    'servicios', coalesce((
+      select jsonb_agg(jsonb_build_object('nombre', y.nombre, 'veces', y.veces)
+                       order by y.veces desc, y.nombre)
+      from (
+        select s.nombre, count(*)::int as veces
+        from cita v join servicio s on s.id = v.servicio_id
+        where v.cliente_id = c.id and v.estado = 'completada' and not v.eliminado
+        group by s.nombre
+        limit 5
+      ) y
+    ), '[]'::jsonb),
+    -- ---------------------------------------------------------------
+    -- LAS NOTAS DE CADA SESION, que es el historial de verdad.
+    -- ---------------------------------------------------------------
+    -- No se guardan en el cliente: son de la CITA, donde se escribieron. Aqui
+    -- solo se juntan las que tienen algo escrito, de la mas reciente a la mas
+    -- vieja. Es lo que deja llegar a la cuarta sesion sabiendo que se hizo en
+    -- las tres anteriores, en vez de preguntar otra vez.
+    'sesiones', coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'id', z.id, 'fecha', z.fecha, 'servicio', z.servicio,
+               'profesional', z.profesional, 'notas', z.notas)
+             order by z.fecha desc)
+      from (
+        select v.id, v.fecha, s.nombre as servicio, m.nombre as profesional, v.notas
+        from cita v
+        join servicio s on s.id = v.servicio_id
+        left join membresia m on m.id = v.profesional_id
+        where v.cliente_id = c.id and not v.eliminado
+          and v.estado = 'completada'
+          and v.notas is not null and btrim(v.notas) <> ''
+        order by v.fecha desc, v.hora_inicio desc
+        limit 20
+      ) z
+    ), '[]'::jsonb)
+  )
+  from cliente c
+  where c.id = p_cliente;
+$$;
+
+comment on function public.expediente_del_cliente is
+  'El expediente UNE lo que ya vive en otros modulos, y ahora tambien lo clinico y las notas de '
+  'cada sesion. Ni una de las cifras esta guardada en la tabla cliente: se cuentan desde citas, '
+  'ventas, pagos e inscripciones. Las notas de sesion son de la cita, donde se escribieron.';

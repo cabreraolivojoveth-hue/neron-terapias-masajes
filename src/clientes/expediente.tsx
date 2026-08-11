@@ -41,6 +41,7 @@ import { iniciales } from './lista-de-clientes.js';
 export const PESTANAS_DEL_EXPEDIENTE: readonly { clave: string; etiqueta: string; icono: NombreDeIcono }[] = [
   { clave: 'resumen', etiqueta: 'Resumen', icono: 'persona' },
   { clave: 'historial', etiqueta: 'Historial', icono: 'reloj' },
+  { clave: 'sesiones', etiqueta: 'Sesiones', icono: 'flor' },
   { clave: 'notas', etiqueta: 'Notas', icono: 'nota' },
 ];
 
@@ -84,6 +85,93 @@ function Cuenta({ n, que }: { readonly n: number; readonly que: string }) {
       <span className="tt-dato">{n}</span>
       <span className="tt-pie">{que}</span>
     </span>
+  );
+}
+
+/**
+ * EL AVISO CLINICO — lo que hay que saber ANTES de tocar a alguien.
+ *
+ * Va arriba, fuera de las pestañas y sin un solo toque, porque escondido en una
+ * pestaña quien va a dar la sesion tendria que acordarse de ir a buscarlo. El
+ * dia que no se acuerde es justo el dia que importaba.
+ *
+ * Y solo aparece SI HAY ALGO QUE AVISAR. Una franja permanente que casi siempre
+ * esta vacia se deja de mirar en una semana, y entonces no avisa de nada.
+ */
+export function AvisoClinico({ e }: { readonly e: ExpedienteDeCliente }) {
+  const hay = [
+    e.contraindicaciones ? { que: 'No se le puede', valor: e.contraindicaciones } : null,
+    e.alergias ? { que: 'Alergias', valor: e.alergias } : null,
+    e.embarazo === 'si' ? { que: 'Embarazo', valor: 'Cambia aceites y posiciones' } : null,
+    e.embarazo === 'lactancia' ? { que: 'Lactancia', valor: 'Cambia aceites' } : null,
+  ].filter((x): x is { que: string; valor: string } => x !== null);
+
+  if (hay.length === 0) return null;
+
+  return (
+    <aside className="cli-aviso" role="note" aria-label="Antes de atenderla">
+      <span className="cli-aviso__marca" aria-hidden="true">
+        <Icono nombre="alerta" lado={20} />
+      </span>
+      <div className="cli-aviso__cuerpo">
+        <span className="cli-aviso__titulo">Antes de atenderla</span>
+        {hay.map((x) => (
+          <p key={x.que} className="cli-aviso__linea">
+            <strong>{x.que}:</strong> {x.valor}
+          </p>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+/** Como se lee lo que se guardo en el selector. */
+export function comoSeLeeElEmbarazo(v: string | null): string | null {
+  if (v === 'si') return 'Embarazo';
+  if (v === 'lactancia') return 'Lactancia';
+  if (v === 'no') return 'No';
+  return null;
+}
+
+/**
+ * LA FICHA DE SALUD, completa.
+ *
+ * Solo se pintan los datos que EXISTEN. Nueve rotulos con un guion al lado no
+ * informan de nada y hacen creer que la ficha esta llena. Si no hay ninguno, se
+ * dice que falta capturarla — que es una accion, no un hueco.
+ */
+export function FichaDeSalud({ e }: { readonly e: ExpedienteDeCliente }) {
+  const datos = [
+    { que: 'Padecimientos', valor: e.padecimientos },
+    { que: 'Alergias', valor: e.alergias },
+    { que: 'Medicamentos', valor: e.medicamentos },
+    { que: 'Cirugías o lesiones', valor: e.cirugias },
+    { que: 'Embarazo o lactancia', valor: comoSeLeeElEmbarazo(e.embarazo) },
+    { que: 'No se le puede', valor: e.contraindicaciones },
+    { que: 'Presión preferida', valor: e.presionPreferida },
+    { que: 'Aromas que evitar', valor: e.aromasEvitar },
+    { que: 'Contacto de emergencia', valor: e.contactoEmergencia },
+    { que: 'Teléfono de emergencia', valor: e.telefonoEmergencia },
+  ].filter((d) => d.valor);
+
+  return (
+    <section className="pz-tarjeta pz-tarjeta--apretada">
+      <h4 className="tt-tarjeta">Ficha de salud</h4>
+      {datos.length === 0 ? (
+        <p className="tt-falta">
+          Todavía no se ha capturado. Es lo que hay que saber antes de una sesión: padecimientos,
+          alergias, medicamentos y lo que no se le puede hacer.
+        </p>
+      ) : (
+        <div className="pz-datos">
+          {datos.map((d) => (
+            <Dato key={d.que} que={d.que}>
+              <span className="tt-libre">{d.valor}</span>
+            </Dato>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -231,6 +319,14 @@ export function Expediente({
         ) : null}
       </header>
 
+      {/*
+        LO QUE NO SE PUEDE HACER VA ARRIBA Y FUERA DE LAS PESTAÑAS.
+        Escondido en una pestaña, quien va a dar la sesion tendria que acordarse
+        de ir a buscarlo — y el dia que no se acuerde es el dia que importaba.
+        Aqui se ve en cuanto se abre la ficha, sin un solo toque.
+      */}
+      <AvisoClinico e={e} />
+
       <div className="pz-pestanas" role="tablist" aria-label="Secciones del expediente">
         {PESTANAS_DEL_EXPEDIENTE.map((p) => (
           <button
@@ -281,6 +377,8 @@ export function Expediente({
               </div>
             </section>
 
+            <FichaDeSalud e={e} />
+
             <section className="pz-tarjeta pz-tarjeta--apretada">
               <div className="pz-cabecera">
                 <h4 className="tt-tarjeta">Notas generales</h4>
@@ -305,6 +403,42 @@ export function Expediente({
               )}
             </section>
           </>
+        ) : pestana === 'sesiones' ? (
+          <section className="pz-tarjeta pz-tarjeta--apretada">
+            <h4 className="tt-tarjeta">Notas de cada sesión</h4>
+            {/*
+              NO VIVEN EN EL CLIENTE: son de la CITA, donde se escribieron. Es lo
+              que deja llegar a la cuarta sesion sabiendo que se hizo en las tres
+              anteriores, en vez de volver a preguntar lo mismo.
+            */}
+            {e.sesiones.length === 0 ? (
+              <div className="pz-vacio pz-vacio--chico">
+                <span className="pz-vacio__icono" aria-hidden="true">
+                  <Icono nombre="nota" lado={22} />
+                </span>
+                <p className="pz-vacio__titulo">Todavía no hay notas de sesión</p>
+                <p className="pz-vacio__texto">
+                  Lo que se escriba en la cita al completarla aparece aquí, de la más reciente
+                  a la más antigua.
+                </p>
+              </div>
+            ) : (
+              <ol className="cli-sesiones">
+                {e.sesiones.map((ses) => (
+                  <li key={ses.id} className="cli-sesion">
+                    <div className="cli-sesion__cuando">
+                      <span className="pz-renglon__titulo">{fechaLarga(ses.fecha)}</span>
+                      <span className="pz-renglon__pie">
+                        {ses.servicio}
+                        {ses.profesional ? ` · ${ses.profesional}` : ''}
+                      </span>
+                    </div>
+                    <p className="tt-libre">{ses.notas}</p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
         ) : pestana === 'historial' ? (
           <>
             <section className="pz-tarjeta pz-tarjeta--apretada">

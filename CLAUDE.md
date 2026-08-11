@@ -105,6 +105,51 @@ hacia arriba, así que si el padre lo consumiera, el hijo lo leería vacío: "Nu
 venta" desde un expediente abriría la pestaña correcta **con el carrito en
 blanco**, sin fallar y sin avisar.
 
+## 4.c El expediente clínico manda
+
+En un centro de terapias, **lo que alguien tiene no es «información adicional»**:
+es lo primero que hay que saber. Dar un descontracturante a quien trae una hernia
+reciente, usar lavanda con quien es alérgico o presión firme a quien toma
+anticoagulantes son daños de verdad, y ninguno se ve en la cara.
+
+- `cliente` guarda **padecimientos, alergias, medicamentos, cirugías, embarazo,
+  contraindicaciones, presión preferida y aromas a evitar**, más contacto de
+  emergencia, dirección, ocupación y cómo llegó.
+- Todo es **texto libre, no listas cerradas**: un catálogo de padecimientos hay
+  que mantenerlo, y el día que llegue uno que no está se captura en el campo
+  equivocado o no se captura.
+- **Las contraindicaciones y las alergias se enseñan ARRIBA y fuera de las
+  pestañas** (`AvisoClinico`). Escondidas en una pestaña, quien va a dar la sesión
+  tendría que acordarse de buscarlas — y el día que no se acuerde es el que
+  importaba. El aviso solo aparece si hay algo que avisar: una franja permanente
+  y casi siempre vacía se deja de mirar en una semana.
+- **Las notas de cada sesión son de la CITA**, no del cliente: se escriben al
+  completarla y el expediente las junta en su pestaña, de la más reciente a la más
+  vieja. Es lo que deja llegar a la cuarta sesión sabiendo qué se hizo en las tres
+  anteriores.
+- **Editar a alguien desde la lista parte de `DATOS_VACIOS` y solo copia lo que
+  de verdad viene.** Un renglón de la lista trae cuatro campos y el expediente
+  veinte: escribirlos a mano hacía que editar desde la lista **borrara la ficha
+  clínica** mandando cadenas vacías.
+
+## 4.d Nada de controles genéricos
+
+Si un control se ve como HTML sin vestir, está mal — y la causa casi siempre es
+que alguien lo escribió a mano en vez de usar la pieza compartida:
+
+- **Menú de tres puntitos** → `MenuDeAcciones` (`src/ui/menu.tsx`), vestido con
+  `pz-menu`. Hubo tres copias, y las tres se quedaron sin estilo el día que se
+  limpió la hoja del módulo donde vivían sus clases.
+- **Sección que se pliega** → `Plegable` (`src/ui/plegable.tsx`), con `pz-plegable`.
+  Sustituye a un `button` pelón que decía «+ Información adicional».
+- **Selectores** → se visten por etiqueta (`select`) en `piezas.ts`, no por clase:
+  así no depende de que veintisiete sitios se acuerden de ponerla, y el próximo
+  sale bien sin que nadie haga nada.
+- **Un panel flotante dentro de una tabla va `position: fixed`**. El marco de la
+  tabla lleva `overflow-x: auto`, y un contenedor que desplaza **recorta en los
+  dos ejes** aunque solo se le pida uno: en el último renglón, la última opción
+  del menú salía cortada — y la última opción es la de eliminar.
+
 ## 5. Las conexiones entre módulos son parte del encargo
 
 Un módulo suelto no sirve. Agenda necesita Clientes, Ventas necesita Productos y

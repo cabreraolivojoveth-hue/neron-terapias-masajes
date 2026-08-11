@@ -642,6 +642,24 @@ export function piezas(): string {
  */
 .pz-encabezado__acciones .pz-buscador { flex: 0 1 320px; }
 
+/*
+ * CUANDO LAS ACCIONES SON LO UNICO DEL ENCABEZADO, SE LLEVAN EL RENGLON.
+ *
+ * Pasa dentro del Mostrador: el titulo lo pinta el padre, asi que aqui solo
+ * queda la fila de acciones. Con "flex: 0 1 auto" la fila se encogia a lo que
+ * midiera su contenido mas angosto —trescientos cuarenta y cinco pixeles— y
+ * envolvia: el buscador arriba y "Nueva venta" DEBAJO, apilados, con mil
+ * doscientos pixeles de renglon vacio al lado. Se veia amontonado justo en la
+ * pantalla donde se cobra todo el dia.
+ *
+ * Tomando el renglon completo caben los dos de sobra, y quedan a la derecha
+ * como en las demas pantallas.
+ */
+.pz-encabezado__acciones:only-child {
+  flex: 1;
+  justify-content: flex-end;
+}
+
 /* Cuerpo con panel lateral: la lista toma lo que sobra. */
 .pz-cuerpo {
   display: grid;
@@ -943,6 +961,63 @@ select:disabled { opacity: 0.5; cursor: default; }
 .pz-cuadricula {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: ${v('espacio-4')}; min-width: 0;
+}
+
+/* ================================================================ */
+/* UNA SECCION QUE SE PLIEGA                                         */
+/* ================================================================ */
+/*
+ * El alta de cliente abria la mitad de su formulario con un "button" pelon que
+ * decia "+ Información adicional": texto suelto con un mas escrito a mano, al
+ * lado de campos y botones que si estaban vestidos. Se veia a medio hacer.
+ *
+ * Ahora es una tarjeta con su tirador, su flecha que gira y su cuerpo que entra.
+ * Y dice QUE hay dentro sin abrirla, que es lo que decide si vale la pena.
+ */
+.pz-plegable {
+  border: 1px solid ${c('borde-tarjeta')};
+  border-radius: ${c('radio-control')};
+  background: ${v('superficie')};
+  overflow: hidden;
+  min-width: 0;
+  transition: border-color ${v('movimiento-curva')} ${v('movimiento-instantaneo')},
+              background ${v('movimiento-curva')} ${v('movimiento-instantaneo')};
+}
+.pz-plegable--abierto { border-color: ${v('marca-tenue')}; background: ${v('superficie-elevada')}; }
+
+.pz-plegable__tirador {
+  display: flex; align-items: center; gap: ${v('espacio-3')};
+  width: 100%;
+  min-height: 52px;
+  padding: ${v('espacio-3')} ${v('espacio-4')};
+  border: none; background: transparent;
+  color: ${v('texto')};
+  font-family: ${v('familia')};
+  text-align: left; cursor: pointer;
+  transition: background ${v('movimiento-curva')} ${v('movimiento-instantaneo')};
+}
+.pz-plegable__tirador:hover { background: ${v('superficie-tenue')}; }
+.pz-plegable__tirador:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
+
+.pz-plegable__texto { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pz-plegable__titulo { font-size: ${v('texto-chico')}; font-weight: ${v('peso-fuerte')}; }
+.pz-plegable__detalle { font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
+
+/* Apunta hacia abajo cerrada y gira al abrir: es lo que dice "esto se abre" sin
+   gastar una palabra ni cambiar el texto del boton. */
+.pz-plegable__flecha {
+  flex: none; display: flex; color: ${v('texto-tenue')};
+  transform: rotate(90deg);
+  transition: transform ${v('movimiento-curva')} ${v('movimiento-normal')},
+              color ${v('movimiento-curva')} ${v('movimiento-instantaneo')};
+}
+.pz-plegable--abierto .pz-plegable__flecha { transform: rotate(-90deg); color: ${v('marca')}; }
+
+.pz-plegable__cuerpo {
+  display: flex; flex-direction: column; gap: ${v('espacio-4')};
+  padding: 0 ${v('espacio-4')} ${v('espacio-4')};
+  min-width: 0;
+  animation: mv-sube ${v('movimiento-instantaneo')} ${v('movimiento-curva')} backwards;
 }
 
 /* ================================================================ */

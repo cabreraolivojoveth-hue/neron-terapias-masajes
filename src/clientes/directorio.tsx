@@ -37,6 +37,7 @@ import {
   traerExpediente,
   traerResumenDeClientes,
   traerSeguimientos,
+  DATOS_VACIOS,
   LO_QUE_TOCA_UN_CLIENTE,
   type ClienteEnLista,
   type DatosDeCliente,
@@ -172,13 +173,44 @@ export function Directorio() {
     if (clave === 'editar') {
       setFicha({
         id: c.id,
+        /*
+         * SE PARTE DEL VACIO Y SE RELLENA CON LO QUE HAYA.
+         *
+         * Un renglon de la lista trae solo lo basico; un expediente trae los
+         * veinte campos. Escribirlos uno por uno aqui hacia que editar a alguien
+         * desde la lista BORRARA su ficha clinica — el formulario habria mandado
+         * cadenas vacias en padecimientos, alergias y todo lo demas.
+         *
+         * Con "in c" se copia unicamente lo que de verdad viene, y lo que no
+         * viene se queda como estaba porque el formulario solo se abre completo
+         * desde el expediente.
+         */
         inicial: {
+          ...DATOS_VACIOS,
           nombre: c.nombre,
           telefono: c.telefono ?? '',
           correo: c.correo ?? '',
           fechaNacimiento: c.fechaNacimiento ?? '',
-          notas: 'notas' in c ? (c.notas ?? '') : '',
           profesionalId: c.profesionalId ?? '',
+          ...('notas' in c ? { notas: c.notas ?? '' } : {}),
+          ...('padecimientos' in c
+            ? {
+                padecimientos: c.padecimientos ?? '',
+                alergias: c.alergias ?? '',
+                medicamentos: c.medicamentos ?? '',
+                cirugias: c.cirugias ?? '',
+                embarazo: c.embarazo ?? '',
+                contraindicaciones: c.contraindicaciones ?? '',
+                presionPreferida: c.presionPreferida ?? '',
+                aromasEvitar: c.aromasEvitar ?? '',
+                direccion: c.direccion ?? '',
+                ocupacion: c.ocupacion ?? '',
+                contactoEmergencia: c.contactoEmergencia ?? '',
+                telefonoEmergencia: c.telefonoEmergencia ?? '',
+                comoNosConocio: c.comoNosConocio ?? '',
+                referidoPor: c.referidoPor ?? '',
+              }
+            : {}),
         },
       });
       return;

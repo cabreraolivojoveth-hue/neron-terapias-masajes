@@ -237,7 +237,11 @@ export function Cajon({ sinEncabezado = false, vista = 'cajon' }: PropiedadesDel
   return (
     /* Dentro del Mostrador es el cuerpo de una pestaña, no una pantalla: sin
        "mv-pantalla" no vuelve a animar la entrada encima de la del padre. */
-    <div className={sinEncabezado ? 'caja' : 'cli srv caja mv-pantalla'}>
+    <div
+      className={
+        sinEncabezado ? 'pz-pantalla caja' : 'pz-pantalla caja mv-pantalla'
+      }
+    >
       {/*
         DENTRO DEL MOSTRADOR SE VA EL TITULO, PERO NO LAS ACCIONES.
 
