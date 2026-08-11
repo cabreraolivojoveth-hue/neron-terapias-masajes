@@ -619,6 +619,7 @@ export function PuntoDeVenta() {
               onEfectivoRecibido={setEfectivoRecibido}
               onCobrar={() => void cobrar()}
               onCotizar={() => void cotizar()}
+              onIrACaja={() => ir('caja', { intencion: 'caja:abrir' })}
             />
           </div>
         </div>

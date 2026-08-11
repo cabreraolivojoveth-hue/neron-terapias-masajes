@@ -46,7 +46,7 @@ const TABLAS = ['cliente', 'servicio', 'curso', 'producto', 'cita', 'venta',
   'venta_item', 'pago', 'gasto', 'movimiento_caja', 'inscripcion', 'recordatorio',
   'categoria', 'sesion_curso', 'material_curso',
   'proveedor', 'producto_proveedor', 'movimiento_inventario',
-  'cotizacion', 'cotizacion_item'] as const;
+  'cotizacion', 'cotizacion_item', 'sesion_caja'] as const;
 
 const cliente = new pg.Client(CADENA ? { connectionString: CADENA } : {});
 
@@ -232,6 +232,18 @@ async function sembrar(): Promise<void> {
   categoriaOtra = ko.rows[0].id;
 
   await cliente.query('reset role');
+}
+
+/**
+ * Abre una caja dentro del bloque actual.
+ *
+ * Cada `como()` es una transaccion que se deshace al terminar, asi que la caja
+ * abierta en un bloque no existe en el siguiente. Y sin caja abierta ya no se
+ * puede cobrar en efectivo — que es justo la regla que Caja vino a poner.
+ */
+async function conCaja(negocio = CENTRO): Promise<string> {
+  const r = await cliente.query(`select (abrir_caja($1,'Caja de prueba',0)).id as id`, [negocio]);
+  return r.rows[0].id;
 }
 
 /** Deja una venta en borrador con un servicio y dos productos. */
@@ -944,6 +956,16 @@ async function correr(): Promise<void> {
   grupo('Gastos que alimentan la caja solos');
 
   await como(DUENA, async () => {
+    // UN GASTO EN EFECTIVO NECESITA CAJON ABIERTO: si no, ese dinero sale de
+    // un cajon que ningun corte va a contar.
+    const e = await rechazado(() => cliente.query(
+      `insert into gasto (negocio_id, descripcion, monto_centavos) values ($1,'Renta',500000)`,
+      [CENTRO]));
+    anotar('sin caja abierta NO se paga un gasto en efectivo', e !== null, e ?? 'lo pago');
+  });
+
+  await como(DUENA, async () => {
+    await cliente.query(`select abrir_caja($1,'Caja 1',600000)`, [CENTRO]);
     const g = await cliente.query(
       `insert into gasto (negocio_id, descripcion, monto_centavos) values ($1,'Renta',500000) returning id`, [CENTRO]);
     const r = await cliente.query(
@@ -953,6 +975,7 @@ async function correr(): Promise<void> {
   });
 
   await como(DUENA, async () => {
+    await cliente.query(`select abrir_caja($1,'Caja 1',600000)`, [CENTRO]);
     const g = await cliente.query(
       `insert into gasto (negocio_id, descripcion, monto_centavos) values ($1,'Error',100000) returning id`, [CENTRO]);
     await cliente.query(`update gasto set eliminado=true where id=$1`, [g.rows[0].id]);
@@ -1253,6 +1276,7 @@ async function correr(): Promise<void> {
   grupo('Ventas — el cobro no se puede torcer desde el navegador');
 
   await como(DUENA, async () => {
+    await conCaja();
     // EL PRECIO LO PONE EL SERVIDOR. Se manda uno de un peso a proposito.
     const r = await cliente.query(
       `select (registrar_venta($1,
@@ -1265,6 +1289,7 @@ async function correr(): Promise<void> {
   });
 
   await como(DUENA, async () => {
+    await conCaja();
     // LA IDEMPOTENCIA: la misma llave dos veces es UNA venta.
     const llave = 'llave-de-prueba';
     const a = await cliente.query(
@@ -1290,6 +1315,7 @@ async function correr(): Promise<void> {
   });
 
   await como(DUENA, async () => {
+    await conCaja();
     const e = await rechazado(() => cliente.query(
       `select registrar_venta($1,
          jsonb_build_array(jsonb_build_object('tipo','servicio','id',$2::text,'cantidad',1)),
@@ -1299,6 +1325,7 @@ async function correr(): Promise<void> {
   });
 
   await como(DUENA, async () => {
+    await conCaja();
     const e = await rechazado(() => cliente.query(
       `select registrar_venta($1,
          jsonb_build_array(jsonb_build_object('tipo','producto','id',$2::text,'cantidad',99)),
@@ -1309,6 +1336,7 @@ async function correr(): Promise<void> {
   });
 
   await como(DUENA, async () => {
+    await conCaja();
     // IDOR: un producto del OTRO centro, mandado desde este.
     const po = await cliente.query(
       `select id from producto where negocio_id=$1 limit 1`, [OTRO]);
@@ -1322,6 +1350,7 @@ async function correr(): Promise<void> {
   });
 
   await como(DUENA, async () => {
+    await conCaja();
     const e = await rechazado(() => cliente.query(
       `select registrar_venta($1,
          jsonb_build_array(jsonb_build_object('tipo','servicio','id',$2::text,'cantidad',1)),
@@ -1341,6 +1370,7 @@ async function correr(): Promise<void> {
   });
 
   await como(DUENA, async () => {
+    await conCaja();
     // EL PAGO MIXTO SON DOS PAGOS Y DOS MOVIMIENTOS DE CAJA, no uno "mixto".
     const r = await cliente.query(
       `select (registrar_venta($1,
@@ -1366,6 +1396,7 @@ async function correr(): Promise<void> {
   });
 
   await como(DUENA, async () => {
+    await conCaja();
     // CANCELAR NO BORRA: devuelve el stock con un movimiento CONTRARIO.
     const r = await cliente.query(
       `select (registrar_venta($1,
@@ -1381,15 +1412,21 @@ async function correr(): Promise<void> {
     const mov = await cuantos(
       `select * from movimiento_inventario where referencia_id=$1 and tipo='devolucion'`, [id]);
     anotar('con un movimiento CONTRARIO, sin borrar el de la venta', mov === 1, `hubo ${mov}`);
-    const eg = await cuantos(
-      `select * from movimiento_caja where referencia_id=$1 and tipo='egreso'`, [id]);
-    anotar('y la caja recibe el egreso contrario, no se corrige el ingreso', eg === 1, `hubo ${eg}`);
+    // El egreso cuelga del PAGO, no de la venta: devolver en efectivo lo que se
+    // cobro con tarjeta sacaria del cajon dinero que nunca estuvo ahi.
+    const eg = await cliente.query(
+      `select mc.tipo, mc.metodo from movimiento_caja mc
+        join pago p on p.id = mc.referencia_id
+       where p.venta_id = $1 and mc.tipo = 'egreso'`, [id]);
+    anotar('y la caja recibe el egreso contrario, uno por pago y con su metodo',
+      eg.rowCount === 1 && eg.rows[0].metodo === 'efectivo', JSON.stringify(eg.rows));
     const v = await cliente.query(`select estado from venta where id=$1`, [id]);
     anotar('la venta SIGUE en el historial, marcada como cancelada',
       v.rows[0].estado === 'cancelada', v.rows[0].estado);
   });
 
   await como(DUENA, async () => {
+    await conCaja();
     // UNA COTIZACION NO MUEVE NADA.
     const antes = await cliente.query(`select stock_actual from producto where id=$1`, [productoId]);
     const r = await cliente.query(
@@ -1410,6 +1447,7 @@ async function correr(): Promise<void> {
   });
 
   await como(DUENA, async () => {
+    await conCaja();
     const e = await rechazado(() => cliente.query(
       `select registrar_venta($1,
          jsonb_build_array(jsonb_build_object('tipo','servicio','id',$2::text,'cantidad',1,'descuento',99999999)),
@@ -1420,17 +1458,170 @@ async function correr(): Promise<void> {
   });
 
   await como(DUENA, async () => {
+    await conCaja();
     const e = await rechazado(() => cliente.query(
       `select registrar_venta($1, '[]'::jsonb, '[]'::jsonb)`, [CENTRO]));
     anotar('no se cobra una venta sin renglones', e !== null, e ?? 'la cobro');
   });
 
   await como(DUENA, async () => {
+    await conCaja();
     // EL FOLIO NO SE RECICLA aunque la venta se cancele.
     const a = await cliente.query(`select siguiente_folio($1) as f`, [CENTRO]);
     const b = await cliente.query(`select siguiente_folio($1) as f`, [CENTRO]);
     anotar('dos folios seguidos NUNCA son el mismo', a.rows[0].f !== b.rows[0].f,
       `${a.rows[0].f} y ${b.rows[0].f}`);
+  });
+
+  grupo('Caja — la tarjeta no entra al cajon');
+
+  await como(DUENA, async () => {
+    // SIN CAJA ABIERTA NO SE COBRA EN EFECTIVO. Billetes en un cajon que
+    // ningun corte va a contar son un descuadre garantizado.
+    const e = await rechazado(() => cliente.query(
+      `select registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','servicio','id',$2::text,'cantidad',1)),
+         jsonb_build_array(jsonb_build_object('metodo','efectivo','monto',80000)))`,
+      [CENTRO, servicioId]));
+    anotar('sin caja abierta NO se cobra en efectivo', e !== null, e ?? 'lo cobro');
+  });
+
+  await como(DUENA, async () => {
+    // PERO LA TARJETA SI: ese dinero va al banco, no al cajon. Bloquearla
+    // dejaria al centro sin poder cobrar por no haber abierto caja.
+    const r = await cliente.query(
+      `select (registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','servicio','id',$2::text,'cantidad',1)),
+         jsonb_build_array(jsonb_build_object('metodo','tarjeta','monto',80000)))).folio as f`,
+      [CENTRO, servicioId]);
+    anotar('pero con tarjeta SI se cobra sin caja abierta', r.rows[0].f !== null, r.rows[0].f);
+  });
+
+  await como(DUENA, async () => {
+    const r = await cliente.query(`select (abrir_caja($1,'Caja 1',200000)).id as id`, [CENTRO]);
+    const sesion = r.rows[0].id;
+    anotar('la dueña SI abre caja', sesion !== null);
+
+    // UNA SOLA CAJA ABIERTA POR CENTRO, y lo garantiza el indice.
+    const e = await rechazado(() => cliente.query(`select abrir_caja($1,'Caja 2',0)`, [CENTRO]));
+    anotar('NO se abren dos cajas a la vez en el mismo centro', e !== null, e ?? 'abrio dos');
+
+    // LA VENTA MIXTA: 300 en efectivo y 1000 con tarjeta.
+    await cliente.query(
+      `select (registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','servicio','id',$2::text,'cantidad',1)),
+         jsonb_build_array(
+           jsonb_build_object('metodo','efectivo','monto',30000),
+           jsonb_build_object('metodo','tarjeta','monto',50000)),
+         $3::uuid)).id`, [CENTRO, servicioId, clienteId]);
+
+    const c = await cliente.query(`select caja_actual($1) as x`, [CENTRO]);
+    const x = c.rows[0].x;
+    anotar('los ingresos cuentan TODAS las formas de pago',
+      Number(x.ingresosCentavos) === 80000, `dijo ${x.ingresosCentavos}`);
+    anotar('pero el efectivo del cajon SOLO cuenta el efectivo',
+      Number(x.efectivoEntroCentavos) === 30000, `dijo ${x.efectivoEntroCentavos}`);
+    anotar('y el esperado es inicial mas efectivo, no inicial mas ingresos',
+      Number(x.efectivoEsperadoCentavos) === 230000, `dijo ${x.efectivoEsperadoCentavos}`);
+
+    // NO SE RETIRA MAS EFECTIVO DEL QUE HAY.
+    const e2 = await rechazado(() => cliente.query(
+      `select registrar_movimiento_de_caja($1,'egreso',999999,'Prueba','efectivo')`, [CENTRO]));
+    anotar('NO se retira mas efectivo del que hay en el cajon', e2 !== null, e2 ?? 'lo retiro');
+
+    // UN GASTO POR TRANSFERENCIA NO BAJA EL EFECTIVO.
+    await cliente.query(
+      `insert into gasto (negocio_id, categoria, descripcion, monto_centavos, metodo, creado_por)
+       values ($1,'Renta','Renta',500000,'transferencia',$2)`, [CENTRO, DUENA]);
+    const c2 = await cliente.query(`select caja_actual($1) as x`, [CENTRO]);
+    anotar('un gasto por TRANSFERENCIA no baja el efectivo del cajon',
+      Number(c2.rows[0].x.efectivoEsperadoCentavos) === 230000,
+      `quedo en ${c2.rows[0].x.efectivoEsperadoCentavos}`);
+    anotar('pero SI cuenta como egreso del negocio',
+      Number(c2.rows[0].x.egresosCentavos) === 500000, `dijo ${c2.rows[0].x.egresosCentavos}`);
+
+    // EL CORTE COMPARA SOLO EFECTIVO.
+    const cerrada = await cliente.query(
+      `select (cerrar_caja($1,225000,'faltaron monedas')).diferencia_centavos as d`, [sesion]);
+    anotar('el corte compara SOLO efectivo: faltan 50, no miles',
+      Number(cerrada.rows[0].d) === -5000, `dijo ${cerrada.rows[0].d}`);
+
+    // UNA CAJA CERRADA NO SE REABRE NI RECIBE NADA.
+    const e3 = await rechazado(() => cliente.query(`select cerrar_caja($1,0)`, [sesion]));
+    anotar('una caja cerrada NO se vuelve a cerrar', e3 !== null, e3 ?? 'la cerro otra vez');
+
+    const e4 = await rechazado(() => cliente.query(
+      `select registrar_movimiento_de_caja($1,'ingreso',1000,'Tardio','efectivo')`, [CENTRO]));
+    anotar('con la caja cerrada NO se mueve efectivo', e4 !== null, e4 ?? 'lo movio');
+
+    // Un `update` que no alcanza ninguna fila no revienta: se comprueba que el
+    // corte siguio diciendo lo mismo, que es lo que de verdad importa.
+    await cliente.query(`update sesion_caja set contado_centavos = 999999 where id = $1`, [sesion]);
+    const post = await cliente.query(
+      `select contado_centavos, estado from sesion_caja where id = $1`, [sesion]);
+    anotar('un corte firmado NO se puede retocar',
+      Number(post.rows[0].contado_centavos) === 225000, `quedo en ${post.rows[0].contado_centavos}`);
+  });
+
+  await como(DUENA, async () => {
+    // LA CANCELACION DEVUELVE POR LA MISMA VIA POR LA QUE ENTRO.
+    await cliente.query(`select abrir_caja($1,'Caja 1',0)`, [CENTRO]);
+    const v = await cliente.query(
+      `select (registrar_venta($1,
+         jsonb_build_array(jsonb_build_object('tipo','servicio','id',$2::text,'cantidad',1)),
+         jsonb_build_array(jsonb_build_object('metodo','tarjeta','monto',80000)),
+         $3::uuid)).id as id`, [CENTRO, servicioId, clienteId]);
+    const antes = await cliente.query(`select caja_actual($1) as x`, [CENTRO]);
+    await cliente.query(`select cancelar_venta($1,'prueba')`, [v.rows[0].id]);
+    const despues = await cliente.query(`select caja_actual($1) as x`, [CENTRO]);
+    anotar('cancelar una venta de TARJETA no saca efectivo del cajon',
+      Number(antes.rows[0].x.efectivoEsperadoCentavos)
+        === Number(despues.rows[0].x.efectivoEsperadoCentavos),
+      `${antes.rows[0].x.efectivoEsperadoCentavos} → ${despues.rows[0].x.efectivoEsperadoCentavos}`);
+    const m = await cliente.query(
+      `select metodo from movimiento_caja where origen='pago' and tipo='egreso'`);
+    anotar('y el egreso queda marcado con la MISMA forma de pago',
+      m.rows.every((r: { metodo: string }) => r.metodo === 'tarjeta'), JSON.stringify(m.rows));
+  });
+
+  await como(RECEPCION, async () => {
+    // SIN verFinanzas NO SE TOCA LA CAJA. La recepcionista cobra, pero no
+    // administra el dinero del centro.
+    const e = await rechazado(() => cliente.query(`select abrir_caja($1,'Suya',0)`, [CENTRO]));
+    anotar('la recepcionista NO abre caja: no ve finanzas', e !== null, e ?? 'la abrio');
+    const n = await cuantos(`select * from sesion_caja where negocio_id=$1`, [CENTRO]);
+    anotar('ni ve las cajas del centro', n === 0, `vio ${n}`);
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const n = await cuantos(`select * from sesion_caja where negocio_id=$1`, [CENTRO]);
+    anotar('las cajas de un centro no se ven desde otro', n === 0, `vio ${n}`);
+    const e = await rechazado(() => cliente.query(`select abrir_caja($1,'Ajena',0)`, [CENTRO]));
+    anotar('ni se abre una caja en el centro de al lado', e !== null, e ?? 'la abrio');
+  });
+
+  await como(DUENA, async () => {
+    // UN INGRESO SUELTO SIGUE SIENDO IMPOSIBLE. Es lo que garantiza que la
+    // caja cuadre con las ventas.
+    const e = await rechazado(() => cliente.query(
+      `insert into movimiento_caja (negocio_id, tipo, origen, monto_centavos, descripcion)
+       values ($1,'ingreso','pago',100000,'dinero de la nada')`, [CENTRO]));
+    anotar('un movimiento de venta SIN venta detras se rechaza', e !== null, e ?? 'lo metio');
+  });
+
+  await como(DUENA, async () => {
+    // El pago ajeno no se puede ni leer, asi que la copia no llega a
+    // escribirse. Se comprueba el resultado —cero movimientos nuevos— porque
+    // un insert que no alcanza ninguna fila no revienta.
+    const antes = await cuantos(`select * from movimiento_caja where negocio_id=$1`, [CENTRO]);
+    await cliente.query(
+      `insert into movimiento_caja (negocio_id, tipo, origen, referencia_id, monto_centavos, descripcion)
+       select $1,'ingreso','pago', p.id, 100000, 'copia'
+         from pago p join venta v on v.id = p.venta_id where v.negocio_id = $2 limit 1`,
+      [CENTRO, OTRO]);
+    const despues = await cuantos(`select * from movimiento_caja where negocio_id=$1`, [CENTRO]);
+    anotar('ni uno que apunte al pago de OTRO centro', antes === despues,
+      `paso de ${antes} a ${despues}`);
   });
 
   grupo('Controles positivos — que el centro pueda trabajar');

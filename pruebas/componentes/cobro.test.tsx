@@ -29,7 +29,7 @@ function pintar(extra: Partial<React.ComponentProps<typeof Cobro>> = {}) {
     efectivoRecibido: '', trabajando: false, error: null,
     onMetodo: () => {}, onAgregarPago: () => {}, onMontoDelPago: () => {},
     onQuitarPago: () => {}, onEfectivoRecibido: () => {},
-    onCobrar: () => {}, onCotizar: () => {},
+    onCobrar: () => {}, onCotizar: () => {}, onIrACaja: () => {},
     ...extra,
   };
   return render(<Cobro {...props} />);
@@ -185,6 +185,24 @@ describe('finalizar', () => {
   it('el error del servidor se pinta tal cual', () => {
     pintar({ renglones: [RENGLON], error: 'Solo quedan 3 de Aceite: no se pueden sacar 5.' });
     expect(screen.getByRole('alert').textContent).toContain('Solo quedan 3');
+  });
+
+  it('si lo que falta es la CAJA, se ofrece ir a abrirla', async () => {
+    // Dejar a quien cobra releyendo el error, con el cliente enfrente, es el
+    // peor momento para tener que adivinar a donde ir.
+    const irACaja = vi.fn();
+    pintar({
+      renglones: [RENGLON],
+      error: 'No hay una caja abierta: no se puede cobrar en efectivo.',
+      onIrACaja: irACaja,
+    });
+    await userEvent.click(screen.getByRole('button', { name: /ir a caja/i }));
+    expect(irACaja).toHaveBeenCalled();
+  });
+
+  it('con cualquier otro error NO aparece ese boton', () => {
+    pintar({ renglones: [RENGLON], error: 'Solo quedan 3 de Aceite.' });
+    expect(screen.queryByRole('button', { name: /ir a caja/i })).toBeNull();
   });
 });
 

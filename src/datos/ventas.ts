@@ -547,6 +547,17 @@ export async function registrarVenta(negocio: string, v: LoQueSeCobra): Promise<
   return texto(objeto(data)?.['id']);
 }
 
+/**
+ * Si lo que fallo fue que no hay caja abierta.
+ *
+ * Se mira el mensaje del servidor en vez de un codigo porque el mensaje es lo
+ * que ya viaja, y porque la pantalla no tiene que adivinar: cuando es esto,
+ * ofrece ir a Caja en vez de dejar a quien cobra releyendo un error.
+ */
+export function faltaLaCaja(error: string | null): boolean {
+  return error !== null && /caja abierta/i.test(error);
+}
+
 export async function cancelarVenta(ventaId: string, motivo: string): Promise<void> {
   const { error } = await supabase().rpc('cancelar_venta', {
     p_venta: ventaId,

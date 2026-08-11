@@ -28,6 +28,7 @@ import {
   METODOS,
   cambioDe,
   descuentoPorcentual,
+  faltaLaCaja,
   faltaPorPagar,
   subtotalDelCarrito,
   sumaDeLosPagos,
@@ -232,6 +233,7 @@ export interface PropiedadesDelCobro {
   onEfectivoRecibido(texto: string): void;
   onCobrar(): void;
   onCotizar(): void;
+  onIrACaja(): void;
 }
 
 export function Cobro({
@@ -249,6 +251,7 @@ export function Cobro({
   onEfectivoRecibido,
   onCobrar,
   onCotizar,
+  onIrACaja,
 }: PropiedadesDelCobro) {
   const subtotal = subtotalDelCarrito(renglones);
   const total = totalDelCarrito(renglones, descuentoCentavos);
@@ -409,6 +412,14 @@ export function Cobro({
         <p className="cli-ficha__error" role="alert">
           {error}
         </p>
+      ) : null}
+
+      {/* SI LO QUE FALTA ES LA CAJA, se lleva ahi en vez de dejar a quien
+          cobra releyendo el error con el cliente enfrente. */}
+      {faltaLaCaja(error) ? (
+        <button type="button" className="cli-boton-suave cli-boton-suave--ancho" onClick={onIrACaja}>
+          Ir a Caja y abrirla
+        </button>
       ) : null}
 
       <div className="vta-acciones">

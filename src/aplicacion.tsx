@@ -24,6 +24,7 @@ import { Catalogo } from './servicios/catalogo.js';
 import { Programa } from './cursos/programa.js';
 import { Almacen } from './productos/almacen.js';
 import { PuntoDeVenta } from './ventas/punto-de-venta.js';
+import { Cajon } from './caja/cajon.js';
 import { Pendiente } from './modulos/pendiente.js';
 import { GRUPOS, MODULOS, MODULO_POR_OMISION, modulosVisibles } from './modulos/registro.js';
 import { LEMA, NOMBRE_DEL_PRODUCTO } from './marca.js';
@@ -173,6 +174,8 @@ function Interior() {
           <Almacen />
         ) : modulo === 'ventas' ? (
           <PuntoDeVenta />
+        ) : modulo === 'caja' ? (
+          <Cajon />
         ) : (
           <Pendiente modulo={modulo} />
         )

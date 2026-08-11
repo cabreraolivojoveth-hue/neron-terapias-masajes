@@ -431,8 +431,6 @@ create table if not exists movimiento_caja (
   tipo           text not null check (tipo in ('ingreso', 'egreso')),
   -- DE DONDE VIENE. Esto es lo que hace auditable la caja: cada movimiento
   -- sabe que operacion lo produjo.
-  -- DE DONDE VIENE. Esto es lo que hace auditable la caja: cada movimiento
-  -- sabe que operacion lo produjo.
   --
   -- `pago` se agrego con Ventas: un PAGO MIXTO son dos pagos de la misma
   -- venta, y con el movimiento colgado de la venta el indice unico solo dejaba
@@ -1079,19 +1077,42 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
+declare
+  v_metodo text;
+  v_sesion uuid;
 begin
+  -- LA FORMA DE PAGO DECIDE SI TOCA EL CAJON. La renta pagada por
+  -- transferencia es un egreso del negocio y CERO efectivo: sin esta
+  -- distincion, al cerrar el dia faltaba justo la renta y nadie sabia si era
+  -- un faltante de verdad.
+  --
+  -- El `coalesce` es por los gastos capturados antes de que existiera la
+  -- columna: darlos por efectivo es lo conservador — ese dinero salio del
+  -- cajon.
+  v_metodo := coalesce(new.metodo, 'efectivo');
+  v_sesion := app.caja_abierta(new.negocio_id);
+
   if tg_op = 'INSERT' then
-    insert into movimiento_caja (negocio_id, tipo, origen, referencia_id, monto_centavos, descripcion, fecha, creado_por)
-    values (new.negocio_id, 'egreso', 'gasto', new.id, new.monto_centavos, new.descripcion, new.fecha, new.creado_por);
+    if v_metodo = 'efectivo' and v_sesion is null then
+      raise exception 'No hay una caja abierta: no se puede pagar en efectivo. Abre la caja en el modulo Caja.'
+        using errcode = 'invalid_parameter_value';
+    end if;
+    insert into movimiento_caja (negocio_id, tipo, origen, referencia_id, monto_centavos,
+                                 descripcion, fecha, metodo, sesion_id, creado_por)
+    values (new.negocio_id, 'egreso', 'gasto', new.id, new.monto_centavos, new.descripcion,
+            new.fecha, v_metodo, v_sesion, new.creado_por);
     return new;
   end if;
 
   -- Un gasto capturado por error se marca como eliminado; la caja recibe el
-  -- ingreso contrario. Igual que con las ventas: nada se tacha.
+  -- ingreso contrario, por la MISMA via. Igual que con las ventas: nada se
+  -- tacha.
   if tg_op = 'UPDATE' and new.eliminado and not old.eliminado then
-    insert into movimiento_caja (negocio_id, tipo, origen, referencia_id, monto_centavos, descripcion, fecha, creado_por)
+    insert into movimiento_caja (negocio_id, tipo, origen, referencia_id, monto_centavos,
+                                 descripcion, fecha, metodo, sesion_id, creado_por)
     values (new.negocio_id, 'ingreso', 'gasto', new.id, old.monto_centavos,
-            'Se anulo el gasto: ' || old.descripcion, current_date, auth.uid());
+            'Se anulo el gasto: ' || old.descripcion, current_date,
+            coalesce(old.metodo, 'efectivo'), v_sesion, auth.uid());
   end if;
   return new;
 end;
@@ -4146,6 +4167,7 @@ declare
   v_aplicado  bigint;
   v_falta     bigint;
   v_pago_id   uuid;
+  v_sesion    uuid;
 begin
   /* --- 1. Los porteros ------------------------------------------- */
   if not app.es_miembro(p_negocio) then
@@ -4297,6 +4319,8 @@ begin
   -- VARIOS RENGLONES = PAGO MIXTO. Guardar `metodo = 'mixto'` en la venta
   -- perderia el detalle, y entonces el corte de caja no puede saber cuanto
   -- entro en efectivo.
+  v_sesion := app.caja_abierta(p_negocio);
+
   for v_pago in select * from jsonb_array_elements(coalesce(p_pagos, '[]'::jsonb)) loop
     v_aplicado := (v_pago ->> 'monto')::bigint;
     if v_aplicado <= 0 then
@@ -4304,6 +4328,17 @@ begin
         using errcode = 'invalid_parameter_value';
     end if;
     v_pagado := v_pagado + v_aplicado;
+
+    -- EL EFECTIVO NECESITA UN CAJON ABIERTO.
+    --
+    -- Cobrar en efectivo sin caja abierta deja billetes en un cajon que ningun
+    -- corte va a contar: al cerrar el dia sobra dinero y nadie sabe de donde
+    -- salio. La tarjeta y la transferencia NO lo necesitan — ese dinero no
+    -- pasa por el cajon, va al banco.
+    if (v_pago ->> 'metodo') = 'efectivo' and v_sesion is null then
+      raise exception 'No hay una caja abierta: no se puede cobrar en efectivo. Abre la caja en el modulo Caja.'
+        using errcode = 'invalid_parameter_value';
+    end if;
 
     insert into pago (negocio_id, venta_id, metodo, monto_centavos, fecha)
     values (p_negocio, v_venta.id, v_pago ->> 'metodo', v_aplicado, p_fecha)
@@ -4316,9 +4351,9 @@ begin
     -- colgarlo de la venta ademas impide saber cuanto entro en efectivo, que
     -- es justo lo que un corte de caja necesita.
     insert into movimiento_caja (negocio_id, tipo, origen, referencia_id, monto_centavos,
-                                 descripcion, fecha, metodo, creado_por)
+                                 descripcion, fecha, metodo, sesion_id, creado_por)
     values (p_negocio, 'ingreso', 'pago', v_pago_id, v_aplicado,
-            'Venta ' || v_folio, p_fecha, v_pago ->> 'metodo', auth.uid());
+            'Venta ' || v_folio, p_fecha, v_pago ->> 'metodo', v_sesion, auth.uid());
   end loop;
 
   -- EL CAMBIO NO ES INGRESO. Si el cliente da mil por una venta de
@@ -4530,8 +4565,13 @@ $$;
 -- ---------------------------------------------------------------------
 --
 -- `cancelar_venta` ya devuelve el stock con un movimiento contrario y agrega
--- el egreso a caja. Le falta lo de Cursos: una inscripcion pagada con una
--- venta cancelada no puede seguir ocupando lugar.
+-- el egreso a caja. Le falta lo de Cursos —una inscripcion pagada con una
+-- venta cancelada no puede seguir ocupando lugar— y lo de Caja: el dinero
+-- tiene que salir POR LA MISMA VIA POR LA QUE ENTRO.
+--
+-- LO QUE ESTABA MAL: el egreso salia como uno solo, sin forma de pago. En una
+-- venta cobrada con tarjeta eso sacaba del cajon dinero que nunca entro al
+-- cajon, y el corte de esa tarde salia con un faltante inventado.
 --
 create or replace function public.cancelar_venta(p_venta uuid, p_motivo text default null)
 returns venta
@@ -4540,8 +4580,10 @@ security definer
 set search_path = public, pg_temp
 as $$
 declare
-  v_venta venta;
-  v_item  record;
+  v_venta  venta;
+  v_item   record;
+  v_pago   record;
+  v_sesion uuid;
 begin
   select * into v_venta from venta where id = p_venta and not eliminado;
   if v_venta.id is null then
@@ -4577,12 +4619,31 @@ begin
   update inscripcion set estado = 'cancelado'
    where venta_id = p_venta and estado <> 'cancelado';
 
-  -- Y la caja NO se corrige: se le agrega el movimiento contrario.
-  insert into movimiento_caja (negocio_id, tipo, origen, referencia_id, monto_centavos,
-                               descripcion, fecha, creado_por)
-  values (v_venta.negocio_id, 'egreso', 'venta', v_venta.id, v_venta.total_centavos,
-          'Cancelacion de venta ' || v_venta.folio || coalesce(' — ' || p_motivo, ''),
-          current_date, auth.uid());
+  -- Y LA CAJA NO SE CORRIGE: se le agrega el movimiento contrario, UNO POR
+  -- PAGO y con la misma forma de pago. Devolver en efectivo lo que se cobro
+  -- con tarjeta sacaria del cajon dinero que nunca estuvo ahi.
+  for v_pago in
+    select id, metodo, monto_centavos from pago where venta_id = p_venta
+  loop
+    insert into movimiento_caja (negocio_id, tipo, origen, referencia_id, monto_centavos,
+                                 descripcion, fecha, metodo, sesion_id, creado_por)
+    values (v_venta.negocio_id, 'egreso', 'pago', v_pago.id, v_pago.monto_centavos,
+            'Cancelacion de venta ' || v_venta.folio || coalesce(' — ' || p_motivo, ''),
+            current_date, v_pago.metodo,
+            case when v_pago.metodo = 'efectivo' then v_sesion else app.caja_abierta(v_venta.negocio_id) end,
+            auth.uid());
+  end loop;
+
+  -- Una venta SIN pagos —no puede pasar por `registrar_venta`, pero si por la
+  -- ruta vieja `cobrar_venta`— deja igualmente su egreso, para que la caja no
+  -- se quede con un ingreso sin contrapartida.
+  if not exists (select 1 from pago where venta_id = p_venta) then
+    insert into movimiento_caja (negocio_id, tipo, origen, referencia_id, monto_centavos,
+                                 descripcion, fecha, sesion_id, creado_por)
+    values (v_venta.negocio_id, 'egreso', 'venta', v_venta.id, v_venta.total_centavos,
+            'Cancelacion de venta ' || v_venta.folio || coalesce(' — ' || p_motivo, ''),
+            current_date, v_sesion, auth.uid());
+  end if;
 
   update venta set estado = 'cancelada', cancelada_en = now(), cancelada_motivo = p_motivo
    where id = p_venta
@@ -5538,3 +5599,820 @@ begin
 end;
 $$;
 
+
+-- =====================================================================
+-- CAJA — el cajón, y la diferencia entre dinero y dinero FÍSICO
+-- =====================================================================
+--
+-- LA DISTINCION QUE SOSTIENE TODO EL MODULO, y la que casi nadie hace:
+--
+--   INGRESO DEL NEGOCIO   toda venta cobrada, con el metodo que sea.
+--   EFECTIVO EN EL CAJON  solo lo que se pago en efectivo.
+--
+-- Una venta de mil pesos con tarjeta es un ingreso de mil pesos y CERO
+-- efectivo. Si el sistema las suma juntas, al cerrar el dia el cajon dice que
+-- deberia haber seis mil y hay dos mil — y nadie sabe si falto dinero o falto
+-- entender el numero. Por eso el corte compara SOLO efectivo, y las demas
+-- formas de pago se enseñan aparte.
+--
+-- LO QUE ES NUEVO AQUI:
+--
+--   sesion_caja   la caja abierta: quien, cuando, con cuanto empezo, y —al
+--                 cerrar— cuanto se esperaba, cuanto se conto y la diferencia.
+--
+-- Y `movimiento_caja` gana tres columnas: a que sesion pertenece, la
+-- categoria de los movimientos capturados a mano, y sus notas.
+--
+-- LA CAJA SIGUE SIENDO DERIVADA. Ni la sesion ni el movimiento guardan un
+-- saldo: el saldo se suma de los movimientos cada vez que se pide. Un saldo
+-- guardado se desincroniza —es cuestion de semanas— y cuando lo hace nadie
+-- sabe cual de los dos numeros creer.
+
+-- ---------------------------------------------------------------------
+-- LA SESION DE CAJA
+-- ---------------------------------------------------------------------
+create table if not exists sesion_caja (
+  id                     uuid primary key default gen_random_uuid(),
+  negocio_id             text not null references negocio(id) on delete cascade,
+  nombre                 text not null,
+  estado                 text not null default 'abierta'
+                         check (estado in ('abierta', 'cerrada')),
+  saldo_inicial_centavos bigint not null default 0 check (saldo_inicial_centavos >= 0),
+  abierta_por            uuid,
+  abierta_en             timestamptz not null default now(),
+  cerrada_por            uuid,
+  cerrada_en             timestamptz,
+  -- LO QUE EL SISTEMA DIJO que debia haber en efectivo, congelado al cerrar.
+  -- Se congela a proposito: si se recalculara al abrir el historial, un
+  -- movimiento agregado despues cambiaria un corte ya firmado.
+  esperado_centavos      bigint,
+  contado_centavos       bigint,
+  diferencia_centavos    bigint,
+  observaciones          text,
+  notas_cierre           text,
+  creado_en              timestamptz not null default now()
+);
+
+comment on table sesion_caja is
+  'La caja abierta. No guarda saldo: el saldo se suma de los movimientos. Un saldo guardado se '
+  'desincroniza y entonces nadie sabe cual de los dos numeros creer. Lo unico que SI se congela es '
+  'el corte —esperado, contado y diferencia— porque un corte firmado no puede cambiar despues.';
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'sesion_caja_negocio_id_unico') then
+    alter table sesion_caja add constraint sesion_caja_negocio_id_unico unique (negocio_id, id);
+  end if;
+end $$;
+
+-- UNA SOLA CAJA ABIERTA POR CENTRO, y lo garantiza la base.
+--
+-- Con dos abiertas, cada venta tendria que elegir a cual va y la primera vez
+-- que alguien elija mal el corte no cuadra. Comprobarlo en la pantalla no
+-- sirve: dos personas abriendo caja a la vez pasan las dos comprobaciones.
+create unique index if not exists sesion_caja_una_abierta
+  on sesion_caja (negocio_id) where estado = 'abierta';
+
+create index if not exists sesion_caja_historial_idx
+  on sesion_caja (negocio_id, abierta_en desc);
+
+alter table sesion_caja drop constraint if exists sesion_caja_abre_mismo_negocio;
+alter table sesion_caja add constraint sesion_caja_abre_mismo_negocio
+  foreign key (negocio_id, abierta_por) references membresia (negocio_id, id)
+  on delete set null (abierta_por);
+
+alter table sesion_caja drop constraint if exists sesion_caja_cierra_mismo_negocio;
+alter table sesion_caja add constraint sesion_caja_cierra_mismo_negocio
+  foreign key (negocio_id, cerrada_por) references membresia (negocio_id, id)
+  on delete set null (cerrada_por);
+
+-- ---------------------------------------------------------------------
+-- LO QUE LE FALTABA AL MOVIMIENTO
+-- ---------------------------------------------------------------------
+-- A QUE CAJA pertenece. Nulo en los movimientos de antes de este bloque y en
+-- los que ocurren sin caja abierta: esos existen —son ingresos del negocio—
+-- pero no cuentan para ningun corte.
+alter table movimiento_caja add column if not exists sesion_id uuid;
+-- La categoria SOLO de los movimientos capturados a mano. La de una venta se
+-- deduce de lo que se vendio y la de un gasto sale del gasto: copiarlas aqui
+-- las dejaria viejas el dia que cambien.
+alter table movimiento_caja add column if not exists categoria text;
+alter table movimiento_caja add column if not exists notas text;
+
+alter table movimiento_caja drop constraint if exists movimiento_caja_sesion_mismo_negocio;
+alter table movimiento_caja add constraint movimiento_caja_sesion_mismo_negocio
+  foreign key (negocio_id, sesion_id) references sesion_caja (negocio_id, id)
+  on delete set null (sesion_id);
+
+create index if not exists movimiento_caja_sesion_idx on movimiento_caja (sesion_id);
+
+alter table sesion_caja enable row level security;
+alter table sesion_caja force row level security;
+revoke all on sesion_caja from anon;
+grant select, insert, update on sesion_caja to authenticated;
+
+-- UNA CAJA NO SE BORRA. Es el respaldo de un corte firmado.
+revoke delete on sesion_caja from authenticated, anon, service_role;
+
+drop policy if exists sesion_caja_leer on sesion_caja;
+create policy sesion_caja_leer on sesion_caja
+  for select to authenticated
+  using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'verFinanzas'));
+
+drop policy if exists sesion_caja_abrir on sesion_caja;
+create policy sesion_caja_abrir on sesion_caja
+  for insert to authenticated
+  with check (app.es_miembro(negocio_id)
+              and app.tiene_permiso(negocio_id, 'verFinanzas')
+              and app.licencia_permite(negocio_id));
+
+-- UNA CAJA CERRADA NO SE VUELVE A TOCAR. El `using` lo impide en la base, no
+-- en la pantalla: reabrir un corte firmado para "arreglar" un faltante es
+-- exactamente lo que un registro financiero tiene que hacer imposible.
+drop policy if exists sesion_caja_cerrar on sesion_caja;
+create policy sesion_caja_cerrar on sesion_caja
+  for update to authenticated
+  using (app.es_miembro(negocio_id)
+         and app.tiene_permiso(negocio_id, 'verFinanzas')
+         and estado = 'abierta')
+  with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'verFinanzas'));
+
+-- ---------------------------------------------------------------------
+-- QUIEN PUEDE METER UN MOVIMIENTO A MANO
+-- ---------------------------------------------------------------------
+--
+-- LA REGLA DE ANTES ERA `origen = 'ajuste'` A SECAS, y dependia de que el rol
+-- dueño de la base se saltara las reglas de fila para que las funciones
+-- pudieran escribir los movimientos de venta y de gasto. Eso funciona en
+-- Postgres local y en Supabase, pero es una suposicion sobre la instalacion —
+-- y si un dia deja de cumplirse, cobrar deja de meter el dinero a la caja.
+--
+-- Ahora la regla dice lo mismo pero sin depender de eso: se puede escribir un
+-- movimiento de venta o de gasto SOLO si la operacion existe de verdad y es
+-- de este centro. Sigue siendo imposible capturar un ingreso suelto, y el
+-- indice unico sigue impidiendo meter el mismo dinero dos veces.
+drop policy if exists caja_ajuste on movimiento_caja;
+create policy caja_ajuste on movimiento_caja
+  for insert to authenticated
+  with check (
+    app.es_miembro(negocio_id)
+    and app.tiene_permiso(negocio_id, 'verFinanzas')
+    and app.licencia_permite(negocio_id)
+    and (
+      -- Lo unico que se captura a mano: un ajuste, sin operacion detras y
+      -- marcado como tal.
+      (origen = 'ajuste' and referencia_id is null)
+      -- Y lo que escriben las funciones, siempre contra algo que existe.
+      or (origen = 'pago' and exists (
+            select 1 from pago p join venta v on v.id = p.venta_id
+             where p.id = referencia_id and v.negocio_id = movimiento_caja.negocio_id))
+      or (origen = 'venta' and exists (
+            select 1 from venta v
+             where v.id = referencia_id and v.negocio_id = movimiento_caja.negocio_id))
+      or (origen = 'gasto' and exists (
+            select 1 from gasto g
+             where g.id = referencia_id and g.negocio_id = movimiento_caja.negocio_id))
+    )
+  );
+
+-- ---------------------------------------------------------------------
+-- EL GASTO TAMBIEN TIENE FORMA DE PAGO
+-- ---------------------------------------------------------------------
+--
+-- Sin esta columna, pagar la renta por transferencia bajaba el efectivo del
+-- cajon — y al cerrar faltaba justo la renta.
+alter table gasto add column if not exists metodo text not null default 'efectivo';
+alter table gasto add column if not exists notas text;
+
+-- ---------------------------------------------------------------------
+-- LA CAJA ABIERTA DE UN CENTRO
+-- ---------------------------------------------------------------------
+create or replace function app.caja_abierta(p_negocio text)
+returns uuid
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select id from sesion_caja where negocio_id = p_negocio and estado = 'abierta' limit 1;
+$$;
+
+-- ---------------------------------------------------------------------
+-- EL EFECTIVO QUE DEBERIA HABER EN UNA CAJA
+-- ---------------------------------------------------------------------
+--
+-- SOLO EFECTIVO. Una venta con tarjeta es un ingreso del negocio y cero
+-- efectivo: sumarla aqui haria que el corte pidiera contar dinero que nunca
+-- estuvo en el cajon.
+--
+-- El `coalesce(metodo, 'efectivo')` es por los movimientos de antes de
+-- Ventas, que no llevaban metodo. Tratarlos como efectivo es lo conservador:
+-- un gasto viejo salio del cajon, y darlo por tarjeta inflaria el esperado.
+create or replace function app.efectivo_de_la_caja(p_sesion uuid)
+returns bigint
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce((select saldo_inicial_centavos from sesion_caja where id = p_sesion), 0)
+       + coalesce((
+           select sum(case when tipo = 'ingreso' then monto_centavos else -monto_centavos end)
+           from movimiento_caja
+           where sesion_id = p_sesion and coalesce(metodo, 'efectivo') = 'efectivo'
+         ), 0);
+$$;
+
+comment on function app.efectivo_de_la_caja is
+  'Lo que DEBERIA haber en el cajon: saldo inicial mas los ingresos en efectivo menos los egresos '
+  'en efectivo. La tarjeta y la transferencia son ingresos del negocio y CERO efectivo — sumarlas '
+  'haria que el corte pidiera contar dinero que nunca estuvo ahi.';
+
+-- ---------------------------------------------------------------------
+-- COMO SE LEE UN MOVIMIENTO
+-- ---------------------------------------------------------------------
+--
+-- El TIPO que ve la persona no es la columna `tipo` —que solo dice si entra o
+-- sale— sino la combinacion de origen y direccion. Se deduce al leer en vez de
+-- guardarse: guardado seria un cuarto dato que puede contradecir a los otros
+-- tres.
+create or replace function app.clase_de_movimiento(p_origen text, p_tipo text)
+returns text
+language sql
+immutable
+as $$
+  select case
+    when p_origen = 'pago'                          then 'venta'
+    when p_origen = 'venta'  and p_tipo = 'ingreso' then 'venta'
+    when p_origen = 'venta'  and p_tipo = 'egreso'  then 'cancelacion'
+    when p_origen = 'gasto'  and p_tipo = 'egreso'  then 'gasto'
+    when p_origen = 'gasto'  and p_tipo = 'ingreso' then 'devolucion'
+    when p_origen = 'ajuste' and p_tipo = 'ingreso' then 'ingreso'
+    when p_origen = 'ajuste' and p_tipo = 'egreso'  then 'retiro'
+    else p_tipo
+  end;
+$$;
+
+-- LA CATEGORIA SE RESUELVE AL LEER, no se copia.
+--
+-- La de una venta sale de lo que se vendio; la de un gasto, del gasto. Copiar
+-- cualquiera de las dos al movimiento las dejaria viejas el dia que cambien —
+-- y ademas obligaria a recalcularlas en cada venta.
+create or replace function app.categoria_del_movimiento(
+  p_origen text, p_referencia uuid, p_categoria text
+)
+returns text
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_venta uuid;
+  v_cats  text;
+begin
+  if p_origen = 'ajuste' then
+    return p_categoria;
+  end if;
+
+  if p_origen = 'gasto' then
+    return (select g.categoria from gasto g where g.id = p_referencia);
+  end if;
+
+  -- Un movimiento de pago apunta al PAGO; hay que subir hasta la venta.
+  if p_origen = 'pago' then
+    select p.venta_id into v_venta from pago p where p.id = p_referencia;
+  else
+    v_venta := p_referencia;
+  end if;
+  if v_venta is null then return null; end if;
+
+  select string_agg(distinct
+           case i.tipo when 'servicio' then 'Servicios'
+                       when 'producto' then 'Productos'
+                       when 'curso'    then 'Cursos' end, ' / ')
+    into v_cats
+    from venta_item i where i.venta_id = v_venta;
+  return v_cats;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- ABRIR CAJA
+-- ---------------------------------------------------------------------
+create or replace function public.abrir_caja(
+  p_negocio text,
+  p_nombre text,
+  p_saldo_inicial bigint default 0,
+  p_observaciones text default null
+)
+returns sesion_caja
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_s     sesion_caja;
+  v_quien membresia;
+begin
+  if not app.es_miembro(p_negocio) then
+    raise exception 'Ese centro no es el tuyo.' using errcode = 'insufficient_privilege';
+  end if;
+  if not app.tiene_permiso(p_negocio, 'verFinanzas') then
+    raise exception 'No tienes permiso para abrir la caja.' using errcode = 'insufficient_privilege';
+  end if;
+  if not app.licencia_permite(p_negocio) then
+    raise exception 'La licencia no permite abrir caja.' using errcode = 'insufficient_privilege';
+  end if;
+  if coalesce(p_saldo_inicial, 0) < 0 then
+    raise exception 'El saldo inicial no puede ser negativo.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+  if coalesce(trim(p_nombre), '') = '' then
+    raise exception 'La caja necesita un nombre para distinguirla en el historial.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  -- El indice unico ya lo impide; el mensaje esta aqui para que quien lo lea
+  -- entienda que pasa en vez de recibir un error de indice.
+  if app.caja_abierta(p_negocio) is not null then
+    raise exception 'Ya hay una caja abierta. Cierrala antes de abrir otra.'
+      using errcode = 'unique_violation';
+  end if;
+
+  select * into v_quien from membresia
+   where negocio_id = p_negocio and usuario_id = auth.uid() limit 1;
+
+  insert into sesion_caja (negocio_id, nombre, saldo_inicial_centavos, abierta_por, observaciones)
+  values (p_negocio, trim(p_nombre), coalesce(p_saldo_inicial, 0), v_quien.id, p_observaciones)
+  returning * into v_s;
+
+  insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
+                         entidad, antes, despues)
+  values (p_negocio, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
+          coalesce((select r.etiqueta from rol r
+                     where r.negocio_id = v_quien.negocio_id and r.id = v_quien.rol),
+                    v_quien.rol, 'desconocido'),
+          'caja', 'abrir', v_s.id::text, null,
+          jsonb_build_object('nombre', v_s.nombre, 'saldoInicial', v_s.saldo_inicial_centavos));
+
+  return v_s;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- CERRAR CAJA — el corte
+-- ---------------------------------------------------------------------
+--
+-- El esperado se CONGELA aqui. Si se recalculara cada vez que alguien abre el
+-- historial, un movimiento agregado despues cambiaria un corte ya firmado — y
+-- un corte que cambia solo no sirve para explicarle a nadie un faltante.
+create or replace function public.cerrar_caja(
+  p_sesion uuid,
+  p_contado bigint,
+  p_notas text default null
+)
+returns sesion_caja
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_s        sesion_caja;
+  v_esperado bigint;
+  v_quien    membresia;
+begin
+  select * into v_s from sesion_caja where id = p_sesion for update;
+  if v_s.id is null then
+    raise exception 'Esa caja no existe.' using errcode = 'no_data_found';
+  end if;
+  if not app.es_miembro(v_s.negocio_id) then
+    raise exception 'Esa caja no es de tu centro.' using errcode = 'insufficient_privilege';
+  end if;
+  if not app.tiene_permiso(v_s.negocio_id, 'verFinanzas') then
+    raise exception 'No tienes permiso para cerrar la caja.'
+      using errcode = 'insufficient_privilege';
+  end if;
+  if v_s.estado <> 'abierta' then
+    raise exception 'Esa caja ya se cerro el %.', to_char(v_s.cerrada_en, 'DD/MM/YYYY HH24:MI')
+      using errcode = 'invalid_parameter_value';
+  end if;
+  if p_contado is null or p_contado < 0 then
+    raise exception 'Hay que decir cuanto efectivo se conto. Si el cajon quedo vacio, es cero.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  v_esperado := app.efectivo_de_la_caja(p_sesion);
+
+  select * into v_quien from membresia
+   where negocio_id = v_s.negocio_id and usuario_id = auth.uid() limit 1;
+
+  update sesion_caja
+     set estado = 'cerrada',
+         cerrada_en = now(),
+         cerrada_por = v_quien.id,
+         esperado_centavos = v_esperado,
+         contado_centavos = p_contado,
+         -- Positivo sobra, negativo falta. Se guarda con signo: "diferencia de
+         -- 200" sin signo no dice si el dia salio bien o mal.
+         diferencia_centavos = p_contado - v_esperado,
+         notas_cierre = p_notas
+   where id = p_sesion
+  returning * into v_s;
+
+  insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
+                         entidad, antes, despues)
+  values (v_s.negocio_id, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
+          coalesce((select r.etiqueta from rol r
+                     where r.negocio_id = v_quien.negocio_id and r.id = v_quien.rol),
+                    v_quien.rol, 'desconocido'),
+          'caja', 'cerrar', v_s.id::text, null,
+          jsonb_build_object('esperado', v_esperado, 'contado', p_contado,
+                             'diferencia', v_s.diferencia_centavos));
+
+  return v_s;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- REGISTRAR UN INGRESO O UN RETIRO A MANO
+-- ---------------------------------------------------------------------
+create or replace function public.registrar_movimiento_de_caja(
+  p_negocio text,
+  p_tipo text,
+  p_monto bigint,
+  p_concepto text,
+  p_metodo text default 'efectivo',
+  p_categoria text default null,
+  p_notas text default null
+)
+returns movimiento_caja
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_m      movimiento_caja;
+  v_sesion uuid;
+  v_hay    bigint;
+  v_quien  membresia;
+begin
+  if not app.es_miembro(p_negocio) then
+    raise exception 'Ese centro no es el tuyo.' using errcode = 'insufficient_privilege';
+  end if;
+  if not app.tiene_permiso(p_negocio, 'verFinanzas') then
+    raise exception 'No tienes permiso para mover la caja.'
+      using errcode = 'insufficient_privilege';
+  end if;
+  if not app.licencia_permite(p_negocio) then
+    raise exception 'La licencia no permite mover la caja.'
+      using errcode = 'insufficient_privilege';
+  end if;
+  if p_tipo not in ('ingreso', 'egreso') then
+    raise exception 'Un movimiento entra o sale; no hay tercera opcion.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+  if p_monto is null or p_monto <= 0 then
+    raise exception 'El monto tiene que ser mayor que cero.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+  if coalesce(trim(p_concepto), '') = '' then
+    raise exception 'Escribe de que es el movimiento. Dentro de seis meses es lo unico que lo explica.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+  if coalesce(p_metodo, 'efectivo') not in ('efectivo', 'tarjeta', 'transferencia', 'otro') then
+    raise exception 'Esa forma de pago no existe.' using errcode = 'invalid_parameter_value';
+  end if;
+
+  v_sesion := app.caja_abierta(p_negocio);
+
+  -- SIN CAJA ABIERTA NO SE MUEVE EFECTIVO. El dinero fisico sale de un cajon;
+  -- si no hay cajon abierto, no hay de donde sacarlo ni donde meterlo, y el
+  -- movimiento quedaria fuera de todos los cortes.
+  if coalesce(p_metodo, 'efectivo') = 'efectivo' and v_sesion is null then
+    raise exception 'No hay una caja abierta. Abre una antes de mover efectivo.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  -- NO SE RETIRA MAS EFECTIVO DEL QUE HAY. Un cajon en negativo no es un dato:
+  -- es la prueba de que el sistema dejo sacar lo que no estaba.
+  if p_tipo = 'egreso' and coalesce(p_metodo, 'efectivo') = 'efectivo' then
+    v_hay := app.efectivo_de_la_caja(v_sesion);
+    if p_monto > v_hay then
+      raise exception 'En la caja hay $%, no se pueden retirar $%.',
+        to_char(v_hay::numeric / 100, 'FM999999990.00'),
+        to_char(p_monto::numeric / 100, 'FM999999990.00')
+        using errcode = 'check_violation';
+    end if;
+  end if;
+
+  insert into movimiento_caja (negocio_id, tipo, origen, referencia_id, monto_centavos,
+                               descripcion, fecha, metodo, categoria, notas, sesion_id, creado_por)
+  values (p_negocio, p_tipo, 'ajuste', null, p_monto,
+          trim(p_concepto), current_date, coalesce(p_metodo, 'efectivo'),
+          nullif(trim(coalesce(p_categoria, '')), ''), p_notas, v_sesion, auth.uid())
+  returning * into v_m;
+
+  select * into v_quien from membresia
+   where negocio_id = p_negocio and usuario_id = auth.uid() limit 1;
+
+  insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
+                         entidad, antes, despues)
+  values (p_negocio, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
+          coalesce((select r.etiqueta from rol r
+                     where r.negocio_id = v_quien.negocio_id and r.id = v_quien.rol),
+                    v_quien.rol, 'desconocido'),
+          'caja', p_tipo, v_m.id::text, null,
+          jsonb_build_object('monto', p_monto, 'metodo', v_m.metodo, 'concepto', v_m.descripcion));
+
+  return v_m;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- LA CAJA ACTUAL, CON SUS CIFRAS
+-- ---------------------------------------------------------------------
+--
+-- Todo de un viaje: la sesion, lo que entro, lo que salio, el efectivo
+-- esperado y el desglose por forma de pago. Sin esto la pantalla haria cinco
+-- consultas y cada una podria contestar de un momento distinto.
+create or replace function public.caja_actual(p_negocio text)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select case when s.id is null then null else jsonb_build_object(
+    'id', s.id,
+    'nombre', s.nombre,
+    'estado', s.estado,
+    'saldoInicialCentavos', s.saldo_inicial_centavos,
+    'abiertaEn', s.abierta_en,
+    'abiertaPor', (select m.nombre from membresia m where m.id = s.abierta_por),
+    'observaciones', s.observaciones,
+    -- TODO lo que entro y salio, con cualquier forma de pago. Es el movimiento
+    -- del negocio.
+    'ingresosCentavos', coalesce((select sum(monto_centavos) from movimiento_caja
+                                   where sesion_id = s.id and tipo = 'ingreso'), 0),
+    'egresosCentavos', coalesce((select sum(monto_centavos) from movimiento_caja
+                                   where sesion_id = s.id and tipo = 'egreso'), 0),
+    -- Y SOLO EL EFECTIVO, que es lo unico que se cuenta en el cajon.
+    'efectivoEntroCentavos', coalesce((select sum(monto_centavos) from movimiento_caja
+                                   where sesion_id = s.id and tipo = 'ingreso'
+                                     and coalesce(metodo, 'efectivo') = 'efectivo'), 0),
+    'efectivoSalioCentavos', coalesce((select sum(monto_centavos) from movimiento_caja
+                                   where sesion_id = s.id and tipo = 'egreso'
+                                     and coalesce(metodo, 'efectivo') = 'efectivo'), 0),
+    'efectivoEsperadoCentavos', app.efectivo_de_la_caja(s.id),
+    'movimientos', (select count(*) from movimiento_caja where sesion_id = s.id)
+  ) end
+  from (select * from sesion_caja
+         where negocio_id = p_negocio and estado = 'abierta' limit 1) s;
+$$;
+
+-- ---------------------------------------------------------------------
+-- EL RESUMEN DE UNA CAJA — formas de pago y movimientos por clase
+-- ---------------------------------------------------------------------
+create or replace function public.resumen_de_caja(p_sesion uuid)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  with m as (
+    select mc.*, app.clase_de_movimiento(mc.origen, mc.tipo) as clase
+    from movimiento_caja mc where mc.sesion_id = p_sesion
+  ),
+  -- Las formas de pago se cuentan sobre lo que ENTRO. Mezclar entradas y
+  -- salidas en el mismo pastel da porcentajes que no significan nada.
+  entradas as (select * from m where tipo = 'ingreso')
+  select jsonb_build_object(
+    'totalEntradasCentavos', coalesce((select sum(monto_centavos) from entradas), 0),
+    'metodos', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'metodo', t.metodo, 'centavos', t.centavos, 'movimientos', t.n
+      ) order by t.centavos desc)
+      from (
+        select coalesce(metodo, 'efectivo') as metodo,
+               sum(monto_centavos) as centavos, count(*) as n
+        from entradas group by 1
+      ) t
+    ), '[]'::jsonb),
+    'clases', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'clase', t.clase, 'movimientos', t.n, 'centavos', t.centavos
+      ) order by t.clase)
+      from (
+        select clase, count(*) as n,
+               sum(case when tipo = 'ingreso' then monto_centavos else -monto_centavos end) as centavos
+        from m group by clase
+      ) t
+    ), '[]'::jsonb),
+    'movimientos', (select count(*) from m),
+    'netoCentavos', coalesce((
+      select sum(case when tipo = 'ingreso' then monto_centavos else -monto_centavos end) from m
+    ), 0)
+  );
+$$;
+
+-- ---------------------------------------------------------------------
+-- LOS MOVIMIENTOS, FILTRADOS Y PAGINADOS
+-- ---------------------------------------------------------------------
+create or replace function public.movimientos_de_caja(
+  p_negocio text,
+  p_sesion uuid default null,
+  p_desde date default null,
+  p_hasta date default null,
+  p_busqueda text default null,
+  p_clase text default null,
+  p_metodo text default null,
+  p_usuario uuid default null,
+  p_pagina int default 1,
+  p_por_pagina int default 10
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  with base as (
+    select mc.*,
+      app.clase_de_movimiento(mc.origen, mc.tipo) as clase,
+      app.categoria_del_movimiento(mc.origen, mc.referencia_id, mc.categoria) as categoria_leida,
+      (select m.nombre from membresia m
+        where m.negocio_id = mc.negocio_id and m.usuario_id = mc.creado_por) as usuario,
+      -- LA VENTA DE LA QUE SALIO, para poder navegar movimiento → venta → cliente.
+      case when mc.origen = 'pago'
+             then (select p.venta_id from pago p where p.id = mc.referencia_id)
+           when mc.origen = 'venta' then mc.referencia_id end as venta_id
+    from movimiento_caja mc
+    where mc.negocio_id = p_negocio
+      and (p_sesion is null or mc.sesion_id = p_sesion)
+      and (p_desde is null or mc.fecha >= p_desde)
+      and (p_hasta is null or mc.fecha <= p_hasta)
+      and (p_metodo is null or coalesce(mc.metodo, 'efectivo') = p_metodo)
+      and (p_usuario is null or mc.creado_por = p_usuario)
+      and (p_clase is null or app.clase_de_movimiento(mc.origen, mc.tipo) = p_clase)
+      and (p_busqueda is null or mc.descripcion ilike '%' || p_busqueda || '%')
+  )
+  select jsonb_build_object(
+    'total', (select count(*) from base),
+    'filas', coalesce((
+      select jsonb_agg(t.x order by t.orden desc)
+      from (
+        select jsonb_build_object(
+          'id', b.id,
+          'fecha', b.fecha,
+          'creadoEn', b.creado_en,
+          'clase', b.clase,
+          'tipo', b.tipo,
+          'concepto', b.descripcion,
+          'metodo', coalesce(b.metodo, 'efectivo'),
+          'categoria', b.categoria_leida,
+          'montoCentavos', b.monto_centavos,
+          'usuario', b.usuario,
+          'notas', b.notas,
+          'ventaId', b.venta_id,
+          'sesionId', b.sesion_id
+        ) as x, b.creado_en as orden
+        from base b
+        order by b.creado_en desc
+        limit greatest(p_por_pagina, 1)
+        offset greatest(p_pagina - 1, 0) * greatest(p_por_pagina, 1)
+      ) t
+    ), '[]'::jsonb)
+  );
+$$;
+
+-- ---------------------------------------------------------------------
+-- EL HISTORIAL DE CAJAS
+-- ---------------------------------------------------------------------
+--
+-- El esperado de una caja CERRADA sale de lo que se congelo al cortar; el de
+-- una abierta se calcula al vuelo. Recalcular el de una cerrada haria que un
+-- corte firmado cambiara solo.
+create or replace function public.historial_de_cajas(
+  p_negocio text, p_pagina int default 1, p_por_pagina int default 10
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  with base as (
+    select s.*,
+      (select m.nombre from membresia m where m.id = s.abierta_por) as abrio,
+      (select m.nombre from membresia m where m.id = s.cerrada_por) as cerro,
+      coalesce((select sum(monto_centavos) from movimiento_caja
+                 where sesion_id = s.id and tipo = 'ingreso'), 0) as ingresos,
+      coalesce((select sum(monto_centavos) from movimiento_caja
+                 where sesion_id = s.id and tipo = 'egreso'), 0) as egresos,
+      (select count(*) from movimiento_caja where sesion_id = s.id) as movimientos
+    from sesion_caja s
+    where s.negocio_id = p_negocio
+  )
+  select jsonb_build_object(
+    'total', (select count(*) from base),
+    'filas', coalesce((
+      select jsonb_agg(t.x order by t.orden desc)
+      from (
+        select jsonb_build_object(
+          'id', b.id, 'nombre', b.nombre, 'estado', b.estado,
+          'abiertaEn', b.abierta_en, 'cerradaEn', b.cerrada_en,
+          'abiertaPor', b.abrio, 'cerradaPor', b.cerro,
+          'saldoInicialCentavos', b.saldo_inicial_centavos,
+          'ingresosCentavos', b.ingresos,
+          'egresosCentavos', b.egresos,
+          'esperadoCentavos', coalesce(b.esperado_centavos, app.efectivo_de_la_caja(b.id)),
+          'contadoCentavos', b.contado_centavos,
+          'diferenciaCentavos', b.diferencia_centavos,
+          'movimientos', b.movimientos,
+          'observaciones', b.observaciones,
+          'notasCierre', b.notas_cierre
+        ) as x, b.abierta_en as orden
+        from base b
+        order by b.abierta_en desc
+        limit greatest(p_por_pagina, 1)
+        offset greatest(p_pagina - 1, 0) * greatest(p_por_pagina, 1)
+      ) t
+    ), '[]'::jsonb)
+  );
+$$;
+
+-- ---------------------------------------------------------------------
+-- EL REPORTE DE CAJA — de un periodo, no de una sesion
+-- ---------------------------------------------------------------------
+create or replace function public.reporte_de_caja(
+  p_negocio text,
+  p_desde date,
+  p_hasta date,
+  p_sesion uuid default null,
+  p_usuario uuid default null,
+  p_metodo text default null
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  with m as (
+    select mc.*, app.clase_de_movimiento(mc.origen, mc.tipo) as clase
+    from movimiento_caja mc
+    where mc.negocio_id = p_negocio
+      and mc.fecha between p_desde and p_hasta
+      and (p_sesion is null or mc.sesion_id = p_sesion)
+      and (p_usuario is null or mc.creado_por = p_usuario)
+      and (p_metodo is null or coalesce(mc.metodo, 'efectivo') = p_metodo)
+  )
+  select jsonb_build_object(
+    'ingresosCentavos', coalesce((select sum(monto_centavos) from m where tipo = 'ingreso'), 0),
+    'egresosCentavos', coalesce((select sum(monto_centavos) from m where tipo = 'egreso'), 0),
+    'movimientos', (select count(*) from m),
+    'porMetodo', coalesce((
+      select jsonb_agg(jsonb_build_object('metodo', t.metodo, 'centavos', t.c, 'movimientos', t.n)
+                       order by t.c desc)
+      from (select coalesce(metodo, 'efectivo') as metodo,
+                   sum(case when tipo = 'ingreso' then monto_centavos else -monto_centavos end) as c,
+                   count(*) as n
+              from m group by 1) t
+    ), '[]'::jsonb),
+    'porClase', coalesce((
+      select jsonb_agg(jsonb_build_object('clase', t.clase, 'centavos', t.c, 'movimientos', t.n)
+                       order by t.clase)
+      from (select clase,
+                   sum(case when tipo = 'ingreso' then monto_centavos else -monto_centavos end) as c,
+                   count(*) as n
+              from m group by 1) t
+    ), '[]'::jsonb),
+    'porUsuario', coalesce((
+      select jsonb_agg(jsonb_build_object('usuario', t.quien, 'centavos', t.c, 'movimientos', t.n)
+                       order by t.n desc)
+      from (select coalesce((select mb.nombre from membresia mb
+                              where mb.negocio_id = p_negocio and mb.usuario_id = m.creado_por),
+                            'Sin usuario') as quien,
+                   sum(case when tipo = 'ingreso' then monto_centavos else -monto_centavos end) as c,
+                   count(*) as n
+              from m group by 1) t
+    ), '[]'::jsonb),
+    -- Las diferencias salen de los CORTES del periodo, no de los movimientos.
+    'cortes', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', s.id, 'nombre', s.nombre, 'cerradaEn', s.cerrada_en,
+        'esperadoCentavos', s.esperado_centavos, 'contadoCentavos', s.contado_centavos,
+        'diferenciaCentavos', s.diferencia_centavos
+      ) order by s.cerrada_en desc)
+      from sesion_caja s
+      where s.negocio_id = p_negocio and s.estado = 'cerrada'
+        and s.cerrada_en::date between p_desde and p_hasta
+        and (p_sesion is null or s.id = p_sesion)
+    ), '[]'::jsonb)
+  );
+$$;
+
+comment on function public.reporte_de_caja is
+  'La fuente que Reportes consulta para todo lo de caja. No duplica nada: suma los movimientos que '
+  'ya existen y los cortes ya firmados.';

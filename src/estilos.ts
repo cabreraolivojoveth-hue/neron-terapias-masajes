@@ -2647,5 +2647,148 @@ body {
 
 .vta-detalle { min-width: 0; }
 
+
+/* ================================================================ */
+/* CAJA — el cajon                                                  */
+/* ================================================================ */
+/*
+ * Reusa el esqueleto de Ventas: las mismas tarjetas de cifra, el mismo cuerpo
+ * de lista mas panel, los mismos totales. Lo suyo es el anillo de formas de
+ * pago, los renglones por clase y los tres colores del corte.
+ */
+.caja { min-width: 0; }
+.caja-columna { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
+
+.caja-dato {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: ${v('espacio-3')}; min-width: 0;
+}
+.caja-dato .cli-exp__valor { text-align: right; }
+
+.caja-aparte {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: ${v('espacio-3')};
+  border: 1px dashed ${v('borde')}; border-radius: ${v('radio-sistema')};
+  background: ${v('superficie-tenue')};
+  min-width: 0;
+}
+
+.caja-acciones { display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
+
+/* ---------------------------------------------------------------- */
+/* El anillo de formas de pago                                       */
+/* ---------------------------------------------------------------- */
+.caja-pastel {
+  display: flex; flex-wrap: wrap; align-items: center; gap: ${v('espacio-4')}; min-width: 0;
+}
+.caja-anillo { position: relative; flex: none; width: 150px; height: 150px; }
+.caja-anillo svg { width: 100%; height: 100%; }
+.caja-anillo__centro {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; pointer-events: none;
+}
+.caja-anillo__que { font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
+.caja-anillo__cuanto {
+  font-size: ${v('texto-chico')}; font-weight: ${v('peso-fuerte')};
+  font-variant-numeric: ${v('cifra-numeros')};
+}
+.caja-anillo__parte--citas     { stroke: ${v('cat-citas')}; }
+.caja-anillo__parte--ventas    { stroke: ${v('cat-ventas')}; }
+.caja-anillo__parte--cursos    { stroke: ${v('cat-cursos')}; }
+.caja-anillo__parte--productos { stroke: ${v('cat-productos')}; }
+
+/* LA LEYENDA NO ES DECORACION: es la version legible del dibujo, para quien no
+   distingue los colores y para quien usa lector de pantalla. */
+.caja-leyenda {
+  list-style: none; margin: 0; padding: 0; flex: 1 1 220px;
+  display: flex; flex-direction: column; gap: ${v('espacio-2')}; min-width: 0;
+}
+.caja-leyenda__renglon {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  font-size: ${v('texto-chico')}; min-width: 0;
+}
+.caja-leyenda__punto { width: 10px; height: 10px; border-radius: ${v('radio-redondo')}; flex: none; }
+.caja-leyenda__punto--citas     { background: ${v('cat-citas')}; }
+.caja-leyenda__punto--ventas    { background: ${v('cat-ventas')}; }
+.caja-leyenda__punto--cursos    { background: ${v('cat-cursos')}; }
+.caja-leyenda__punto--productos { background: ${v('cat-productos')}; }
+.caja-leyenda__que { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.caja-leyenda__cuanto {
+  flex: none; font-variant-numeric: ${v('cifra-numeros')}; font-weight: ${v('peso-medio')};
+}
+.caja-leyenda__parte {
+  flex: none; min-width: 44px; text-align: right;
+  color: ${v('texto-suave')}; font-variant-numeric: ${v('cifra-numeros')};
+}
+
+/* ---------------------------------------------------------------- */
+/* Los movimientos agrupados por clase                               */
+/* ---------------------------------------------------------------- */
+.caja-clases { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.caja-clase {
+  display: flex; align-items: center; gap: ${v('espacio-3')};
+  padding: ${v('espacio-2')} 0;
+  border-bottom: 1px solid ${v('borde-suave')};
+  font-size: ${v('texto-chico')}; min-width: 0;
+}
+.caja-clase:last-child { border-bottom: none; }
+.caja-clase__que { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.caja-clase__cuantos {
+  flex: none; color: ${v('texto-suave')}; font-variant-numeric: ${v('cifra-numeros')};
+}
+.caja-clase__monto {
+  flex: none; min-width: 90px; text-align: right;
+  font-variant-numeric: ${v('cifra-numeros')}; font-weight: ${v('peso-medio')};
+}
+/* El que sale lleva color Y el signo delante: solo con color, quien no lo
+   distingue no sabe cual resta. */
+.caja-clase__monto--sale { color: ${v('peligro')}; }
+.caja-clases__pie {
+  display: flex; align-items: center; gap: ${v('espacio-3')};
+  padding-top: ${v('espacio-3')};
+  border-top: 1px solid ${v('borde-suave')};
+  font-size: ${v('texto-chico')}; font-weight: ${v('peso-fuerte')};
+}
+
+.caja-clase--venta       { color: ${v('exito')};       border-color: ${v('exito')}; }
+.caja-clase--ingreso     { color: ${v('cat-visitas')}; border-color: ${v('cat-visitas')}; }
+.caja-clase--retiro      { color: ${v('advertencia')}; border-color: ${v('advertencia')}; }
+.caja-clase--gasto       { color: ${v('cat-productos')}; border-color: ${v('cat-productos')}; }
+.caja-clase--cancelacion { color: ${v('peligro')};     border-color: ${v('peligro')}; }
+.caja-clase--devolucion  { color: ${v('cat-cursos')};  border-color: ${v('cat-cursos')}; }
+
+.caja-metodo--efectivo      { color: ${v('cat-citas')};     border-color: ${v('cat-citas')}; }
+.caja-metodo--tarjeta       { color: ${v('cat-cursos')};    border-color: ${v('cat-cursos')}; }
+.caja-metodo--transferencia { color: ${v('cat-ventas')};    border-color: ${v('cat-ventas')}; }
+.caja-metodo--otro          { color: ${v('texto-suave')};   border-color: ${v('borde')}; }
+
+.caja-entra { color: ${v('exito')}; }
+.caja-sale  { color: ${v('peligro')}; }
+
+/* ---------------------------------------------------------------- */
+/* El corte                                                          */
+/* ---------------------------------------------------------------- */
+.caja-estado--abierta { color: ${v('exito')};       border-color: ${v('exito')}; }
+.caja-estado--cerrada { color: ${v('texto-suave')}; border-color: ${v('borde')}; }
+
+/* Los tres estados del corte llevan color Y palabra. Un numero rojo sin la
+   frase "faltan 50" no le dice a nadie que hacer. */
+.caja-diferencia--cuadra { color: ${v('exito')}; }
+.caja-diferencia--sobra  { color: ${v('advertencia')}; }
+.caja-diferencia--falta  { color: ${v('peligro')}; }
+
+.caja-veredicto {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  padding: ${v('espacio-3')};
+  border-radius: ${v('radio-sistema')};
+  border: 1px solid ${v('borde')};
+  background: ${v('superficie-tenue')};
+  min-width: 0;
+}
+.caja-veredicto--cuadra { border-color: ${v('exito')};       background: ${v('exito-tenue')}; }
+.caja-veredicto--sobra  { border-color: ${v('advertencia')}; background: ${v('advertencia-tenue')}; }
+.caja-veredicto--falta  { border-color: ${v('peligro')};     background: ${v('peligro-tenue')}; }
+
 `;
 }

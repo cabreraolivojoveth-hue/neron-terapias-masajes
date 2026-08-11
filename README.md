@@ -25,8 +25,8 @@ reescribe aquí.
 
 ## Qué hay hasta ahora
 
-**Bloque 0 — Los cimientos del producto.** Veinte tablas con sus reglas de acceso
-por fila, las operaciones que la base de datos hace sola, y 157 ataques que las
+**Bloque 0 — Los cimientos del producto.** Veintiuna tablas con sus reglas de acceso
+por fila, las operaciones que la base de datos hace sola, y 180 ataques que las
 comprueban.
 
 | Tabla | Es dueña de |
@@ -41,6 +41,7 @@ comprueban.
 | `pago` | con qué se pagó. Varios renglones son el pago mixto |
 | `gasto` | lo que sale |
 | `movimiento_caja` | **derivada** — nace de un **pago**, un gasto o un ajuste |
+| `sesion_caja` | el cajón abierto: quién, cuándo, con cuánto, y el corte al cerrar |
 | `inscripcion` | quién va a qué curso |
 | `recordatorio` | qué falta hacer, y de qué entidad salió |
 
@@ -84,13 +85,13 @@ código.
 npm run ataques
 ```
 
-157 ataques contra las tablas del producto: leer el expediente de otro centro,
+180 ataques contra las tablas del producto: leer el expediente de otro centro,
 cobrarse una venta ajena, meter dinero a la caja sin operación detrás, marcar
 una venta como cobrada sin bajar inventario. **Están bien cuando fallan el
 intento.**
 
 Y hay control negativo: `NERON_SIN_REGLAS=1 npm run ataques` corre el mismo
-ensayo sin las reglas de fila. Ahí **22 de los 157 tienen éxito**. Eso es lo que
+ensayo sin las reglas de fila. Ahí **24 de los 180 tienen éxito**. Eso es lo que
 prueba que las pruebas sirven — un juego que también pasa con la seguridad
 quitada no vale nada.
 
@@ -421,6 +422,48 @@ mismo máximo y la segunda revienta. Hay un contador con candado por centro.
 **Los impuestos salen en cero porque no hay ninguno configurado**, y la pantalla lo dice: "IVA
 (0%)". El día que Configuración los declare, la cifra sale de ahí.
 
+**Bloque 6 — Caja.** El cajón, y lo que de verdad hay dentro.
+
+**Un ingreso del negocio no es lo mismo que efectivo en el cajón, y esa distinción sostiene todo
+el módulo.** Una venta de mil pesos con tarjeta es un ingreso de mil pesos y **cero** efectivo. Si
+el sistema los sumara juntos, al cerrar el turno pediría contar seis mil y en el cajón habría dos
+mil — y nadie sabría si faltó dinero o faltó entender el número. El corte compara **solo
+efectivo**; el resto se enseña al lado, dicho.
+
+**Sin caja abierta no se cobra en efectivo.** Billetes en un cajón que ningún corte va a contar son
+un descuadre garantizado. La tarjeta y la transferencia sí se cobran sin caja — ese dinero va al
+banco. Y cuando Ventas topa con esto, no deja a quien cobra releyendo el error: **lo lleva a Caja
+a abrirla.**
+
+**Una sola caja abierta por centro, y lo garantiza un índice.** Con dos, cada venta tendría que
+elegir a cuál va, y la primera vez que alguien elija mal el corte no cuadra. Comprobarlo en la
+pantalla no sirve: dos personas abriendo caja a la vez pasan las dos comprobaciones.
+
+**Caja no es dueña de ningún movimiento.** Los de venta los escribe `registrar_venta`, los de
+gasto un disparador, y lo único que se captura a mano son los ajustes: ingresos y retiros. Si se
+pudieran meter ingresos sueltos, la caja dejaría de cuadrar con las ventas el primer día.
+
+**No hay editar ni borrar en toda la pantalla**, y no es un olvido: la caja es un libro. Revertir
+algo es agregar el movimiento contrario. Cancelar una venta devuelve el dinero **por la misma vía
+por la que entró** — un pago con tarjeta no saca efectivo del cajón.
+
+**Un gasto pagado por transferencia no baja el efectivo.** Sin esa distinción, al cerrar faltaba
+justo la renta y nadie sabía si era un faltante de verdad.
+
+**No se retira más efectivo del que hay.** Un cajón en negativo no es un dato: es la prueba de que
+el sistema dejó sacar lo que no estaba.
+
+**El esperado se congela al cortar.** Si se recalculara al abrir el historial, un movimiento
+agregado después cambiaría un corte ya firmado — y entonces no serviría para explicarle un
+faltante a nadie. Una caja cerrada no se reabre ni se retoca: lo impide la base.
+
+**El número esperado no se enseña hasta que el conteo ya está escrito.** Quien ya vio la cifra
+objetivo tiende a "encontrar" justo esa cantidad, y entonces el conteo no comprueba nada.
+
+**Nada se guarda calculado.** Ni el saldo de la caja ni los totales del turno: se suman de los
+movimientos cada vez que se piden. Un saldo guardado se desincroniza, y cuando lo hace nadie sabe
+cuál de los dos números creer.
+
 ### La orden única
 
 ```bash
@@ -436,7 +479,7 @@ cuerpo de una función `plpgsql` al crearla, así que un nombre de columna equiv
 los tipos, a las guardias y a las mil pruebas — y revienta en el SQL Editor. Aplicando el
 instalador real, cada función se parsea contra un Postgres de carne y hueso y el error sale aquí.
 
-**1015 pruebas · 11 guardias · 157 ataques.**
+**1161 pruebas · 11 guardias · 180 ataques.**
 
 ---
 
@@ -451,7 +494,8 @@ instalador real, cada función se parsea contra un Postgres de carne y hueso y e
 | **2** ✅ | **Clientes** — el expediente comercial de cada persona |
 | **3** ✅ | **Servicios** — el catálogo · **Cursos** — talleres, sesiones e inscripciones |
 | **5** ✅ | **Productos** — el catálogo físico y el inventario trazable |
-| **6** ✅ | **Ventas** — el cobro en una transacción, con pagos, caja y cotizaciones |
+| **6** ✅ | **Ventas** — el cobro en una transacción, con pagos y cotizaciones |
+| **6** ✅ | **Caja** — la sesión, el corte, y la tarjeta que no entra al cajón |
 | 7 | Gastos y Recordatorios |
 | 9 | Reportes · 10 · Configuración · 11 · Mensajes · 12 · Publicación |
 

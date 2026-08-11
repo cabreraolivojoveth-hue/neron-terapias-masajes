@@ -74,6 +74,7 @@ referencia por id y la resuelve al leer.
 | Pagos | `pago` | con qué se pagó. **Varios renglones son el pago mixto** — nunca un método llamado "mixto" |
 | Egresos | `gasto` | lo que sale |
 | Caja | `movimiento_caja` | **derivada** — nace de un **pago**, un gasto o un ajuste. Del pago y no de la venta: si no, un pago mixto no cabría, y el corte no sabría cuánto entró en efectivo |
+| El cajón | `sesion_caja` | quién abrió, cuándo, con cuánto — y al cerrar, cuánto se esperaba, cuánto se contó y la diferencia. **No guarda saldo: el saldo se suma de los movimientos** |
 | Inscripciones | `inscripcion` | quién va a qué curso, y en qué estado — **el alumno es un `cliente`**, no otra tabla de personas |
 | Pendientes | `recordatorio` | qué falta hacer, y **de qué entidad salió** |
 | Personas del sistema | `membresia` *(de la base)* | quién entra y con qué rol |
@@ -143,6 +144,8 @@ Aquí es una transacción de la base de datos: **pasa entera o no pasa.**
 | `cobrar_venta(id)` | total calculado, stock bajado con bloqueo de renglón, ingreso en caja, todo o nada |
 | `cancelar_venta(id)` | stock devuelto con movimiento contrario, inscripción dada de baja, egreso contrario en caja |
 | `guardar_cotizacion(...)` | una propuesta que **no mueve nada**: ni stock, ni caja, ni cupo |
+| `abrir_caja(...)` / `cerrar_caja(...)` | una sola caja abierta por centro; el corte compara **solo efectivo** y se congela al cerrar |
+| `registrar_movimiento_de_caja(...)` | lo único que se captura a mano: un ingreso o un retiro, sin poder dejar el cajón en negativo |
 | `siguiente_folio()` | un contador con candado por centro: dos cajas simultáneas salen con folios distintos |
 | `resumen_inicio()` | todo el tablero en **un** viaje al servidor |
 
@@ -168,12 +171,28 @@ Eso está probado con un ataque, no supuesto.
 
 ---
 
-## 7. La caja es un libro
+## 7. La caja es un libro, y el efectivo no es todo el dinero
 
 No hay forma de editar ni borrar un movimiento de caja. Ni la dueña, ni el
-servidor. Cancelar una venta **no tacha su ingreso: agrega el egreso contrario.**
+servidor. Cancelar una venta **no tacha su ingreso: agrega el egreso contrario**,
+y por la misma vía por la que entró — devolver en efectivo lo que se cobró con
+tarjeta sacaría del cajón dinero que nunca estuvo ahí.
 
 Un registro financiero que se puede editar no sirve para auditar nada.
+
+Y hay una distinción que casi nadie hace y que sostiene todo el módulo:
+
+| | Qué cuenta |
+|---|---|
+| **Ingreso del negocio** | toda venta cobrada, con el método que sea |
+| **Efectivo en el cajón** | solo lo que se pagó en efectivo |
+
+Una venta de mil pesos con tarjeta es un ingreso de mil pesos y **cero** efectivo.
+Si el sistema los sumara juntos, al cerrar el turno pediría contar seis mil y en
+el cajón habría dos mil — y nadie sabría si faltó dinero o faltó entender el
+número. Por eso **el corte compara solo efectivo**, y por eso cobrar en efectivo
+exige una caja abierta: billetes en un cajón que ningún corte va a contar son un
+descuadre garantizado.
 
 ---
 
@@ -203,7 +222,7 @@ historial.
 
 | Bloque | Qué trae |
 |---|---|
-| **0** ✅ | Arquitectura, esquema completo, reglas de acceso, operaciones, 157 ataques |
+| **0** ✅ | Arquitectura, esquema completo, reglas de acceso, operaciones, 180 ataques |
 | **1** ✅ | El armazón de la aplicación: sesión, marco, menú, rutas |
 | **2** ✅ | **Clientes** — el expediente comercial |
 | **3** ✅ | **Servicios y Cursos** |
