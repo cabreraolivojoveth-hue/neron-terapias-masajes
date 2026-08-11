@@ -23,6 +23,40 @@
  * lo esta leyendo o apuntando con el dedo. Un renglon de tabla que se acomoda
  * solo mientras vas a tocarlo hace que toques el de al lado — y en Ventas eso
  * es cobrar otra cosa.
+ *
+ * ---------------------------------------------------------------------------
+ * EL RELLENO ES "backwards" Y NUNCA "both". ES LA REGLA MAS IMPORTANTE DE ESTE
+ * ARCHIVO Y LA QUE MAS CARO SALIO.
+ *
+ * Con "both", una animacion se queda EN EFECTO para siempre despues de
+ * terminar. Y una animacion de "transform" en efecto hace que su elemento
+ * compute "transform: matrix(1, 0, 0, 1, 0, 0)" —la matriz identidad— en vez
+ * de "none". Se ve exactamente igual… salvo por una cosa: un transform que no
+ * es "none" convierte al elemento en BLOQUE CONTENEDOR de todo lo que lleve
+ * "position: fixed" adentro.
+ *
+ * Que significa eso en la pantalla: cada modulo lleva "mv-pantalla", asi que
+ * cada modulo era una jaula. El velo de un modal —que pide "inset: 0" para
+ * tapar la ventana entera— se quedaba encerrado en la caja del modulo: medía
+ * 1228x683 en lugar de 1536x1024. Se veia como una plancha oscura pegada en
+ * medio de la pantalla, con la barra lateral y la barra de arriba sin tapar.
+ * Asi salio a produccion en el modal de "Categorias de cursos".
+ *
+ * Lo peor es que no era un fallo del modal: el modal estaba bien. Cualquier
+ * cosa flotante que se escriba en el futuro —un modal, un aviso, un menu, un
+ * cajon— habria caido en la misma jaula, y buscando la causa en el sitio
+ * equivocado.
+ *
+ * "backwards" da lo unico que de verdad hacia falta: que el elemento este en
+ * su estado inicial ANTES de arrancar, que es lo que impide el parpadeo de los
+ * hijos escalonados mientras esperan su retraso. Al terminar, la animacion
+ * deja de estar en efecto y el transform vuelve a ser "none".
+ *
+ * PARA QUE ESTO FUNCIONE, el estado final de cada animacion tiene que ser
+ * IGUAL al estado natural del elemento — porque al terminar es al natural a
+ * donde vuelve. Si alguna vez hace falta que quede distinto, eso se escribe en
+ * la regla del elemento y la animacion arranca desde el otro lado, como hace
+ * "mv-rayita" mas abajo. Lo vigilan la guardia 13 y las pruebas.
  */
 
 const v = (nombre: string): string => `var(--neron-${nombre})`;
@@ -77,10 +111,10 @@ export function movimiento(): string {
  * reordena. Ocho pasos bastan: mas alla, el ultimo tarda tanto que se siente
  * lento en vez de vivo.
  */
-.mv-entra { animation: mv-sube ${v('movimiento-normal')} ${v('movimiento-curva')} both; }
-.mv-entra-suave { animation: mv-aparece ${v('movimiento-normal')} ${v('movimiento-curva')} both; }
+.mv-entra { animation: mv-sube ${v('movimiento-normal')} ${v('movimiento-curva')} backwards; }
+.mv-entra-suave { animation: mv-aparece ${v('movimiento-normal')} ${v('movimiento-curva')} backwards; }
 
-.mv-escalonado > * { animation: mv-sube ${v('movimiento-normal')} ${v('movimiento-curva')} both; }
+.mv-escalonado > * { animation: mv-sube ${v('movimiento-normal')} ${v('movimiento-curva')} backwards; }
 .mv-escalonado > *:nth-child(1) { animation-delay: 0ms; }
 .mv-escalonado > *:nth-child(2) { animation-delay: 40ms; }
 .mv-escalonado > *:nth-child(3) { animation-delay: 80ms; }
@@ -92,7 +126,7 @@ export function movimiento(): string {
 
 /* El contenido de un modulo al entrar. La llave de React lo vuelve a montar
    al cambiar de pantalla, asi que se dispara sola en cada navegacion. */
-.mv-pantalla { animation: mv-sube ${v('movimiento-normal')} ${v('movimiento-curva')} both; }
+.mv-pantalla { animation: mv-sube ${v('movimiento-normal')} ${v('movimiento-curva')} backwards; }
 
 /* ---------------------------------------------------------------- */
 /* AL PASAR EL PUNTERO                                               */
@@ -144,18 +178,16 @@ export function movimiento(): string {
  * sin eso, la pantalla se sustituye de golpe y hay que releerla entera para
  * saber que cambio.
  */
-.mv-cambia { animation: mv-sube ${v('movimiento-instantaneo')} ${v('movimiento-curva')} both; }
+.mv-cambia { animation: mv-sube ${v('movimiento-instantaneo')} ${v('movimiento-curva')} backwards; }
 
 /* ---------------------------------------------------------------- */
 /* PANELES Y DIALOGOS                                                */
 /* ---------------------------------------------------------------- */
-.mv-panel { animation: mv-entra-derecha ${v('movimiento-normal')} ${v('movimiento-curva')} both; }
+.mv-panel { animation: mv-entra-derecha ${v('movimiento-normal')} ${v('movimiento-curva')} backwards; }
 
-/* El dialogo de la base entra con un resorte corto: aparecer de golpe en el
-   centro de la pantalla sobresalta. */
-.neron-modal__caja, .neron-dialogo, [role='dialog'] > * {
-  animation: mv-resorte ${v('movimiento-normal')} ${v('movimiento-curva')} both;
-}
+/* El dialogo entra con un resorte corto —aparecer de golpe en el centro de la
+   pantalla sobresalta— y eso vive con el resto de su vestido, en "piezas.ts".
+   Aqui estaba apuntando a dos clases que no existen. */
 
 /* ---------------------------------------------------------------- */
 /* AVISOS                                                            */

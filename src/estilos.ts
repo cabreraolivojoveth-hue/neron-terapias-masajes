@@ -947,7 +947,7 @@ function loQueTodaviaEsDeUnModulo(): string {
   border-radius: ${c('radio-control')};
   box-shadow: ${c('sombra-alta')};
   white-space: nowrap;
-  animation: mv-aparece ${v('movimiento-instantaneo')} ${v('movimiento-curva')} both;
+  animation: mv-aparece ${v('movimiento-instantaneo')} ${v('movimiento-curva')} backwards;
   /* No intercepta el raton: si lo hiciera, el globito taparia la columna de
      al lado y el señalado se quedaria pegado. */
   pointer-events: none;
@@ -1238,8 +1238,13 @@ function loQueTodaviaEsDeUnModulo(): string {
   width: 3px; height: 60%;
   border-radius: ${c('radio-pastilla')};
   background: ${v('marca')};
-  transform: translateY(-50%) scaleY(0);
-  animation: mv-rayita ${v('movimiento-normal')} ${v('movimiento-curva')} both;
+  /* EL ESTADO NATURAL ES LA RAYITA PUESTA, y la animacion arranca desde
+     abajo. Al reves —natural en scaleY(0), animacion que la sube— hacia falta
+     "both" para que se quedara puesta al terminar, y "both" es lo que
+     encerraba los velos de los modales dentro de la caja del modulo. Esta
+     contado en "movimiento.ts". */
+  transform: translateY(-50%);
+  animation: mv-rayita ${v('movimiento-normal')} ${v('movimiento-curva')} backwards;
 }
 
 /* La barra de "tantos seleccionados", solo mientras se selecciona. */

@@ -63,6 +63,21 @@ body {
   /* El ancho de la barra lateral, en un solo lugar: lo usan la barra, el velo
      y el contenido. Tres numeros sueltos se desincronizan al primer ajuste. */
   --centro-lateral: 260px;
+
+  /*
+   * EL VELO DE LO QUE FLOTA ENCIMA — mas suave que el de la base.
+   *
+   * El de la base tapa al 45% en claro y al 66% en oscuro. Es correcto para un
+   * sistema que no puede suponer nada del fondo, pero en el Centro se veia como
+   * una plancha negra: lo de atras desaparecia y el modal quedaba flotando en
+   * un agujero. El diseño enseña lo contrario — lo de atras se sigue viendo,
+   * apenas apagado y desenfocado, para que se entienda que sigue ahi.
+   *
+   * SE DERIVA DEL VELO DE LA BASE, no se escribe otro color: asi hereda el
+   * valor que le toca a cada tema —en oscuro hace falta tapar mas— y no hay dos
+   * decisiones de color que se puedan desincronizar.
+   */
+  --centro-velo: color-mix(in srgb, ${v('velo')} 58%, transparent);
 }
 
 /* ---------------------------------------------------------------- */

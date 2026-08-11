@@ -17,6 +17,19 @@ const PASOS = [
   { titulo: 'Tipos', porque: 'que no haya nada mal escrito ni mal conectado', orden: 'npx tsc -p tsconfig.json --noEmit' },
   { titulo: 'Fronteras', porque: 'que no se haya colado un dato de ejemplo ni un color suelto', orden: 'npx tsx guardias/fronteras.ts' },
   { titulo: 'Pruebas', porque: 'que las reglas del producto sigan cumpliendose', orden: 'npx vitest run' },
+  /**
+   * EL UNICO PASO QUE MIRA UNA PANTALLA DE VERDAD, y esta aqui porque los otros
+   * cuatro dejaron salir a produccion un modal que se veia roto.
+   *
+   * El velo de "Categorias de cursos" salio encerrado en la caja del modulo:
+   * una plancha oscura pegada en medio de la pantalla, sin tapar la barra
+   * lateral. Con tipos, guardias, mil doscientas pruebas y la compilacion en
+   * verde — porque ninguna de esas cuatro cosas abre un modal y lo mide.
+   *
+   * Abre un navegador y tarda unos treinta segundos. Es el paso mas lento de la
+   * bateria y el unico que habria cachado ese fallo.
+   */
+  { titulo: 'Velos', porque: 'que todo lo que se abre encima tape la pantalla y no la tache', orden: 'npx tsx scripts/velos.ts' },
   { titulo: 'Compilacion', porque: 'que lo que se va a publicar de verdad compile', orden: 'npx vite build' },
   { titulo: 'Ataques', porque: 'que las reglas de acceso de verdad muerdan', orden: 'npx tsx pruebas-bd/ataques.ts' },
 ];

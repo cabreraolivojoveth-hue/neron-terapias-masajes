@@ -495,6 +495,101 @@ function guardiaLaVitrinaNoSeCuela(): void {
 }
 
 /* ------------------------------------------------------------------ */
+/* 13 — Ninguna animacion se queda en efecto al terminar               */
+/* ------------------------------------------------------------------ */
+/**
+ * ESTA GUARDIA EXISTE PORQUE EL FALLO YA SALIO A PRODUCCION, y porque la causa
+ * estaba a tres pantallas de distancia del sintoma.
+ *
+ * QUE SE VEIA: al abrir "Categorias de cursos", el velo del modal salia como
+ * una plancha negra pegada en medio de la pantalla. No tapaba la barra lateral
+ * ni la barra de arriba, y lo de atras desaparecia. Se veia roto.
+ *
+ * QUE PASABA: `animation-fill-mode: both` deja la animacion EN EFECTO para
+ * siempre despues de terminar. Una animacion de `transform` en efecto hace que
+ * su elemento compute `transform: matrix(1, 0, 0, 1, 0, 0)` —la identidad— en
+ * vez de `none`. Y un transform que no es `none` convierte al elemento en
+ * BLOQUE CONTENEDOR de todo lo que lleve `position: fixed` adentro.
+ *
+ * Cada modulo lleva `mv-pantalla`, asi que cada modulo era una jaula: el velo
+ * pedia `inset: 0` para tapar la ventana y se quedaba encerrado en la caja del
+ * modulo. Medía 1228x683 en vez de 1536x1024.
+ *
+ * POR QUE NO BASTA CON HABERLO ARREGLADO: el sintoma aparece en el modal y la
+ * causa vive en la hoja de animaciones. Quien vuelva a escribir `both` —porque
+ * es lo que se escribe por costumbre para que algo "se quede como quedo"— va a
+ * romper TODO lo que flote, incluido lo que todavia no existe, y va a buscar el
+ * problema en el componente equivocado. Por eso se revienta la publicacion aqui
+ * y no se confia en que alguien se acuerde.
+ *
+ * `backwards` da lo unico que hacia falta: el estado inicial ANTES de arrancar,
+ * que es lo que impide el parpadeo de los hijos escalonados durante su retraso.
+ */
+function guardiaSinAnimacionesQueSeQuedanEnEfecto(): void {
+  const HOJAS = [
+    join(RAIZ, 'src', 'estilo', 'movimiento.ts'),
+    join(RAIZ, 'src', 'estilo', 'piezas.ts'),
+    join(RAIZ, 'src', 'estilo', 'armadura.ts'),
+    join(RAIZ, 'src', 'estilo', 'cimientos.ts'),
+    join(RAIZ, 'src', 'estilos.ts'),
+  ];
+
+  for (const archivo of HOJAS) {
+    let crudo: string;
+    try { crudo = readFileSync(archivo, 'utf8'); } catch { continue; }
+    const limpio = sinComentarios(crudo);
+
+    // `both` y `forwards` dejan la animacion en efecto; los dos sirven igual
+    // para encerrar un velo. Se buscan como palabra dentro de una declaracion
+    // de animacion, no en cualquier parte del texto.
+    for (const modo of ['both', 'forwards'] as const) {
+      const suelto = new RegExp(`animation(?:-fill-mode)?\\s*:[^;]*\\b${modo}\\b`);
+      if (suelto.test(limpio)) {
+        fallar(archivo, `una animacion rellena con "${modo}"`,
+          'Eso la deja EN EFECTO al terminar, y una animacion de transform en efecto computa la ' +
+          'matriz identidad en vez de "none". Un transform que no es "none" encierra dentro del ' +
+          'elemento todo lo que lleve "position: fixed": el velo de cualquier modal deja de tapar ' +
+          'la pantalla y sale como una plancha oscura en medio. Ya paso, publicado, en el modal de ' +
+          'Categorias. Usa "backwards" y deja que el estado final de la animacion sea el estado ' +
+          'natural del elemento.');
+      }
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 14 — Lo que flota se viste una sola vez, para las ocho pantallas    */
+/* ------------------------------------------------------------------ */
+/**
+ * El velo y el dialogo se visten en `piezas.ts`, sobre las clases de la base,
+ * porque TODO lo que se abre en el producto pasa por el `Modal` de la base.
+ *
+ * Si un modulo se pusiera a vestir su propio velo, volveriamos al error mas
+ * caro del proyecto —ocho piezas parecidas y ninguna igual— pero en lo que mas
+ * se nota: un modal que se ve distinto segun de que pantalla salio.
+ */
+function guardiaElVeloSeVisteUnaSolaVez(): void {
+  const piezas = readFileSync(join(RAIZ, 'src', 'estilo', 'piezas.ts'), 'utf8');
+  if (!/\.neron-velo\s*\{/.test(piezas)) {
+    fallar('src/estilo/piezas.ts', 'ya no viste el velo de lo que flota encima',
+      'Es donde se le pone al velo el tono suave del Centro y el desenfoque de lo de atras. Sin ' +
+      'esa regla vuelve el velo de la base, que tapa al 45% y deja la pantalla como una plancha ' +
+      'negra. Si se mudo de archivo, muda esta guardia con el.');
+  }
+
+  for (const archivo of FUENTE) {
+    if (archivo.endsWith(join('estilo', 'piezas.ts'))) continue;
+    const limpio = sinComentarios(readFileSync(archivo, 'utf8'));
+    if (/\.neron-velo\s*\{/.test(limpio)) {
+      fallar(archivo, 'viste el velo por su cuenta',
+        'Lo que flota encima se viste UNA vez, en src/estilo/piezas.ts, para las ocho pantallas. ' +
+        'Un velo por modulo es el error de las ocho tarjetas distintas, pero en lo que mas se nota: ' +
+        'un modal que se ve distinto segun de que pantalla salio.');
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
 
 const GUARDIAS = [
   { nombre: 'ni un dato de ejemplo', correr: guardiaSinDatosDeEjemplo },
@@ -509,6 +604,11 @@ const GUARDIAS = [
   { nombre: 'las capacidades del producto llegan al portero', correr: guardiaCapacidadesLleganAlPortero },
   { nombre: 'toda operacion refresca el tablero de Inicio', correr: guardiaTodaOperacionRefrescaInicio },
   { nombre: 'la vitrina no se cuela al producto', correr: guardiaLaVitrinaNoSeCuela },
+  {
+    nombre: 'ninguna animacion se queda en efecto (o encierra los velos)',
+    correr: guardiaSinAnimacionesQueSeQuedanEnEfecto,
+  },
+  { nombre: 'lo que flota se viste una sola vez', correr: guardiaElVeloSeVisteUnaSolaVez },
 ];
 
 for (const g of GUARDIAS) g.correr();

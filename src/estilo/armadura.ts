@@ -100,8 +100,13 @@ export function armadura(): string {
   width: 3px; height: 60%;
   border-radius: ${c('radio-pastilla')};
   background: ${v('marca')};
-  transform: translateY(-50%) scaleY(0);
-  animation: mv-rayita ${v('movimiento-normal')} ${v('movimiento-curva')} both;
+  /* EL ESTADO NATURAL ES LA RAYITA PUESTA, y la animacion arranca desde
+     abajo. Al reves —natural en scaleY(0), animacion que la sube— hacia falta
+     "both" para que se quedara puesta al terminar, y "both" es lo que
+     encerraba los velos de los modales dentro de la caja del modulo. Esta
+     contado en "movimiento.ts". */
+  transform: translateY(-50%);
+  animation: mv-rayita ${v('movimiento-normal')} ${v('movimiento-curva')} backwards;
 }
 .arm-enlace--activo .arm-enlace__icono { color: ${v('marca')}; }
 .arm-enlace--activo:hover { background: ${v('marca-tenue')}; color: ${v('marca')}; }
@@ -156,7 +161,7 @@ export function armadura(): string {
   border-radius: ${c('radio-control')};
   background: ${v('superficie-elevada')};
   box-shadow: ${c('sombra-alta')};
-  animation: mv-sube ${v('movimiento-instantaneo')} ${v('movimiento-curva')} both;
+  animation: mv-sube ${v('movimiento-instantaneo')} ${v('movimiento-curva')} backwards;
 }
 .arm-cuenta__opcion {
   display: flex; align-items: center; gap: ${v('espacio-2')};
@@ -185,7 +190,7 @@ export function armadura(): string {
 .arm-velo {
   position: fixed; inset: 0; z-index: 35;
   background: ${v('velo')};
-  animation: mv-aparece ${v('movimiento-instantaneo')} ${v('movimiento-curva')} both;
+  animation: mv-aparece ${v('movimiento-instantaneo')} ${v('movimiento-curva')} backwards;
 }
 @media (min-width: 1024px) { .arm-velo { display: none; } }
 

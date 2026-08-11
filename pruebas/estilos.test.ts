@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { estilosDelProducto } from '../src/estilos.js';
+import { cimientos } from '../src/estilo/cimientos.js';
 
 const css = estilosDelProducto();
 
@@ -12,12 +13,41 @@ describe('los estilos del producto no traen colores propios', () => {
   });
 
   it('todo lo que es color sale de una variable de la base', () => {
+    /**
+     * TAMBIEN VALE UN TOKEN "--centro-", pero no por su nombre: se comprueba
+     * que su definicion en `cimientos.ts` salga de un token de la base.
+     *
+     * El Centro afina unas cuantas cosas que el diseño pide distintas —el borde
+     * de tarjeta, la sombra, el velo— y lo hace con variables propias en vez de
+     * pisar las de la base, porque pisar `--neron-borde` cambiaria tambien el
+     * borde de los campos de los formularios. Pero cada una se DERIVA de un
+     * token de la base con `color-mix`, asi que sigue heredando el tema y la
+     * prueba de contraste.
+     *
+     * Aceptar "--centro-" a ciegas seria dejar una puerta abierta: bastaria
+     * inventarse un `--centro-lo-que-sea: hotpink` para saltarse la regla.
+     */
+    const definiciones = new Map<string, string>();
+    for (const m of cimientos().matchAll(/(--centro-[a-z-]+)\s*:\s*([^;]+);/g)) {
+      definiciones.set(m[1]!, m[2]!);
+    }
+
     const declaraciones = css.match(/(?:^|\s)(?:color|background|border-color):[^;]+;/g) ?? [];
     expect(declaraciones.length).toBeGreaterThan(5);
     for (const d of declaraciones) {
       const valor = d.slice(d.indexOf(':') + 1, -1).trim().toLowerCase();
       if (['transparent', 'inherit', 'currentcolor', 'none'].includes(valor)) continue;
-      expect(d, `no sale de un token: ${d.trim()}`).toContain('var(--neron-');
+      if (d.includes('var(--neron-')) continue;
+
+      const propio = /var\((--centro-[a-z-]+)\)/.exec(d);
+      expect(propio, `no sale de ningun token: ${d.trim()}`).not.toBeNull();
+
+      const comoSeDefine = definiciones.get(propio![1]!);
+      expect(comoSeDefine, `${propio![1]!} no esta definido en cimientos.ts`).toBeDefined();
+      expect(
+        comoSeDefine,
+        `${propio![1]!} no se deriva de un token de la base: ${String(comoSeDefine)}`,
+      ).toContain('var(--neron-');
     }
   });
 });

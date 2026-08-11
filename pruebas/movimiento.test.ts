@@ -9,6 +9,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { movimiento } from '../src/estilo/movimiento.js';
+import { armadura } from '../src/estilo/armadura.js';
 
 const css = movimiento();
 
@@ -136,5 +137,58 @@ describe('lo que se mueve, y lo que a proposito no', () => {
     // levantada despues de tocarla.
     const conPuntero = css.match(/@media \(hover: hover\)\s*\{[\s\S]*?\n\}/g)?.join('\n') ?? '';
     expect(conPuntero).toContain('.mv-levanta:hover');
+  });
+});
+
+describe('ninguna animacion se queda en efecto al terminar', () => {
+  /**
+   * ESTO YA SALIO A PRODUCCION Y SE VEIA ROTO, y la causa estaba a tres
+   * pantallas del sintoma.
+   *
+   * `animation-fill-mode: both` deja la animacion EN EFECTO para siempre. Una
+   * animacion de `transform` en efecto hace que su elemento compute la matriz
+   * identidad en vez de `none`, y un transform que no es `none` convierte al
+   * elemento en bloque contenedor de todo lo que lleve `position: fixed`.
+   *
+   * Cada modulo lleva `mv-pantalla`, asi que cada modulo era una jaula: el velo
+   * del modal de "Categorias de cursos" medía 1228x683 en vez de 1536x1024 y
+   * salia como una plancha oscura pegada en medio de la pantalla.
+   *
+   * La guardia 13 lo revienta en la publicacion y `npm run velos` lo comprueba
+   * en un navegador de verdad. Esto lo fija en la hoja, que es donde se escribe
+   * el error.
+   */
+  it('el relleno es "backwards" y nunca "both" ni "forwards"', () => {
+    const conRelleno = [...css.matchAll(/animation:[^;]+;/g)].map((m) => m[0]);
+    expect(conRelleno.length).toBeGreaterThan(4);
+    for (const a of conRelleno) {
+      expect(a, `esta animacion se queda en efecto: ${a}`).not.toMatch(/\bboth\b/);
+      expect(a, `esta animacion se queda en efecto: ${a}`).not.toMatch(/\bforwards\b/);
+    }
+  });
+
+  it('las entradas terminan en el estado NATURAL del elemento', () => {
+    /*
+     * Es lo que hace que "backwards" alcance: al terminar, la animacion deja de
+     * aplicarse y el elemento vuelve a su regla. Si el ultimo fotograma dejara
+     * algo distinto, se veria un salto al final de cada entrada.
+     */
+    for (const nombre of ['mv-sube', 'mv-entra-derecha', 'mv-resorte']) {
+      const cuerpo = css.match(new RegExp(`@keyframes ${nombre}\\s*\\{[\\s\\S]*?\\n\\}`))?.[0] ?? '';
+      expect(cuerpo, `falta ${nombre}`).not.toBe('');
+      expect(cuerpo, `${nombre} no vuelve a transform: none`).toMatch(/to\s*\{[^}]*transform:\s*none/);
+      expect(cuerpo, `${nombre} no vuelve a opacidad 1`).toMatch(/to\s*\{[^}]*opacity:\s*1/);
+    }
+  });
+
+  it('la rayita del menu tiene su estado puesto en la REGLA, no en el relleno', () => {
+    /*
+     * Es la excepcion, y la unica: la rayita SI tiene que quedar distinta de
+     * como empieza. Antes eso se conseguia con "both"; ahora el estado natural
+     * de la regla es la rayita puesta y la animacion arranca desde scaleY(0).
+     */
+    const marco = armadura();
+    expect(marco).toMatch(/\.arm-enlace--activo::before\s*\{[^}]*transform:\s*translateY\(-50%\);/);
+    expect(css).toMatch(/@keyframes mv-rayita\s*\{[\s\S]*?from[^}]*scaleY\(0\)/);
   });
 });

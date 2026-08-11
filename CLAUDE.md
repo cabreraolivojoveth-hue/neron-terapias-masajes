@@ -125,6 +125,21 @@ en lugar de entregarlo.
 - **Postgres NO valida el cuerpo de una función `plpgsql` al crearla**, solo el
   de las `sql`. Por eso los ataques aplican el instalador de verdad: es la única
   forma de que un error de tipeo dentro de una función salga antes de producción.
+- **`animation-fill-mode: both` encierra todo lo que flota.** Una animación con
+  `both` se queda **en efecto** para siempre al terminar, y una animación de
+  `transform` en efecto hace que su elemento compute la matriz identidad en vez
+  de `none`. Un transform que no es `none` convierte al elemento en **bloque
+  contenedor** de todo lo que lleve `position: fixed`. Como cada módulo lleva
+  `mv-pantalla`, cada módulo era una jaula: el velo del modal de «Categorías de
+  cursos» medía 1228×683 en vez de 1536×1024 y salió a producción como una
+  plancha oscura pegada en medio de la pantalla, sin tapar la barra lateral. El
+  relleno es **`backwards`** y el estado final de cada animación tiene que ser el
+  estado natural del elemento. Lo vigilan la guardia 13, `pruebas/movimiento.test.ts`
+  y `npm run velos`.
+- **Lo que flota se viste UNA vez**, en `piezas.ts`, sobre las clases del modal
+  de la base (`.neron-velo`, `[role='dialog']`) — porque todo lo que se abre en
+  el producto pasa por ahí. Un velo por módulo es el error de las ocho tarjetas
+  distintas, pero en lo que más se nota. La vigila la guardia 14.
 
 ---
 
@@ -139,7 +154,26 @@ npm run capturas                    # los 8 módulos, 1536x1024 (el tamaño de l
 npm run capturas -- ventas          # solo uno
 npm run capturas -- ventas --completa    # la pantalla entera, no solo lo que se ve
 npm run capturas -- ventas --ancho=430   # el celular
+npm run capturas -- clientes --toca=".pz-renglon"   # tocando algo antes de disparar
 ```
+
+**`--toca` no es un extra.** Media pantalla de este sistema solo existe *después*
+de escoger algo: el expediente de Clientes, la ficha de un servicio, el panel de
+una cita, cualquier modal. Sin tocar, las fotos retratan siempre el estado vacío
+y lo que se acabó de construir se publica sin haberlo visto nunca.
+
+Y lo que se abre encima se comprueba solo:
+
+```bash
+npm run velos                       # abre todo lo que se abre, en los 8, y lo mide
+```
+
+Exige tres cosas de cada velo: que **tape la ventana entera** (si mide menos está
+encerrado — ver §7), que **no tape de más** (más del 45% borra lo de atrás y el
+diálogo queda flotando en un agujero negro) y que el **diálogo quepa** en la
+pantalla. Va dentro de `npm run consistencia`, y es el único paso que mira. Si
+se agrega algo que se abra, se agrega a la lista de `scripts/velos.ts`: un
+chequeo que no revisa nada sale en verde y no dice nada.
 
 Las fotos salen en `capturas/` —que `.gitignore` excluye— y **se abren y se
 miran**, al lado de la foto de referencia. La comparación es de una y otra, no de
@@ -224,6 +258,15 @@ Tres reglas, y ninguna es decorativa:
    obligue a mover el token y ahí se piense dos veces.
 3. **Se apaga entero** para quien pide menos movimiento. Para algunas personas
    no es un detalle bonito, es mareo.
+
+4. **El relleno es `backwards`, nunca `both` ni `forwards`**, y el último
+   fotograma tiene que dejar el elemento en su estado natural. `backwards` da lo
+   único que hace falta —estar en el estado inicial *antes* de arrancar, que es
+   lo que impide el parpadeo de los hijos escalonados durante su retraso— y al
+   terminar deja de aplicarse. Con `both` la animación se queda en efecto y
+   encierra todo lo que flote: está contado en el §7. Si alguna vez hace falta
+   que algo quede distinto de como empieza, eso se escribe en la **regla** del
+   elemento y la animación arranca desde el otro lado (lo hace `mv-rayita`).
 
 **Lo que no se anima, a propósito:** nada que cambie de sitio mientras alguien lo
 está leyendo o apuntando con el dedo. Un renglón de tabla que se acomoda solo

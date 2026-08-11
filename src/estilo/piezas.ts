@@ -788,7 +788,7 @@ export function piezas(): string {
   background: ${v('superficie-tenue')};
   border-radius: ${c('radio-control')};
   min-width: 0;
-  animation: mv-sube ${v('movimiento-instantaneo')} ${v('movimiento-curva')} both;
+  animation: mv-sube ${v('movimiento-instantaneo')} ${v('movimiento-curva')} backwards;
 }
 
 /* Un campo con su etiqueta encima. */
@@ -867,6 +867,73 @@ export function piezas(): string {
 .pz-cuadricula {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: ${v('espacio-4')}; min-width: 0;
+}
+
+/* ================================================================ */
+/* LO QUE FLOTA ENCIMA: velos, modales y confirmaciones              */
+/* ================================================================ */
+/*
+ * ESTAS REGLAS VALEN PARA TODO LO QUE SE ABRA, HOY Y MAÑANA, y por eso viven
+ * aqui y no en el modulo que estreno el primer modal.
+ *
+ * Se le ponen al modal de la BASE —"neron-velo" y "neron-modal"— porque todo lo
+ * que se abre en el producto pasa por ahi: "Modal", "Confirmacion", la ficha de
+ * cliente, el formulario de servicio, las categorias. Vestir la pieza de la
+ * base una vez viste los ocho modulos; vestir cada modal por separado es como
+ * se acabo con ocho tarjetas distintas.
+ *
+ * QUE SE ARREGLO AQUI, Y COMO SE VEIA: el velo salia como una PLANCHA NEGRA
+ * pegada en medio de la pantalla —sin tapar la barra lateral ni la de arriba— y
+ * lo de atras desaparecia del todo. Eran dos fallos a la vez:
+ *
+ *   1. El velo quedaba encerrado en la caja del modulo. La causa no estaba en
+ *      el modal sino en el relleno de las animaciones; esta contada completa en
+ *      "movimiento.ts" y la vigila la guardia 13.
+ *   2. Tapaba demasiado. Ahora usa el velo suave del Centro y desenfoca lo de
+ *      atras en vez de borrarlo.
+ */
+.neron-velo {
+  background: ${c('velo')};
+  /*
+   * El desenfoque es lo que hace que se lea como "esto esta encima" en vez de
+   * "lo de atras se apago". Y es lo que permite tapar MENOS: con lo de atras
+   * desenfocado, el texto de abajo ya no compite con el del modal aunque se
+   * siga viendo.
+   */
+  backdrop-filter: blur(8px);
+  animation: mv-aparece ${v('movimiento-instantaneo')} ${v('movimiento-curva')} backwards;
+  /* En pantalla chica el modal se pega abajo, que es donde llega el pulgar. */
+  padding: ${v('espacio-4')};
+}
+
+/*
+ * EL DIALOGO SE VISTE COMO UNA TARJETA DEL CENTRO: el mismo radio y la misma
+ * sombra que todo lo demas. Con el radio del sistema se notaba que era una
+ * pieza prestada de otro juego.
+ */
+.neron-velo > [role='dialog'] {
+  border-radius: ${c('radio-tarjeta')};
+  box-shadow: ${c('sombra-alta')};
+  /*
+   * LA ENTRADA VA AQUI, EN LA CAJA, y antes no iba en ninguna parte.
+   *
+   * La regla apuntaba a ".neron-modal__caja" y a "[role=dialog] > *": la
+   * primera clase no existe, y la segunda animaba por separado el encabezado,
+   * el cuerpo y el pie — tres piezas entrando cada una por su lado dentro de
+   * una caja que aparecia de golpe. Se apunta al elemento que de verdad lleva
+   * el papel de dialogo, que es el que hay que animar.
+   */
+  animation: mv-resorte ${v('movimiento-normal')} ${v('movimiento-curva')} backwards;
+}
+
+@media (max-width: 640px) {
+  /* Pegado abajo y a todo el ancho: es donde alcanza el pulgar en un telefono. */
+  .neron-velo { align-items: flex-end; padding: 0; }
+  .neron-velo > [role='dialog'] {
+    max-width: none;
+    border-radius: ${c('radio-tarjeta')} ${c('radio-tarjeta')} 0 0;
+    animation-name: mv-sube;
+  }
 }
 `;
 }
