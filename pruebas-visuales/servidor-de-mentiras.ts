@@ -36,6 +36,13 @@ const enDias = (n: number): string => {
   return iso(d);
 };
 
+/** Una marca de tiempo completa, para las columnas de "cuando se capturo". */
+const enHoras = (n: number): string => {
+  const d = new Date(hoy);
+  d.setHours(d.getHours() + n);
+  return d.toISOString();
+};
+
 const PERSONAS = [
   'Adriana Villalobos', 'Ignacio Serrano', 'Rosalía Estrada',
   'Fernando Aguilar', 'Мarcela Quintero', 'Teodoro Bustamante',
@@ -121,6 +128,106 @@ const CITAS = SERVICIOS.slice(0, 5).map((s, i) => ({
 }));
 
 const RESPUESTAS: Readonly<Record<string, unknown>> = {
+  /* --- Gastos ------------------------------------------------------ */
+  gastos_del_rango: [
+    {
+      id: uuid(700), fecha: enDias(-1), descripcion: 'Renta del local', detalle: null,
+      monto_centavos: 1000000, metodo: 'transferencia', efectivo_centavos: 0, metodo_resto: null,
+      categoria_id: uuid(610), categoria: 'Renta', categoria_color: null, categoria_icono: null,
+      proveedor_id: null, proveedor: null, referencia: 'F-2291', notas: null,
+      recurrente_id: uuid(800), frecuencia: 'mensual',
+      creado_por: uuid(1), usuario: 'Quien administra', creado_en: enHoras(-30),
+      actualizado_en: null, eliminado: false, anulado_motivo: null, anulado_en: null,
+      sustituye_a: null,
+    },
+    {
+      id: uuid(701), fecha: enDias(-2), descripcion: 'Luz y agua', detalle: null,
+      monto_centavos: 240000, metodo: 'transferencia', efectivo_centavos: 0, metodo_resto: null,
+      categoria_id: uuid(611), categoria: 'Servicios', categoria_color: null, categoria_icono: null,
+      proveedor_id: null, proveedor: null, referencia: null, notas: null,
+      recurrente_id: null, frecuencia: null,
+      creado_por: uuid(1), usuario: 'Quien administra', creado_en: enHoras(-54),
+      actualizado_en: null, eliminado: false, anulado_motivo: null, anulado_en: null,
+      sustituye_a: null,
+    },
+    {
+      id: uuid(702), fecha: enDias(-3), descripcion: 'Aceites esenciales', detalle: null,
+      monto_centavos: 185000, metodo: 'efectivo', efectivo_centavos: 185000, metodo_resto: null,
+      categoria_id: uuid(612), categoria: 'Insumos', categoria_color: null, categoria_icono: null,
+      proveedor_id: uuid(500), proveedor: 'Aromas del Valle', referencia: null, notas: null,
+      recurrente_id: null, frecuencia: null,
+      creado_por: uuid(1), usuario: 'Quien administra', creado_en: enHoras(-78),
+      actualizado_en: null, eliminado: false, anulado_motivo: null, anulado_en: null,
+      sustituye_a: null,
+    },
+    {
+      id: uuid(703), fecha: enDias(-5), descripcion: 'Toallas y batas', detalle: null,
+      monto_centavos: 320000, metodo: 'mixto', efectivo_centavos: 120000, metodo_resto: 'tarjeta',
+      categoria_id: uuid(612), categoria: 'Insumos', categoria_color: null, categoria_icono: null,
+      proveedor_id: null, proveedor: null, referencia: null, notas: null,
+      recurrente_id: null, frecuencia: null,
+      creado_por: uuid(2), usuario: 'Quien atiende', creado_en: enHoras(-126),
+      actualizado_en: null, eliminado: false, anulado_motivo: null, anulado_en: null,
+      sustituye_a: null,
+    },
+    {
+      id: uuid(704), fecha: enDias(-8), descripcion: 'Reparación del calentador', detalle: null,
+      monto_centavos: 450000, metodo: 'tarjeta', efectivo_centavos: 0, metodo_resto: null,
+      categoria_id: uuid(613), categoria: 'Mantenimiento', categoria_color: null, categoria_icono: null,
+      proveedor_id: null, proveedor: null, referencia: null, notas: null,
+      recurrente_id: null, frecuencia: null,
+      creado_por: uuid(1), usuario: 'Quien administra', creado_en: enHoras(-198),
+      actualizado_en: null, eliminado: false, anulado_motivo: null, anulado_en: null,
+      sustituye_a: null,
+    },
+  ],
+  resumen_de_gastos: {
+    totalCentavos: 2195000,
+    cuantos: 5,
+    dias: 31,
+    promedioDiarioCentavos: 70806,
+    mayor: { descripcion: 'Renta del local', centavos: 1000000 },
+    anteriorCentavos: 1880000,
+    hayComparacion: true,
+    porCategoria: [
+      { id: uuid(610), nombre: 'Renta', color: null, centavos: 1000000, cuantos: 1 },
+      { id: uuid(612), nombre: 'Insumos', color: null, centavos: 505000, cuantos: 2 },
+      { id: uuid(613), nombre: 'Mantenimiento', color: null, centavos: 450000, cuantos: 1 },
+      { id: uuid(611), nombre: 'Servicios', color: null, centavos: 240000, cuantos: 1 },
+    ],
+    porMetodo: [
+      { metodo: 'transferencia', centavos: 1240000, cuantos: 2 },
+      { metodo: 'tarjeta', centavos: 450000, cuantos: 1 },
+      { metodo: 'mixto', centavos: 320000, cuantos: 1 },
+      { metodo: 'efectivo', centavos: 185000, cuantos: 1 },
+    ],
+    porDia: Array.from({ length: 12 }, (_, i) => ({
+      fecha: enDias(-11 + i),
+      centavos: [0, 0, 0, 450000, 0, 0, 320000, 0, 185000, 240000, 1000000, 0][i] ?? 0,
+    })),
+    efectivoCentavos: 305000,
+  },
+  gastos_recurrentes_del_centro: [
+    {
+      id: uuid(800), descripcion: 'Renta del local', detalle: null,
+      monto_centavos: 1000000, metodo: 'transferencia', efectivo_centavos: 0, metodo_resto: null,
+      categoria_id: uuid(610), categoria: 'Renta', categoria_color: null,
+      proveedor_id: null, proveedor: null,
+      frecuencia: 'mensual', fecha_inicio: enDias(-40), proxima_fecha: enDias(20),
+      fecha_fin: null, estado: 'activo', notas: null, generados: 2,
+    },
+    {
+      id: uuid(801), descripcion: 'Internet y teléfono', detalle: null,
+      monto_centavos: 89000, metodo: 'transferencia', efectivo_centavos: 0, metodo_resto: null,
+      categoria_id: uuid(611), categoria: 'Servicios', categoria_color: null,
+      proveedor_id: null, proveedor: null,
+      frecuencia: 'mensual', fecha_inicio: enDias(-70), proxima_fecha: enDias(4),
+      fecha_fin: null, estado: 'activo', notas: null, generados: 3,
+    },
+  ],
+  generar_gastos_recurrentes: 0,
+  gastos_de_la_categoria: 0,
+
   /* --- Inicio ---------------------------------------------------- */
   resumen_inicio: {
     citasHoy: 6, citasPendientes: 2,
@@ -340,6 +447,10 @@ const TABLAS: Readonly<Record<string, unknown[]>> = {
     { id: uuid(600), nombre: 'Terapias', color: null, ambito: 'servicio', orden: 0, usos: 3 },
     { id: uuid(601), nombre: 'Formación', color: null, ambito: 'curso', orden: 1, usos: 2 },
     { id: uuid(602), nombre: 'Aromaterapia', color: null, ambito: 'producto', orden: 2, usos: 4 },
+    { id: uuid(610), nombre: 'Renta', color: null, ambito: 'gasto', orden: 0, usos: 1 },
+    { id: uuid(611), nombre: 'Servicios', color: null, ambito: 'gasto', orden: 1, usos: 3 },
+    { id: uuid(612), nombre: 'Insumos', color: null, ambito: 'gasto', orden: 2, usos: 2 },
+    { id: uuid(613), nombre: 'Mantenimiento', color: null, ambito: 'gasto', orden: 3, usos: 1 },
   ],
   servicio: SERVICIOS.map((s, i) => ({
     id: uuid(300 + i), nombre: s.nombre, duracion_min: 60, precio_centavos: 80000, activo: true,

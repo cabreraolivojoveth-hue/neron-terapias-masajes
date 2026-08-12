@@ -23,7 +23,11 @@ const opcional = (v: unknown): string | null =>
  * UNA SOLA TABLA para los tres. Un centro llama "Aceites" a un grupo y no
  * quiere tres listas distintas de grupos que se renombren por separado.
  */
-export type AmbitoDeCategoria = 'servicio' | 'curso' | 'producto';
+// Gastos reusa la MISMA tabla que servicios, cursos y productos: lo unico
+// que cambia es el ambito. Una tabla aparte para las categorias de gasto
+// habria sido el error que costo el sistema de diseño — cuatro parecidas y
+// ninguna igual.
+export type AmbitoDeCategoria = 'servicio' | 'curso' | 'producto' | 'gasto';
 
 export interface Categoria {
   readonly id: string;

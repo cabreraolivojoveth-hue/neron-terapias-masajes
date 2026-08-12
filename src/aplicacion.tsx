@@ -24,6 +24,7 @@ import { Directorio } from './clientes/directorio.js';
 import { Catalogo } from './servicios/catalogo.js';
 import { Programa } from './cursos/programa.js';
 import { Almacen } from './productos/almacen.js';
+import { LibroDeGastos } from './gastos/libro-de-gastos.js';
 import { Mostrador } from './caja/mostrador.js';
 import { Pendiente } from './modulos/pendiente.js';
 import { GRUPOS, MODULOS, MODULO_POR_OMISION, modulosVisibles } from './modulos/registro.js';
@@ -177,6 +178,8 @@ function Interior() {
              y quien los usa es una sola persona parada en el mostrador: ver
              `mostrador.tsx`. */
           <Mostrador />
+        ) : modulo === 'gastos' ? (
+          <LibroDeGastos />
         ) : (
           <Pendiente modulo={modulo} />
         )

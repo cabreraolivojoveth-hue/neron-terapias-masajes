@@ -46,7 +46,7 @@ const TABLAS = ['cliente', 'servicio', 'curso', 'producto', 'cita', 'venta',
   'venta_item', 'pago', 'gasto', 'movimiento_caja', 'inscripcion', 'recordatorio',
   'categoria', 'sesion_curso', 'material_curso',
   'proveedor', 'producto_proveedor', 'movimiento_inventario',
-  'cotizacion', 'cotizacion_item', 'sesion_caja'] as const;
+  'cotizacion', 'cotizacion_item', 'sesion_caja', 'gasto_recurrente'] as const;
 
 const cliente = new pg.Client(CADENA ? { connectionString: CADENA } : {});
 
@@ -278,6 +278,7 @@ async function correr(): Promise<void> {
     ['venta_item', 'los renglones de venta'],
     ['pago', 'los pagos'],
     ['gasto', 'los gastos'],
+    ['gasto_recurrente', 'los gastos recurrentes'],
     ['movimiento_caja', 'la caja'],
     ['inscripcion', 'las inscripciones'],
     ['recordatorio', 'los recordatorios'],
@@ -1622,6 +1623,121 @@ async function correr(): Promise<void> {
     const despues = await cuantos(`select * from movimiento_caja where negocio_id=$1`, [CENTRO]);
     anotar('ni uno que apunte al pago de OTRO centro', antes === despues,
       `paso de ${antes} a ${despues}`);
+  });
+
+
+  /* ================================================================== */
+  grupo('Gastos — el dinero que sale no se puede torcer');
+  /* ================================================================== */
+
+  await como(DUENA, async () => {
+    await conCaja();
+
+    /*
+     * EL EFECTIVO LO DECIDE LA BASE, NO QUIEN LLAMA.
+     *
+     * Se intenta colar un gasto "de tarjeta" que ademas declara haber sacado
+     * efectivo del cajon — que seria dinero desapareciendo sin rastro. La base
+     * NO lo rechaza: lo CORRIGE. Es mas fuerte que rechazarlo, porque no
+     * depende de que quien escribe se acuerde de la regla.
+     */
+    const t1 = await cliente.query(
+      `insert into gasto (negocio_id, descripcion, monto_centavos, metodo, efectivo_centavos)
+       values ($1,'Trampa',50000,'tarjeta',50000) returning efectivo_centavos`, [CENTRO]);
+    anotar('un gasto de TARJETA no saca efectivo aunque lo declare',
+      Number(t1.rows[0].efectivo_centavos) === 0, `saco ${t1.rows[0].efectivo_centavos}`);
+    // El gasto SI deja su renglon —es un egreso del negocio— pero con la forma
+    // de pago de verdad, asi que el cajon no se entera.
+    const nT = await cuantos(
+      `select * from movimiento_caja where origen='gasto' and metodo='efectivo' and referencia_id=(
+         select id from gasto where negocio_id=$1 and descripcion='Trampa' limit 1)`, [CENTRO]);
+    anotar('y por eso no movio ni un peso del cajon', nT === 0, `movio ${nT}`);
+
+    // Al reves tambien: uno "de efectivo" que dice no sacar nada SI saca.
+    const t2 = await cliente.query(
+      `insert into gasto (negocio_id, descripcion, monto_centavos, metodo, efectivo_centavos)
+       values ($1,'Trampa dos',50000,'efectivo',0) returning efectivo_centavos`, [CENTRO]);
+    anotar('uno de EFECTIVO saca su monto aunque diga cero',
+      Number(t2.rows[0].efectivo_centavos) === 50000, `saco ${t2.rows[0].efectivo_centavos}`);
+
+    // UN MIXTO CON MAS EFECTIVO QUE TOTAL sacaria del cajon mas de lo que
+    // costo el gasto.
+    const e3 = await rechazado(() => cliente.query(
+      `select registrar_gasto($1,'Mixto imposible',50000,'mixto',null,null,null,null,null,null,60000,'tarjeta')`,
+      [CENTRO]));
+    anotar('un mixto no saca mas efectivo que su total', e3 !== null, e3 ?? 'lo dejo pasar');
+
+    // EL MONTO CERO O NEGATIVO. Un gasto negativo seria un ingreso disfrazado.
+    const e4 = await rechazado(() => cliente.query(
+      `select registrar_gasto($1,'Negativo',-50000,'efectivo')`, [CENTRO]));
+    anotar('un gasto no puede ser negativo', e4 !== null, e4 ?? 'lo dejo pasar');
+
+    // ANULAR EXIGE MOTIVO: sin el, en tres meses nadie sabe por que.
+    const g = await cliente.query(
+      `select registrar_gasto($1,'Para anular',50000,'efectivo') as id`, [CENTRO]);
+    const e5 = await rechazado(() => cliente.query(
+      `select anular_gasto($1,'   ')`, [g.rows[0].id]));
+    anotar('anular un gasto exige un motivo', e5 !== null, e5 ?? 'lo anulo sin motivo');
+
+    // ANULAR DOS VECES no puede meter dos ingresos por el mismo gasto.
+    await cliente.query(`select anular_gasto($1,'Capturado por error')`, [g.rows[0].id]);
+    const e6 = await rechazado(() => cliente.query(
+      `select anular_gasto($1,'Otra vez')`, [g.rows[0].id]));
+    anotar('un gasto anulado NO se vuelve a anular', e6 !== null, e6 ?? 'lo anulo dos veces');
+
+    const nIngresos = await cuantos(
+      `select * from movimiento_caja where origen='gasto' and referencia_id=$1 and tipo='ingreso'`,
+      [g.rows[0].id]);
+    anotar('y la caja recibio UN solo ingreso de vuelta', nIngresos === 1, `hubo ${nIngresos}`);
+
+    // EDITAR UN ANULADO no tiene sentido y se rechaza.
+    const e7 = await rechazado(() => cliente.query(
+      `select editar_gasto($1,'Ya no',50000,'efectivo')`, [g.rows[0].id]));
+    anotar('un gasto anulado NO se edita', e7 !== null, e7 ?? 'lo edito');
+
+    // LA IDEMPOTENCIA DE LOS RECURRENTES, contra la base de verdad.
+    const r = await cliente.query(
+      `select guardar_gasto_recurrente($1,null,'Renta',1000000,'transferencia','mensual',current_date) as id`,
+      [CENTRO]);
+    const sinGastos = await cuantos(
+      `select * from gasto where recurrente_id=$1`, [r.rows[0].id]);
+    anotar('guardar un recurrente NO crea gastos', sinGastos === 0, `creo ${sinGastos}`);
+
+    await cliente.query(`select generar_gastos_recurrentes($1)`, [CENTRO]);
+    await cliente.query(`select generar_gastos_recurrentes($1)`, [CENTRO]);
+    await cliente.query(`select generar_gastos_recurrentes($1)`, [CENTRO]);
+    const trasTres = await cuantos(
+      `select * from gasto where recurrente_id=$1 and not eliminado`, [r.rows[0].id]);
+    anotar('generarlos TRES veces crea el gasto UNA vez', trasTres === 1, `hay ${trasTres}`);
+
+    // Y el indice unico es el que lo impide, no la funcion: se intenta a mano.
+    const e8 = await rechazado(() => cliente.query(
+      `insert into gasto (negocio_id, descripcion, monto_centavos, metodo, efectivo_centavos,
+                          recurrente_id, periodo)
+       select negocio_id, descripcion, monto_centavos, metodo, efectivo_centavos, recurrente_id, periodo
+         from gasto where recurrente_id=$1 limit 1`, [r.rows[0].id]));
+    anotar('ni metiendo el duplicado a mano', e8 !== null, e8 ?? 'lo duplico');
+  });
+
+  // LA RECEPCIONISTA NO REGISTRA GASTOS: es dinero, y va con las finanzas.
+  await como(RECEPCION, async () => {
+    const e = await rechazado(() => cliente.query(
+      `select registrar_gasto($1,'A escondidas',50000,'efectivo')`, [CENTRO]));
+    anotar('la recepcionista NO registra gastos', e !== null, e ?? 'lo registro');
+
+    const n = await cuantos(`select * from gasto_recurrente where negocio_id=$1`, [CENTRO]);
+    anotar('ni ve los gastos recurrentes del centro', n === 0, `vio ${n}`);
+  });
+
+  // NO SE CRUZAN LOS CENTROS.
+  await como(DUENA, async () => {
+    const n = await cuantos(`select * from gasto_recurrente where negocio_id=$1`, [OTRO]);
+    anotar('los recurrentes de un centro no se ven desde otro', n === 0, `vio ${n}`);
+
+    const e = await rechazado(() => cliente.query(
+      `select guardar_gasto_recurrente($1,null,'Ajeno',1000,'efectivo','mensual',current_date)`,
+      [OTRO]));
+    anotar('ni se configura uno en el centro de al lado', e !== null, e ?? 'lo configuro');
   });
 
   grupo('Controles positivos — que el centro pueda trabajar');

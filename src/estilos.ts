@@ -2473,5 +2473,163 @@ function loQueTodaviaEsDeUnModulo(): string {
 .caja-veredicto--sobra  { border-color: ${v('advertencia')}; background: ${v('advertencia-tenue')}; }
 .caja-veredicto--falta  { border-color: ${v('peligro')};     background: ${v('peligro-tenue')}; }
 
+/* ================================================================ */
+/* GASTOS — lo que sale                                             */
+/* ================================================================ */
+/*
+ * Reusa TODO lo compartido: la tarjeta, la pastilla, la cifra, la tabla, el
+ * buscador y el anillo de Caja. Aqui solo vive lo que de verdad es de este
+ * modulo — la barra de la lista, las barras del dia a dia y el aviso de lo que
+ * le va a pasar a la caja.
+ */
+.gto { min-width: 0; }
+
+/* La cifra que compara contra el periodo anterior. En GASTOS el signo se lee
+   al reves que en ventas: gastar menos es la buena noticia. */
+.gto-cifra--baja .pz-cifra__pie { color: ${v('exito')}; }
+.gto-cifra--sube .pz-cifra__pie { color: ${v('peligro')}; }
+
+.gto-barra {
+  display: flex; align-items: center; gap: ${v('espacio-3')};
+  flex-wrap: wrap; min-width: 0;
+}
+
+/* El encabezado que ordena. Es un boton de verdad —no un th con onClick— para
+   que se llegue con teclado y se anuncie como lo que es. */
+.gto-ordenar {
+  display: inline-flex; align-items: center; gap: ${v('espacio-1')};
+  padding: 0; border: none; background: transparent;
+  color: inherit; font: inherit; cursor: pointer;
+}
+.gto-ordenar:hover { color: ${v('texto')}; }
+.gto-ordenar:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.gto-ordenar__flecha { color: ${v('marca')}; }
+
+.gto-campo {
+  width: 100%; min-height: 42px;
+  padding: 0 ${v('espacio-3')};
+  border: 1px solid ${c('borde-tarjeta')};
+  border-radius: ${c('radio-control')};
+  background: ${v('superficie')};
+  color: ${v('texto')};
+  font-family: ${v('familia')};
+  font-size: ${v('texto-chico')};
+}
+.gto-campo--area { min-height: 64px; padding: ${v('espacio-2')} ${v('espacio-3')}; resize: vertical; }
+.gto-campo:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+.gto-campo::placeholder { color: ${v('texto-tenue')}; }
+
+.gto-monto { position: relative; display: flex; align-items: center; min-width: 0; }
+.gto-monto__signo {
+  position: absolute; left: ${v('espacio-3')};
+  color: ${v('texto-tenue')}; pointer-events: none;
+}
+.gto-monto .gto-campo {
+  padding-left: 28px;
+  font-variant-numeric: ${v('cifra-numeros')};
+}
+
+/* El error va DEBAJO de su campo y en rojo. Un mensaje suelto arriba obliga a
+   mirar los diez campos buscando cual esta mal. */
+.gto-error {
+  color: ${v('peligro')};
+  font-size: ${v('texto-micro')};
+}
+
+.gto-metodos { display: flex; flex-wrap: wrap; gap: ${v('espacio-2')}; }
+.gto-mixto { align-items: start; }
+
+.gto-casilla { flex-direction: row; align-items: center; gap: ${v('espacio-2')}; }
+
+/* Lo que le va a pasar a la caja, dicho ANTES de guardar: es la conexion que
+   mas confunde cuando no se explica. */
+.gto-aviso-caja {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  margin: 0;
+  padding: ${v('espacio-3')};
+  border-radius: ${c('radio-control')};
+  background: ${v('superficie-tenue')};
+  color: ${v('texto-suave')};
+  font-size: ${v('texto-micro')};
+}
+
+.gto-formulario { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
+
+/* Cada forma de pago con su tono, el mismo que usa Caja para que la misma
+   palabra no se vea de dos colores en dos pantallas. */
+.gto-metodo--efectivo      { background: ${v('exito-tenue')};       color: ${v('exito')}; }
+.gto-metodo--tarjeta       { background: ${v('cat-ventas-tenue')};  color: ${v('cat-ventas')}; }
+.gto-metodo--transferencia { background: ${v('cat-citas-tenue')};   color: ${v('cat-citas')}; }
+.gto-metodo--mixto         { background: ${v('cat-cursos-tenue')};  color: ${v('cat-cursos')}; }
+
+/* El renglon de un agrupado: nombre, barra y monto. */
+.gto-grupo { gap: ${v('espacio-3')}; }
+.gto-grupo__monto { flex: none; font-variant-numeric: ${v('cifra-numeros')}; }
+.gto-barra-parte {
+  flex: 0 1 120px; height: 6px; min-width: 40px;
+  border-radius: ${c('radio-pastilla')};
+  background: ${v('superficie-tenue')};
+  overflow: hidden;
+}
+.gto-barra-parte__lleno {
+  display: block; height: 100%;
+  border-radius: ${c('radio-pastilla')};
+  background: ${v('marca')};
+  transition: width ${v('movimiento-curva')} ${v('movimiento-normal')};
+}
+
+/* ---------------------------------------------------------------- */
+/* El dia a dia                                                      */
+/* ---------------------------------------------------------------- */
+.gto-barras {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; align-items: flex-end; gap: 3px;
+  height: 170px; min-width: 0;
+}
+.gto-barras__dia {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: ${v('espacio-1')};
+  height: 100%;
+}
+/* La caja ocupa el alto entero y la barra crece DENTRO: asi todas parten del
+   mismo suelo y se pueden comparar de un vistazo. */
+.gto-barras__caja {
+  flex: 1; width: 100%; min-height: 0;
+  display: flex; align-items: flex-end;
+  border-radius: 4px;
+  background: ${v('superficie-tenue')};
+}
+.gto-barras__lleno {
+  width: 100%;
+  border-radius: 4px;
+  background: ${v('marca')};
+  transition: height ${v('movimiento-curva')} ${v('movimiento-normal')};
+}
+.gto-barras__dia:hover .gto-barras__lleno { background: ${v('marca-fuerte')}; }
+.gto-barras__etiqueta {
+  flex: none;
+  font-size: ${v('texto-micro')};
+  color: ${v('texto-tenue')};
+  font-variant-numeric: ${v('cifra-numeros')};
+}
+
+.gto-detalle__cifra {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: ${v('espacio-3')};
+  border-radius: ${c('radio-control')};
+  background: ${v('superficie-tenue')};
+}
+.gto-detalle__caja {
+  display: flex; align-items: center; gap: ${v('espacio-3')};
+  padding: ${v('espacio-3')};
+  border-left: 3px solid ${v('marca')};
+  border-radius: ${c('radio-control')};
+  background: ${v('marca-tenue')};
+}
+
+/* La rebanada del anillo se dibuja girando: sin esto arranca a las tres en
+   punto, que es donde el ojo NO espera que empiece. */
+.gto-rebanada { transform: rotate(-90deg); transform-origin: 50% 50%; }
+
 `;
 }
