@@ -33,24 +33,34 @@ Del producto: `README.md`, `BLOQUE-0-ARQUITECTURA.md`, `CONTINUAR-AQUI.md`.
 
 **Supabase — MUY IMPORTANTE:**
 
-Hay dos proyectos y solo UNO es el del producto:
+El proyecto del producto es **`neron-terapias`** → `hgypobbanvkwnqmepqim.supabase.co`.
 
-- ✅ **Neron-terapias** → `cxldnxdfhxipckvduzpk.supabase.co` — **este es**.
-  Ahí está mi usuario (`cabreraolivojoveth@gmail.com`) y el esquema.
-- ❌ base-neronprogramas → `zykqzykjlrjqsbrwpucc` — solo para probar la base.
-  El producto NO lo usa.
+- Cuenta de Supabase que lo posee: **neroncenterserv@gmail.com**
+  (organizacion `Neron Terapias`, plan Free).
+- Correo para ENTRAR a la aplicacion: `cabreraolivojoveth@gmail.com`.
+  Son cosas distintas: uno es el dueño de la cuenta, el otro el usuario del
+  sistema. Las llaves y la contraseña de la base NO se escriben aqui: van en
+  `.env` y en las variables de Vercel.
+- Sitio publicado: `https://neron-terapias-masajes-neon.vercel.app`
 
-**Lo que falta AHORITA para poder entrar:**
+Proyectos que ya NO se usan:
 
-1. En Vercel → Settings → Environment Variables, las dos deben apuntar al
-   proyecto correcto:
-   - `VITE_SUPABASE_URL` = `https://cxldnxdfhxipckvduzpk.supabase.co`
-   - `VITE_SUPABASE_ANON_KEY` = la Publishable key de **Neron-terapias**
-2. Redeploy sin caché.
-3. Comprobar que corrió `CREAR-MI-CENTRO.sql` en Neron-terapias (crea el
-   negocio y mi membresía como dueño). Sin eso entra pero dice "tu cuenta no
-   está en ningún centro".
-4. Supabase → Authentication → URL Configuration → Site URL = la dirección de
+- ❌ `cxldnxdfhxipckvduzpk` — el viejo. Quedo en una cuenta a la que ya no hay
+  acceso. Sigue vivo, pero es inalcanzable: no apuntar nada ahi.
+- ❌ `zykqzykjlrjqsbrwpucc` — solo para probar la base.
+
+**La migracion quedo hecha el 13/08/2026.** El orden que funciono:
+
+1. `INSTALAR-EN-SUPABASE.sql` (repo base, v1.1.0) → Success.
+2. `COMPROBAR-EN-SUPABASE.sql` → 25 puntos, 0 MAL.
+3. `INSTALAR-EN-TERAPIAS.sql` → Success. **Ya trae dentro `basedatos/01-esquema`,
+   `02-reglas` y `03-funciones` completos** (los 76 objetos), asi que correrlos
+   aparte sobra.
+4. `COMPROBAR-EN-TERAPIAS.sql` → 16 puntos, 0 MAL.
+5. Usuario en Authentication → Users, con "Auto Confirm".
+6. `CREAR-MI-CENTRO.sql`.
+7. Vercel → variables al proyecto nuevo + Redeploy **sin** build cache.
+8. Supabase → Authentication → URL Configuration → Site URL = la direccion de
    Vercel.
 
 **Bloques que siguen:** 2 Clientes · 3 Servicios y Cursos · 5 Productos ·

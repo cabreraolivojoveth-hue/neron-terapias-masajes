@@ -190,8 +190,23 @@ en lugar de entregarlo.
 
 - **Redeploy en Vercel recompila el MISMO commit** que estás viendo. Para publicar
   código nuevo hay que empujar un commit y buscar ese despliegue en la lista.
-- **Supabase del producto:** `cxldnxdfhxipckvduzpk.supabase.co`. El proyecto
-  `zykqzykjlrjqsbrwpucc` es solo para probar la base — el producto no lo usa.
+  Para que tome VARIABLES nuevas sin cambiar código, en cambio, basta con
+  Redeploy **desmarcando "Use existing Build Cache"**: sin cache, Vite vuelve a
+  incrustar los valores. Probado el 13/08/2026 en la migracion.
+- **Supabase del producto:** `hgypobbanvkwnqmepqim.supabase.co`, proyecto
+  `neron-terapias`, organizacion `Neron Terapias` (plan Free). La cuenta que lo
+  posee es **neroncenterserv@gmail.com** — apuntala, que perder el acceso a la
+  cuenta es justo lo que costo el proyecto anterior.
+- **El correo para ENTRAR a la aplicacion es otro:** `cabreraolivojoveth@gmail.com`.
+  Vive en Authentication -> Users del proyecto, y no tiene nada que ver con el
+  correo dueño de la cuenta de Supabase.
+- **Proyecto viejo, perdido:** `cxldnxdfhxipckvduzpk` — quedo en una cuenta sin
+  acceso. Sigue vivo pero es inalcanzable; no volver a apuntar nada ahi. Lo que
+  tenia rescatado esta en el volcado del 13/08/2026 (solo datos de ensayo).
+  El proyecto `zykqzykjlrjqsbrwpucc` es solo para probar la base — no se usa.
+- **El limite de 2 proyectos gratis de Supabase es POR CUENTA, no por
+  organizacion.** Crear una organizacion nueva no lo esquiva: hay que pausar,
+  borrar o pagar. Por eso el producto vive en una cuenta aparte.
 - **La base se instala por `git+https://`**, no por `github:usuario/repo`: npm
   resuelve eso a SSH y Vercel no tiene llave.
 - **`onAuthStateChange` de Supabase avisa sosteniendo un candado interno.** Llamar
