@@ -48,7 +48,20 @@ export function armadura(): string {
 
 .arm-marca { padding: 0 ${v('espacio-2')} ${v('espacio-5')}; }
 
-.arm-menu { flex: 1; min-height: 0; }
+/*
+ * EL MENU SCROLLEA POR DENTRO, Y ESO NO ES UN DETALLE.
+ *
+ * El "flex: 1" con "min-height: 0" deja que esta caja se encoja cuando la
+ * pantalla es baja. Sin overflow, encogerse NO recorta: la lista se sale por
+ * abajo y se dibuja encima del pie — el nombre de la duena montado sobre
+ * "Recordatorios", y el clic en "Configuracion" comido por el recuadro de la
+ * cuenta, porque el pie va posicionado y gana el clic.
+ *
+ * Con overflow-y auto la lista se recorta y se recorre dentro de su hueco. La
+ * marca arriba y el pie abajo se quedan quietos, que es lo que uno espera de una
+ * barra lateral. Si algun dia se agregan modulos, esto ya esta resuelto.
+ */
+.arm-menu { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .arm-menu__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 
 /*
@@ -117,6 +130,9 @@ export function armadura(): string {
 /* ---------------------------------------------------------------- */
 .arm-pie {
   position: relative;
+  /* Nunca se encoge: si algo tiene que ceder alto, que sea el menu, que si
+     scrollea. Un pie encogido es como se encimaba antes. */
+  flex: none;
   display: flex; flex-direction: column; gap: ${v('espacio-3')};
   padding-top: ${v('espacio-4')};
   margin-top: ${v('espacio-4')};
@@ -154,7 +170,20 @@ export function armadura(): string {
 }
 .arm-cuenta__flecha--abierta { transform: rotate(-90deg); }
 
+/*
+ * EL PANEL FLOTA SOBRE LA CUENTA, NO LA EMPUJA.
+ *
+ * Se ancla a la caja de la cuenta y sale HACIA ARRIBA, que es el unico lado
+ * con espacio: la cuenta vive pegada al fondo de la barra. Al abrirlo
+ * no cambia el alto de nada, asi que el menu no se mueve ni se recorta.
+ *
+ * El z-index lo pone encima del menu; el 40 de la barra lateral lo mantiene por
+ * debajo de los velos y modales, que es donde debe quedar.
+ */
+.arm-cuenta__caja { position: relative; }
 .arm-cuenta__panel {
+  position: absolute; z-index: 2;
+  left: 0; right: 0; bottom: calc(100% + ${v('espacio-2')});
   display: flex; flex-direction: column;
   padding: ${v('espacio-1')};
   border: 1px solid ${c('borde-tarjeta')};

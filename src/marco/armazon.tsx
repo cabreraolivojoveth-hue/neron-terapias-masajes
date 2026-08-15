@@ -22,7 +22,7 @@
  */
 
 import { Barrera, useNavegacion, type MenuResuelto } from '@neron/base/marco';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { moduloPorId } from '../modulos/registro.js';
 import { Icono } from '../ui/iconos.js';
 
@@ -86,8 +86,43 @@ export function Armazon({
   const { ruta, ir } = useNavegacion();
   const [abierto, setAbierto] = useState(false);
   const [cuentaAbierta, setCuentaAbierta] = useState(false);
+  const cajaDeLaCuenta = useRef<HTMLDivElement | null>(null);
+  const botonDeLaCuenta = useRef<HTMLButtonElement | null>(null);
 
   const modulos = moduloEnOrden(menu);
+
+  /**
+   * El panel de la cuenta se cierra al tocar fuera y con Escape — el mismo
+   * trato que la campana de notificaciones.
+   *
+   * Va con `mousedown` y no con `click` por la razon de siempre: con `click` el
+   * panel se cierra DESPUES de que el navegador ya decidio a quien le tocaba el
+   * toque, asi que el primer clic fuera se pierde. Eso se sentia como que el
+   * menu estaba descuadrado — le picabas a "Configuracion" y no pasaba nada
+   * hasta el segundo intento.
+   */
+  useEffect(() => {
+    if (!cuentaAbierta) return;
+
+    const afuera = (e: MouseEvent): void => {
+      if (cajaDeLaCuenta.current && !cajaDeLaCuenta.current.contains(e.target as Node)) {
+        setCuentaAbierta(false);
+      }
+    };
+    const escape = (e: KeyboardEvent): void => {
+      if (e.key !== 'Escape') return;
+      setCuentaAbierta(false);
+      // El foco vuelve al boton: quien cerro con teclado no se queda en la nada.
+      botonDeLaCuenta.current?.focus();
+    };
+
+    document.addEventListener('mousedown', afuera);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('mousedown', afuera);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [cuentaAbierta]);
 
   /**
    * En el celular el menu TAPA la pantalla. Se cierra al escoger algo y al
@@ -139,33 +174,47 @@ export function Armazon({
         </nav>
 
         <div className="arm-pie">
-          <button
-            type="button"
-            className="arm-cuenta"
-            aria-expanded={cuentaAbierta}
-            onClick={() => setCuentaAbierta((a) => !a)}
-          >
-            <span className="arm-cuenta__inicial" aria-hidden="true">
-              {inicialesDe(nombreDeLaPersona)}
-            </span>
-            <span className="arm-cuenta__texto">
-              <span className="arm-cuenta__nombre">{nombreDeLaPersona}</span>
-              {rolDeLaPersona ? (
-                <span className="arm-cuenta__rol">{rolDeLaPersona}</span>
-              ) : null}
-            </span>
-            <span className={`arm-cuenta__flecha${cuentaAbierta ? ' arm-cuenta__flecha--abierta' : ''}`} aria-hidden="true">
-              <Icono nombre="flecha" lado={16} />
-            </span>
-          </button>
+          {/*
+            LA CAJA EXISTE PARA QUE EL PANEL FLOTE.
 
-          {cuentaAbierta && onSalir ? (
-            <div className="arm-cuenta__panel">
-              <button type="button" className="arm-cuenta__opcion" onClick={onSalir}>
-                <Icono nombre="salida" lado={16} /> Cerrar sesión
-              </button>
-            </div>
-          ) : null}
+            El panel de "Cerrar sesion" NO puede empujar ni encimarse en el
+            menu. Antes vivia suelto en el pie: al abrirlo, el pie crecia, el
+            menu se encogia y la lista se salia por abajo y quedaba DEBAJO del
+            recuadro de la cuenta. Se veia encimado, y peor: el clic en
+            "Configuracion" se lo comia el recuadro, porque el pie va posicionado
+            y gana el clic. Con esta caja, el panel se ancla a la cuenta y flota
+            encima sin mover un pixel de lo demas.
+          */}
+          <div className="arm-cuenta__caja" ref={cajaDeLaCuenta}>
+            <button
+              type="button"
+              className="arm-cuenta"
+              ref={botonDeLaCuenta}
+              aria-expanded={cuentaAbierta}
+              onClick={() => setCuentaAbierta((a) => !a)}
+            >
+              <span className="arm-cuenta__inicial" aria-hidden="true">
+                {inicialesDe(nombreDeLaPersona)}
+              </span>
+              <span className="arm-cuenta__texto">
+                <span className="arm-cuenta__nombre">{nombreDeLaPersona}</span>
+                {rolDeLaPersona ? (
+                  <span className="arm-cuenta__rol">{rolDeLaPersona}</span>
+                ) : null}
+              </span>
+              <span className={`arm-cuenta__flecha${cuentaAbierta ? ' arm-cuenta__flecha--abierta' : ''}`} aria-hidden="true">
+                <Icono nombre="flecha" lado={16} />
+              </span>
+            </button>
+
+            {cuentaAbierta && onSalir ? (
+              <div className="arm-cuenta__panel">
+                <button type="button" className="arm-cuenta__opcion" onClick={onSalir}>
+                  <Icono nombre="salida" lado={16} /> Cerrar sesión
+                </button>
+              </div>
+            ) : null}
+          </div>
 
           <div className="arm-soporte">
             <span className="arm-soporte__icono" aria-hidden="true">
