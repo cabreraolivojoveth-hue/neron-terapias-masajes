@@ -52,7 +52,19 @@ const RAIZ = join(import.meta.dirname, '..');
  * comillas cierran—. Lo que no aguanta es el tamaño. Asi que la frontera se
  * mueve en cuanto un bloque queda confirmado, que es para lo que se invento.
  */
-const DESDE = '-- RECORDATORIOS — EL SEGUIMIENTO DE LO PENDIENTE (bloque 7)';
+/*
+ * SE MOVIO LA FRONTERA EL 16/08/2026, POR SEGUNDA VEZ.
+ *
+ * Recordatorios ya corrio en `hgypobbanvkwnqmepqim` y esta comprobado: cuatro
+ * tablas, diez columnas, veintiun funciones y las veinte funciones ensayadas
+ * contra la base de verdad. Arrastrarlo otra vez dejaba el archivo en 3 821
+ * lineas — y el troceador del editor de Supabase pierde el hilo de los `$$`
+ * cuando el archivo crece, que fue lo que revento la vez pasada.
+ *
+ * Asi que la frontera pasa al bloque 10 y el archivo vuelve a ser corto. Para
+ * eso se invento.
+ */
+const DESDE = '-- CONFIGURACION — EL CENTRO, SU EQUIPO Y SU RASTRO (bloque 10)';
 
 /**
  * FUNCIONES QUE VIVEN ANTES DE LA FRONTERA Y AUN ASI CAMBIARON.

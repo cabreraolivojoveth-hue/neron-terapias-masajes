@@ -12877,3 +12877,18 @@ grant execute on function public.transferir_propiedad_del_centro(text, uuid) to 
 -- invitarse a si mismo al centro de cualquiera.
 revoke all on invitacion from anon;
 grant select on invitacion to authenticated;
+
+-- Y SE LE QUITA A `authenticated` TODO LO DEMAS, aunque nunca se le diera.
+--
+-- ESTO SE VIO CONTRA LA BASE DE VERDAD, no leyendo el archivo: al comprobar los
+-- permisos despues de aplicarlo, `authenticated` tenia CUATRO sobre `invitacion`
+-- en vez de uno. La causa es que Supabase deja puestos unos permisos por
+-- omision que conceden todo sobre cada tabla NUEVA, asi que la tabla nacio con
+-- insert, update y delete sin que nadie los escribiera.
+--
+-- Las reglas de fila lo tapaban —no hay politica de escritura, asi que ninguna
+-- de las tres podia tocar una fila— pero un permiso de tabla que sobra es un
+-- permiso que el dia que alguien agregue una politica se convierte en un
+-- agujero. Se quita explicitamente: escribir invitaciones es cosa de las
+-- funciones, que comprueban `gestionarUsuarios` antes.
+revoke insert, update, delete on invitacion from authenticated;
