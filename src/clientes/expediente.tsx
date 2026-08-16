@@ -30,8 +30,8 @@
  * real; ademas, lo que de verdad se puede escribir lo decide la base.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
 import { useState, type ReactNode } from 'react';
+import { formatearDinero } from '../datos/moneda.js';
 import { etiquetaDeEstadoDeCliente, type ExpedienteDeCliente } from '../datos/clientes.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
 import { fechaLarga } from '../ui/fechas-en-palabras.js';
@@ -512,12 +512,12 @@ export function Expediente({
                 <dl className="pz-totales">
                   <div>
                     <dt>Total invertido</dt>
-                    <dd>{formatearMoneda(e.totalGastado)}</dd>
+                    <dd>{formatearDinero(e.totalGastado)}</dd>
                   </div>
                   <div>
                     <dt>Adeudo</dt>
                     <dd className={e.adeudo > 0 ? 'cli-exp__adeudo' : ''}>
-                      {e.adeudo > 0 ? formatearMoneda(e.adeudo) : 'Sin adeudos'}
+                      {e.adeudo > 0 ? formatearDinero(e.adeudo) : 'Sin adeudos'}
                     </dd>
                   </div>
                 </dl>

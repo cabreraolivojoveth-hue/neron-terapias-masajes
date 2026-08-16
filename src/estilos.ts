@@ -65,6 +65,12 @@ function loQueTodaviaEsDeUnModulo(): string {
 
 
 .terapias-hoja { color: ${v('marca')}; flex: none; }
+/* El logo del centro, cuando subieron uno. Cuadrado y recortado: un logo
+   apaisado estiraria la barra lateral y uno alto la partiria. */
+.terapias-marca__logo {
+  width: 32px; height: 32px; flex: none;
+  object-fit: contain; border-radius: ${v('radio-sistema')};
+}
 
 .terapias-marca { display: flex; align-items: center; gap: ${v('espacio-2')}; min-width: 0; }
 .terapias-marca__texto { display: flex; flex-direction: column; min-width: 0; }
@@ -725,7 +731,16 @@ function loQueTodaviaEsDeUnModulo(): string {
   border-left: 3px solid ${v('peligro')}; background: ${v('peligro-tenue')};
   padding: ${v('espacio-2')} ${v('espacio-3')}; border-radius: ${v('radio-sistema')};
 }
+.vta-totales__nota { color: ${v('texto-tenue')}; font-size: ${v('texto-micro')}; font-weight: 400; }
 .agenda-form__pie { display: flex; justify-content: flex-end; gap: ${v('espacio-2')}; flex-wrap: wrap; }
+/* El aviso de "fuera del horario del centro". Es AMBAR y no rojo a proposito:
+   no impide nada, solo dice algo que hay que saber. Un aviso rojo que no
+   bloquea acaba ignorandose, y con el se ignoran los que si importan. */
+.agenda-form__aviso {
+  margin: 0; color: ${v('advertencia')}; font-size: ${v('texto-chico')};
+  border-left: 3px solid ${v('advertencia')}; background: ${v('advertencia-tenue')};
+  padding: ${v('espacio-2')} ${v('espacio-3')}; border-radius: ${v('radio-sistema')};
+}
 
 /* ---------------------------------------------------------------- */
 /* El modulo que todavia no llega                                    */
@@ -3309,6 +3324,221 @@ function loQueTodaviaEsDeUnModulo(): string {
   .rec-rapidas { grid-template-columns: 1fr; }
   .rec-barra { flex-direction: column; align-items: stretch; }
   .rec-barra .pz-buscador { flex: 1 1 auto; }
+}
+
+/* ---------------------------------------------------------------- */
+/* CONFIGURACION                                                     */
+/* ---------------------------------------------------------------- */
+/*
+ * TODO LO DE AQUI ES DEL MODULO Y DE NADIE MAS. Lo que se repite en otras
+ * pantallas —la tarjeta, la pastilla, el renglon, la tabla, el vacio— sale de
+ * "piezas.ts" y no se vuelve a escribir. El error mas caro del proyecto fue
+ * que cada modulo se escribiera su propia tarjeta: ocho parecidas y ninguna
+ * igual.
+ */
+.cfg { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
+.cfg-titulo__icono { display: inline-flex; vertical-align: -4px; margin-right: ${v('espacio-2')}; color: ${v('marca')}; }
+
+/*
+ * DOS COLUMNAS, Y LA DE LA DERECHA NO SE ENCOGE.
+ *
+ * El costado lleva cifras y pastillas de ancho fijo; dejarlo encoger apretaria
+ * "Sin plan administrado" hasta partirlo en cuatro renglones. Debajo de 1200 se
+ * cae debajo, que es lo mismo que hacen Recordatorios y Reportes.
+ */
+.cfg-cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: ${v('espacio-4')}; align-items: start; }
+.cfg-cuerpo--seccion { grid-template-columns: minmax(0, 1fr); }
+.cfg-principal { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
+.cfg-costado { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
+
+.cfg-grupo { display: flex; flex-direction: column; gap: ${v('espacio-3')}; }
+
+/*
+ * LA REJILLA ES DE DOS COLUMNAS Y LAS TARJETAS LLENAN EL ALTO.
+ *
+ * Con "align-items" por omision, una tarjeta con descripcion de dos renglones
+ * queda mas alta que su vecina y la fila entera se ve desalineada. "stretch"
+ * las iguala, que es como estan en el diseño.
+ */
+.cfg-rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: ${v('espacio-3')}; align-items: stretch; }
+
+.cfg-tarjeta {
+  display: flex; align-items: center; gap: ${v('espacio-3')};
+  width: 100%; text-align: left; cursor: pointer;
+  padding: ${v('espacio-3')} ${v('espacio-4')};
+  border: 1px solid ${c('borde-tarjeta')};
+  border-radius: ${c('radio-tarjeta')};
+  background: ${v('superficie')};
+  color: ${v('texto')};
+  font: inherit;
+  transition: border-color ${v('movimiento-normal')} ${v('movimiento-curva')},
+              background ${v('movimiento-normal')} ${v('movimiento-curva')};
+}
+.cfg-tarjeta:hover { border-color: ${v('marca')}; background: ${v('superficie-elevada')}; }
+.cfg-tarjeta:focus-visible { outline: 2px solid ${v('foco')}; outline-offset: 2px; }
+.cfg-tarjeta__texto { display: flex; flex-direction: column; gap: ${v('espacio-1')}; min-width: 0; flex: 1; }
+.cfg-tarjeta__titulo { font-weight: ${v('peso-medio')}; color: ${v('texto')}; font-size: ${v('texto-normal')}; }
+.cfg-tarjeta__pie { color: ${v('texto-suave')}; font-size: ${v('texto-chico')}; }
+.cfg-tarjeta__flecha { display: flex; flex: none; color: ${v('texto-tenue')}; }
+
+/*
+ * EL CUADRITO DEL ICONO, EN LOS CINCO TONOS QUE YA PASARON CONTRASTE.
+ *
+ * El diseño pinta cada tarjeta de un color distinto. Catorce colores nuevos
+ * habrian sido catorce colores sin prueba de contraste — que es lo que la
+ * guardia 3 impide, y lo que le paso al primer verde del producto, que se cayo
+ * en 4.06:1. Los cinco de categoria se reparten entre las catorce.
+ */
+.cfg-icono {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: none; width: 40px; height: 40px;
+  border-radius: 50%;
+}
+.cfg-icono--citas     { background: ${v('cat-citas-tenue')};     color: ${v('cat-citas')}; }
+.cfg-icono--ventas    { background: ${v('cat-ventas-tenue')};    color: ${v('cat-ventas')}; }
+.cfg-icono--productos { background: ${v('cat-productos-tenue')}; color: ${v('cat-productos')}; }
+.cfg-icono--cursos    { background: ${v('cat-cursos-tenue')};    color: ${v('cat-cursos')}; }
+.cfg-icono--visitas   { background: ${v('cat-visitas-tenue')};   color: ${v('cat-visitas')}; }
+
+/* ---- El costado ---- */
+.cfg-rapidos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: ${v('espacio-1')}; }
+.cfg-rapido {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  width: 100%; padding: ${v('espacio-2')}; cursor: pointer;
+  border: 0; border-radius: ${c('radio-control')};
+  background: transparent; color: ${v('texto')};
+  font: inherit; font-size: ${v('texto-chico')}; text-align: left;
+}
+.cfg-rapido:hover { background: ${v('superficie-tenue')}; }
+.cfg-rapido:focus-visible { outline: 2px solid ${v('foco')}; outline-offset: 2px; }
+
+.cfg-actividad { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: ${v('espacio-3')}; }
+.cfg-actividad__renglon { display: flex; align-items: flex-start; gap: ${v('espacio-3')}; }
+.cfg-actividad__texto { display: flex; flex-direction: column; gap: ${v('espacio-1')}; min-width: 0; }
+.cfg-actividad__que { font-size: ${v('texto-chico')}; color: ${v('texto')}; }
+.cfg-actividad__cuando { font-size: ${v('texto-micro')}; color: ${v('texto-tenue')}; }
+
+/* ---- Dentro de una seccion ---- */
+.cfg-volver { display: flex; flex-direction: column; gap: ${v('espacio-2')}; align-items: flex-start; }
+.cfg-seccion__titulo { margin: 0; }
+.cfg-forma { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
+
+.cfg-campo {
+  width: 100%;
+  padding: ${v('espacio-2')} ${v('espacio-3')};
+  border: 1px solid ${c('borde-tarjeta')};
+  border-radius: ${c('radio-control')};
+  background: ${v('superficie')}; color: ${v('texto')};
+  font: inherit;
+}
+.cfg-campo:disabled { background: ${v('superficie-tenue')}; color: ${v('texto-tenue')}; }
+
+.cfg-casilla { display: flex; align-items: center; gap: ${v('espacio-2')}; cursor: pointer; font-size: ${v('texto-chico')}; }
+.cfg-casilla--sola { justify-content: center; }
+
+/* ---- Horarios ---- */
+.cfg-horarios { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
+.cfg-horario {
+  display: grid;
+  /* Cada columna con su ancho: sin esto, "Miércoles" empuja su fila y los siete
+     renglones quedan desalineados entre si. */
+  grid-template-columns: 110px 92px minmax(0, 1fr) 16px minmax(0, 1fr);
+  align-items: center; gap: ${v('espacio-2')};
+}
+.cfg-horario__dia { font-size: ${v('texto-chico')}; font-weight: ${v('peso-medio')}; }
+.cfg-horario__hora { display: block; min-width: 0; }
+.cfg-horario__a { color: ${v('texto-tenue')}; font-size: ${v('texto-chico')}; text-align: center; }
+
+.cfg-resumen { display: flex; flex-direction: column; gap: ${v('espacio-1')}; padding: ${v('espacio-3')}; background: ${v('superficie-tenue')}; border-radius: ${c('radio-control')}; }
+.cfg-resumen__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: ${v('espacio-1')}; font-size: ${v('texto-chico')}; color: ${v('texto-suave')}; }
+
+/* ---- Equipo ---- */
+.cfg-equipo { display: flex; flex-direction: column; gap: ${v('espacio-4')}; }
+.cfg-invitar { display: flex; flex-direction: column; gap: ${v('espacio-3')}; }
+/* Quien esta dado de baja se ve APAGADO pero se sigue leyendo: su nombre
+   aparece en ventas y en la bitacora, y esconderlo dejaria esos renglones
+   hablando de alguien que no esta en ninguna lista. */
+.cfg-miembro--baja { opacity: 0.6; }
+
+.cfg-permisos { display: flex; flex-direction: column; gap: ${v('espacio-3')}; align-items: flex-start; }
+.cfg-matriz th { vertical-align: top; }
+.cfg-matriz td { text-align: center; }
+.cfg-matriz__rol { display: block; font-weight: ${v('peso-medio')}; }
+.cfg-matriz__cuantos { display: block; font-size: ${v('texto-micro')}; color: ${v('texto-tenue')}; font-weight: 400; }
+.cfg-matriz__fijo { display: block; font-size: ${v('texto-micro')}; color: ${v('marca')}; font-weight: 400; }
+.cfg-matriz__familia th { background: ${v('superficie-tenue')}; text-align: left; }
+.cfg-matriz__porque { display: block; font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; font-weight: 400; }
+.cfg-matriz__que { display: block; font-weight: 400; font-size: ${v('texto-chico')}; }
+/* El nombre tecnico va debajo y en pequeño: sirve para buscarlo en el codigo,
+   no para entender que hace. */
+.cfg-matriz__clave { display: block; font-size: ${v('texto-micro')}; color: ${v('texto-tenue')}; font-family: ${v('cifra-numeros')}; font-weight: 400; }
+
+/* ---- Bitacora ---- */
+.cfg-bitacora { display: flex; flex-direction: column; gap: ${v('espacio-3')}; }
+.cfg-filtros { display: flex; flex-wrap: wrap; gap: ${v('espacio-2')}; align-items: center; }
+.cfg-anotacion { align-items: center; }
+.cfg-anotacion__cuando { flex: none; font-size: ${v('texto-micro')}; color: ${v('texto-tenue')}; }
+
+/* ---- Respaldos ---- */
+.cfg-respaldos { display: flex; flex-direction: column; gap: ${v('espacio-4')}; }
+.cfg-exportables { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: ${v('espacio-2')}; }
+.cfg-respaldos__ultima { font-size: ${v('texto-chico')}; color: ${v('texto-suave')}; }
+
+/* ---- Plan ---- */
+.cfg-plan { display: flex; flex-direction: column; gap: ${v('espacio-4')}; }
+.cfg-plan__dias { display: block; font-size: ${v('texto-micro')}; color: ${v('texto-tenue')}; }
+
+/* ---- Zona de peligro ---- */
+.cfg-peligro { display: flex; flex-direction: column; gap: ${v('espacio-4')}; }
+/* El borde rojo es la SEGUNDA señal, nunca la unica: al lado va la palabra
+   "Transferir" y el aviso escrito, para quien no distingue el color. */
+.cfg-peligro__caja { border-color: ${v('peligro')}; }
+.cfg-peligro__icono { display: inline-flex; vertical-align: -3px; margin-right: ${v('espacio-2')}; color: ${v('peligro')}; }
+.cfg-lista-honesta { margin: 0; padding-left: ${v('espacio-5')}; display: flex; flex-direction: column; gap: ${v('espacio-2')}; font-size: ${v('texto-chico')}; color: ${v('texto-suave')}; }
+
+.cfg-logo { display: flex; align-items: flex-start; gap: ${v('espacio-4')}; flex-wrap: wrap; }
+.cfg-logo__campos { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: ${v('espacio-2')}; align-items: flex-start; }
+/* El hueco del logo mide lo mismo con imagen y sin ella: si no, la tarjeta
+   entera daria un salto al pegar la direccion. */
+.cfg-logo__vista, .cfg-logo__vacio {
+  flex: none; width: 96px; height: 96px;
+  border: 1px dashed ${c('borde-tarjeta')}; border-radius: ${c('radio-control')};
+  display: flex; align-items: center; justify-content: center;
+  object-fit: contain; padding: ${v('espacio-2')};
+  color: ${v('texto-tenue')}; font-size: ${v('texto-micro')}; text-align: center;
+}
+.cfg-guardado {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  margin: 0; padding: ${v('espacio-2')} ${v('espacio-3')};
+  color: ${v('exito')}; background: ${v('exito-tenue')};
+  border-radius: ${c('radio-control')}; font-size: ${v('texto-chico')};
+}
+.cfg-enlaces { display: flex; flex-direction: column; gap: ${v('espacio-4')}; }
+.cfg-metodos { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: ${v('espacio-4')}; }
+
+/* ---- Segundo factor ---- */
+.cfg-factor { display: flex; flex-direction: column; gap: ${v('espacio-3')}; align-items: flex-start; }
+/* El QR con fondo blanco propio: sobre el fondo oscuro del tema nocturno, un
+   codigo con el fondo transparente NO lo lee ninguna camara. */
+.cfg-factor__qr { width: 180px; height: 180px; background: ${v('sobre-marca')}; padding: ${v('espacio-2')}; border-radius: ${c('radio-control')}; }
+.cfg-factor__secreto { display: flex; flex-direction: column; gap: ${v('espacio-1')}; }
+.cfg-factor__secreto code { font-family: ${v('cifra-numeros')}; background: ${v('superficie-tenue')}; padding: ${v('espacio-1')} ${v('espacio-2')}; border-radius: ${v('radio-sistema')}; overflow-wrap: anywhere; }
+.cfg-factor__puesta { display: flex; align-items: center; gap: ${v('espacio-2')}; color: ${v('exito')}; font-size: ${v('texto-chico')}; }
+.cfg-factor__palomita { display: inline-flex; }
+
+/* ---- Responsive ---- */
+@media (max-width: 1200px) {
+  .cfg-cuerpo { grid-template-columns: minmax(0, 1fr); }
+  .cfg-costado { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+}
+@media (max-width: 720px) {
+  /* En telefono el renglon de horario no cabe en cinco columnas: se parte en
+     dos y la palabra "a" desaparece, porque entre dos campos de hora uno debajo
+     del otro ya no significa nada. */
+  .cfg-horario { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .cfg-horario__dia { grid-column: 1 / -1; }
+  .cfg-horario__a { display: none; }
+  .cfg-rejilla { grid-template-columns: minmax(0, 1fr); }
 }
 
 `;

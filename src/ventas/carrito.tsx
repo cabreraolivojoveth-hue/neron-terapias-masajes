@@ -14,7 +14,7 @@
  * cartera.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type {
   ConceptoVendible,
   RenglonDelCarrito,
@@ -170,7 +170,7 @@ export function Carrito({
                       </span>
                     </span>
                     <span className="vta-concepto__precio">
-                      {formatearMoneda(c.precioCentavos)}
+                      {formatearDinero(c.precioCentavos)}
                     </span>
                   </button>
                 </li>
@@ -220,7 +220,7 @@ export function Carrito({
                       {COMO_SE_DICE_EL_TIPO[r.tipo]}
                     </span>
                   </td>
-                  <td className="pz-tabla__numero">{formatearMoneda(r.precioCentavos)}</td>
+                  <td className="pz-tabla__numero">{formatearDinero(r.precioCentavos)}</td>
                   <td>
                     <span className="vta-cantidad">
                       <button
@@ -260,7 +260,7 @@ export function Carrito({
                     />
                   </td>
                   <td className="pz-tabla__numero">
-                    <strong>{formatearMoneda(importeDelRenglon(r))}</strong>
+                    <strong>{formatearDinero(importeDelRenglon(r))}</strong>
                   </td>
                   <td className="pz-tabla__acciones">
                     <button

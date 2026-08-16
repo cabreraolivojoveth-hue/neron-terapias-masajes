@@ -14,8 +14,8 @@
  */
 
 import { Boton, Campo, Seleccion } from '@neron/base/ui';
-import { formatearMoneda } from '@neron/base/utils';
 import { useState } from 'react';
+import { formatearDinero } from '../datos/moneda.js';
 import type { DatosDeAjuste, FichaDeProducto } from '../datos/productos.js';
 import { COMO_SE_DICE_EL_MOVIMIENTO } from '../datos/productos.js';
 import { Icono } from '../ui/iconos.js';
@@ -103,7 +103,7 @@ export function Movimientos({
           <span className="tt-etiqueta">Valor</span>
           {/* `null` es "no puedes ver costos", no "vale cero". */}
           <span className="prd-cifra__valor">
-            {ficha.valorCentavos === null ? '—' : formatearMoneda(ficha.valorCentavos)}
+            {ficha.valorCentavos === null ? '—' : formatearDinero(ficha.valorCentavos)}
           </span>
         </span>
       </div>

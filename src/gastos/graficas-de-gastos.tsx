@@ -15,7 +15,7 @@
  * nada.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { CategoriaConGasto, DiaConGasto } from '../datos/gastos.js';
 import { Icono } from '../ui/iconos.js';
 
@@ -130,7 +130,7 @@ export function GastosPorCategoria({
             </svg>
             <div className="caja-anillo__centro">
               <span className="tt-pie">Total</span>
-              <strong className="tt-dato">{formatearMoneda(total)}</strong>
+              <strong className="tt-dato">{formatearDinero(total)}</strong>
             </div>
           </div>
 
@@ -146,7 +146,7 @@ export function GastosPorCategoria({
                   style={{ background: tonoDeLaRebanada(r, i) }}
                 />
                 <span className="caja-leyenda__que">{r.nombre}</span>
-                <span className="caja-leyenda__cuanto">{formatearMoneda(r.centavos)}</span>
+                <span className="caja-leyenda__cuanto">{formatearDinero(r.centavos)}</span>
                 <span className="caja-leyenda__parte">{r.parte}%</span>
               </li>
             ))}
@@ -214,8 +214,8 @@ export function GastosPorDia({
                       El aria-label la da a quien no usa puntero. */}
                   <span
                     className="gto-barras__caja"
-                    title={`${d.fecha}: ${formatearMoneda(d.centavos)}`}
-                    aria-label={`${d.fecha}: ${formatearMoneda(d.centavos)}`}
+                    title={`${d.fecha}: ${formatearDinero(d.centavos)}`}
+                    aria-label={`${d.fecha}: ${formatearDinero(d.centavos)}`}
                     role="img"
                   >
                     {/* Un minimo de dos por ciento para que un dia con un gasto
@@ -233,7 +233,7 @@ export function GastosPorDia({
             })}
           </ul>
           <p className="tt-secundario">
-            El día más alto de este periodo llega a {formatearMoneda(techo)}.
+            El día más alto de este periodo llega a {formatearDinero(techo)}.
           </p>
         </>
       )}

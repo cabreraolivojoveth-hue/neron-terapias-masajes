@@ -47,6 +47,12 @@ import {
 } from '../datos/clientes.js';
 import { useConsulta, useOperacion } from '../datos/consulta.js';
 import {
+  METODOS_DE_PAGO,
+  llaveDeLaConfiguracion,
+  traerConfiguracion,
+  type ConfiguracionDelCentro,
+} from '../datos/configuracion.js';
+import {
   LO_QUE_TOCA_UNA_VENTA,
   cancelarVenta,
   guardarCotizacion,
@@ -278,6 +284,22 @@ export function PuntoDeVenta({
   useEffect(() => setPagina(1), [busquedaEnLista, estado, pestana]);
 
   /* --- Lo que se le pide al servidor -------------------------------- */
+
+  /*
+   * LO QUE MANDA CONFIGURACION SOBRE EL MOSTRADOR.
+   *
+   * De aqui salen los metodos de pago que se ofrecen y el impuesto que se
+   * desglosa. Ventas NO guarda copia de ninguno de los dos: los pregunta. Con
+   * una copia, apagar la tarjeta en Configuracion no cambiaria nada aqui — que
+   * es justo la configuracion aislada que el encargo prohibe.
+   *
+   * Comparte llave de cache con la barra lateral, con Agenda y con el propio
+   * modulo de Configuracion: es UNA consulta para todos.
+   */
+  const configuracion = useConsulta<ConfiguracionDelCentro>(
+    negocio ? llaveDeLaConfiguracion(negocio) : null,
+    () => traerConfiguracion(negocio),
+  );
 
   const catalogo = useConsulta<ConceptoVendible[]>(
     negocio && (busqueda || tipo) ? llaveDelCatalogo(negocio, busqueda, tipo) : null,
@@ -711,6 +733,13 @@ export function PuntoDeVenta({
               pagos={pagos}
               metodoPuesto={metodoPuesto}
               efectivoRecibido={efectivoRecibido}
+              /* LO QUE MANDA CONFIGURACION. No es una copia: es la misma lista,
+                 resuelta al leer. Desactivar la tarjeta alli la quita de aqui
+                 sin tocar una linea, y las ventas de ayer conservan la suya. */
+              metodosAceptados={configuracion.datos?.datos.metodosDePago ?? METODOS_DE_PAGO.map((m) => m.clave)}
+              impuestoNombre={configuracion.datos?.datos.impuestoNombre ?? ''}
+              impuestoTasa={configuracion.datos?.datos.impuestoTasa ?? 0}
+              impuestoIncluido={configuracion.datos?.datos.impuestoIncluido ?? true}
               trabajando={cobro.trabajando || cotizacion.trabajando}
               error={cobro.error ?? cotizacion.error}
               onMetodo={escogerMetodo}

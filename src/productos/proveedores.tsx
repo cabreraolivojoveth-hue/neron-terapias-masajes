@@ -13,8 +13,9 @@
  */
 
 import { Boton, Campo, Confirmacion } from '@neron/base/ui';
-import { aCentavos, aPesos, formatearMoneda } from '@neron/base/utils';
+import { aCentavos, aPesos } from '@neron/base/utils';
 import { useState } from 'react';
+import { formatearDinero } from '../datos/moneda.js';
 import type { FichaDeProducto, ProveedorDelProducto, ProveedorEnLista } from '../datos/productos.js';
 import { Icono } from '../ui/iconos.js';
 
@@ -80,7 +81,7 @@ export function Proveedores({
                 </span>
                 <span className="pz-renglon__pie">
                   {/* El costo de ESE proveedor, solo a quien puede verlo. */}
-                  {p.costoCentavos === null ? 'Sin costo registrado' : formatearMoneda(p.costoCentavos)}
+                  {p.costoCentavos === null ? 'Sin costo registrado' : formatearDinero(p.costoCentavos)}
                   {p.codigo ? ` · su código: ${p.codigo}` : ''}
                   {p.telefono ? ` · ${p.telefono}` : ''}
                 </span>

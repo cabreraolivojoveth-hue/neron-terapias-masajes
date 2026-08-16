@@ -169,22 +169,19 @@ describe('ya dentro', () => {
     expect(screen.getAllByText('Centro Holístico').length).toBeGreaterThan(0);
   });
 
-  it('los modulos que no llegan lo DICEN, no inventan datos', async () => {
-    /**
-     * Se abre desde el menu uno de los que todavia no llegan —Configuración— y
-     * tiene que decir la verdad en vez de enseñar una tabla de mentiras.
-     *
-     * ANTES ERA REPORTES, despues MENSAJES, despues RECORDATORIOS, y cada vez
-     * que uno se construye hay que mover esta prueba al siguiente. Vale la pena
-     * dejarlo escrito: vigila el modulo PENDIENTE, no uno en concreto, asi que
-     * cuando el ultimo se construya se borra — no se busca otro con que
-     * rellenarla.
-     */
-    const { container } = conEstado('listo', ACCESO_DUENA);
-    await userEvent.click(screen.getByRole('button', { name: 'Configuración' }));
-    expect(screen.getByText(/vacía a propósito/i)).toBeDefined();
-    expect(container.textContent).not.toContain('$4,850');
-  });
+  /*
+   * AQUI VIVIA "los modulos que no llegan lo DICEN", Y SE BORRO A PROPOSITO.
+   *
+   * Vigilaba que el ultimo modulo sin construir dijera la verdad en vez de
+   * enseñar una tabla de mentiras. Fue apuntando a Reportes, luego a Mensajes,
+   * luego a Recordatorios y por ultimo a Configuración, y su propio comentario
+   * decia que cuando se construyera el ultimo se BORRABA — no que se buscara
+   * otro modulo con que rellenarla. Configuración era el ultimo.
+   *
+   * `src/modulos/pendiente.tsx` se queda como red de seguridad para una
+   * direccion que no lleva a ningun modulo —un enlace viejo compartido por
+   * mensaje—, y tiene su propia prueba en `pendiente.test.tsx`.
+   */
 
   it('Inicio arranca en ceros, sin una sola cifra del diseño', () => {
     // La captura de referencia trae "$4,850", "6 citas" y "28 sesiones". Ni

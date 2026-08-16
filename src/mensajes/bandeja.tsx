@@ -76,11 +76,16 @@ import {
   type ResumenDeMensajes,
 } from '../datos/mensajes.js';
 import { FICHA_VACIA, FichaDeCliente } from '../clientes/ficha.js';
+import {
+  NOMBRE_POR_OMISION,
+  llaveDeLaConfiguracion,
+  traerConfiguracion,
+  type ConfiguracionDelCentro,
+} from '../datos/configuracion.js';
 import { useSesion } from '../identidad/sesion.js';
 import { AdministrarCategorias } from '../ui/administrar-categorias.js';
 import { Modal } from '../ui/modal.js';
 import { Icono } from '../ui/iconos.js';
-import { NOMBRE_DEL_PRODUCTO } from '../marca.js';
 import { periodosDelCentro } from '../reportes/periodo-del-reporte.js';
 import { AdministrarAutomatizaciones } from './automatizaciones.js';
 import { AdministrarCanales } from './canales.js';
@@ -179,6 +184,20 @@ export function Bandeja() {
     negocio ? llaveDeCanales(negocio) : null,
     () => traerCanales(negocio),
   );
+
+  /*
+   * EL NOMBRE DEL CENTRO SE RESUELVE AL LEER, y desde el bloque 10 sale de
+   * Configuracion en vez de estar escrito en `marca.ts`. Firmar un mensaje con
+   * un nombre copiado es el mismo error que guardar el nombre del paciente
+   * dentro de la cita: el dia que el centro se renombre, seguiria mandando
+   * mensajes firmados con el nombre viejo. Comparte llave de cache con la barra
+   * lateral, asi que no cuesta un viaje mas.
+   */
+  const configuracion = useConsulta<ConfiguracionDelCentro>(
+    negocio ? llaveDeLaConfiguracion(negocio) : null,
+    () => traerConfiguracion(negocio),
+  );
+  const nombreDelCentro = configuracion.datos?.datos.nombre ?? NOMBRE_POR_OMISION;
 
   const automatizaciones = useConsulta<AutomatizacionDeMensajes[]>(
     negocio && ventana === 'automatizaciones' ? llaveDeAutomatizaciones(negocio) : null,
@@ -475,7 +494,7 @@ export function Bandeja() {
         plantillas={plantillas.datos ?? []}
         trabajando={apertura.trabajando || envio.trabajando}
         error={apertura.error ?? envio.error}
-        nombreDelCentro={NOMBRE_DEL_PRODUCTO}
+        nombreDelCentro={nombreDelCentro}
         onBuscar={setEscritoCliente}
         onCrearCliente={() => setVentana('cliente')}
         onEnviar={(d) => void empezarConversacion(d)}

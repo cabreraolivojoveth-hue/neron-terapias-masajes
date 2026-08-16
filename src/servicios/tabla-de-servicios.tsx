@@ -13,8 +13,8 @@
  * LA PAGINACION ES DE VERDAD: el servidor devuelve la pagina Y el total.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
 import { useEffect, useState } from 'react';
+import { formatearDinero } from '../datos/moneda.js';
 import type { Categoria, ServicioEnLista } from '../datos/servicios.js';
 import { Icono } from '../ui/iconos.js';
 import { MenuDeAcciones } from '../ui/menu.js';
@@ -255,16 +255,16 @@ export function TablaDeServicios({
                     {s.enPromocion ? (
                       <span className="srv-precio">
                         <span className="srv-precio__hoy">
-                          {formatearMoneda(s.precioHoyCentavos)}
+                          {formatearDinero(s.precioHoyCentavos)}
                         </span>
                         {/* El precio de lista tachado al lado: sin el, nadie
                             sabe que hay una promocion puesta. */}
                         <span className="srv-precio__antes">
-                          {formatearMoneda(s.precioCentavos)}
+                          {formatearDinero(s.precioCentavos)}
                         </span>
                       </span>
                     ) : (
-                      formatearMoneda(s.precioCentavos)
+                      formatearDinero(s.precioCentavos)
                     )}
                   </td>
                   <td>

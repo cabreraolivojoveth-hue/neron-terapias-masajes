@@ -21,9 +21,9 @@
  * el filtro dejo 12 hace pensar que el filtro no se aplico.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
 import { useMemo, useState } from 'react';
 import type { Fecha } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { Categoria } from '../datos/categorias.js';
 import type { ProveedorEnLista } from '../datos/productos.js';
 import {
@@ -468,7 +468,7 @@ export function TablaDeGastos({
                         {COMO_SE_DICE_EL_METODO[g.metodo]}
                       </span>
                     </td>
-                    <td className="pz-tabla__numero">{formatearMoneda(g.montoCentavos)}</td>
+                    <td className="pz-tabla__numero">{formatearDinero(g.montoCentavos)}</td>
                     <td className="pz-tabla__opcional">
                       {COMO_SE_DICE_LA_FRECUENCIA[g.frecuencia]}
                     </td>
@@ -648,7 +648,7 @@ export function ListaAgrupada({
             <span className="gto-barra-parte" aria-hidden="true">
               <span className="gto-barra-parte__lleno" style={{ width: `${parte}%` }} />
             </span>
-            <strong className="gto-grupo__monto">{formatearMoneda(g.centavos)}</strong>
+            <strong className="gto-grupo__monto">{formatearDinero(g.centavos)}</strong>
           </li>
         );
       })}

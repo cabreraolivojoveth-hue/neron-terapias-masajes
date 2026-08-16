@@ -36,6 +36,8 @@ import type { ClienteBreve, ProfesionalBreve, ServicioBreve } from '../datos/cit
 import type { DatosDeCliente, PosibleDuplicado } from '../datos/clientes.js';
 import { FICHA_VACIA, FichaDeCliente } from '../clientes/ficha.js';
 import { comoHora, minutosDe } from './disposicion.js';
+import { avisoDeHorario } from '../configuracion/horarios-del-centro.js';
+import type { HorarioDelDia } from '../datos/configuracion.js';
 
 export interface ValoresDeCita {
   clienteId: string;
@@ -57,6 +59,15 @@ export interface PropiedadesDelFormulario {
   readonly error: string | null;
   /** Solo se puede mover fecha, hora y terapeuta. Es el modo reagendar. */
   readonly soloHorario?: boolean;
+  /**
+   * LOS HORARIOS DEL CENTRO, QUE LOS ADMINISTRA CONFIGURACION.
+   *
+   * Agenda no guarda ninguna copia: los recibe y pregunta. Agendar fuera de
+   * horario AVISA y no lo impide — un centro de terapias atiende fuera de hora
+   * constantemente, y una cita que el sistema se niega a guardar acaba apuntada
+   * en un papel, que es como la agenda deja de ser la agenda del centro.
+   */
+  readonly horarios?: readonly HorarioDelDia[];
   onGuardar(valores: ValoresDeCita): void;
   /** La ficha COMPLETA, la misma que manda Clientes. Ver el punto 3 de arriba. */
   onCrearCliente(datos: DatosDeCliente): Promise<ClienteBreve | null>;
@@ -76,6 +87,7 @@ export function FormularioDeCita({
   trabajando,
   error,
   soloHorario = false,
+  horarios = [],
   onGuardar,
   onCrearCliente,
   onBuscarDuplicado,
@@ -93,6 +105,11 @@ export function FormularioDeCita({
     setV((a) => ({ ...a, [k]: valor }));
 
   const servicio = servicios.find((s) => s.id === v.servicioId) ?? null;
+
+  /* Lo que dice Configuración sobre esta fecha y esta hora. Sin horarios
+     guardados no dice nada: un centro que nunca los configuró no tiene por qué
+     ver una advertencia en cada cita. */
+  const fueraDeHorario = avisoDeHorario(horarios, v.fecha, v.horaInicio);
 
   /**
    * Un servicio APAGADO no se ofrece para citas nuevas, pero si sigue
@@ -244,6 +261,15 @@ export function FormularioDeCita({
             }
           />
         </div>
+
+        {/* EL AVISO VA DEBAJO DE LOS DOS CAMPOS, no dentro de uno: depende de
+            la fecha Y de la hora, y colgarlo de cualquiera de los dos lo haria
+            aparecer y desaparecer al tocar el otro. */}
+        {fueraDeHorario.fuera ? (
+          <p className="agenda-form__aviso" role="status">
+            {fueraDeHorario.aviso} Se puede agendar igual: es un aviso, no un candado.
+          </p>
+        ) : null}
 
         {!soloHorario ? (
           <AreaDeTexto

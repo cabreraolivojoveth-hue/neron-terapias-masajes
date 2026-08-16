@@ -17,7 +17,7 @@
  * es una pantalla rota con otra letra.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type {
   CategoriaDeGasto,
   ClienteDelRanking,
@@ -157,7 +157,7 @@ export function TarjetaDeRanking({
                 <tr key={f.id}>
                   <td>{f.nombre}</td>
                   <td className="pz-tabla__numero">{f.cantidad}</td>
-                  <td className="pz-tabla__numero">{formatearMoneda(f.ingresos)}</td>
+                  <td className="pz-tabla__numero">{formatearDinero(f.ingresos)}</td>
                 </tr>
               ))}
             </tbody>
@@ -236,7 +236,7 @@ function Ventas({ reporte, cargando, onIr }: PropiedadesDeLaSeccion) {
   const v = reporte?.ventas;
   const raya = '—';
   const moneda = (n: number | null | undefined): string =>
-    n === null || n === undefined ? raya : formatearMoneda(n);
+    n === null || n === undefined ? raya : formatearDinero(n);
 
   return (
     <div className="rep-dos">
@@ -280,7 +280,7 @@ function Ventas({ reporte, cargando, onIr }: PropiedadesDeLaSeccion) {
                 <span className="tt-secundario">
                   {m.operaciones} {m.operaciones === 1 ? 'cobro' : 'cobros'}
                 </span>
-                <strong className="tt-dato">{formatearMoneda(m.monto)}</strong>
+                <strong className="tt-dato">{formatearDinero(m.monto)}</strong>
               </li>
             ))}
           </ul>
@@ -304,7 +304,7 @@ function Servicios({ reporte, cargando, onIr }: PropiedadesDeLaSeccion) {
           />
           <Dato
             etiqueta="Ingresos por servicios"
-            valor={cargando ? '—' : formatearMoneda(s?.ingresos ?? 0)}
+            valor={cargando ? '—' : formatearDinero(s?.ingresos ?? 0)}
           />
         </div>
       </section>
@@ -387,7 +387,7 @@ function Clientes({ reporte, cargando, onIr }: PropiedadesDeLaSeccion) {
                     </td>
                     <td className="pz-tabla__numero">{f.visitas}</td>
                     <td className="pz-tabla__numero">{f.compras}</td>
-                    <td className="pz-tabla__numero">{formatearMoneda(f.gastado)}</td>
+                    <td className="pz-tabla__numero">{formatearDinero(f.gastado)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -418,7 +418,7 @@ function Productos({ reporte, cargando, onIr }: PropiedadesDeLaSeccion) {
           <Dato etiqueta="Unidades vendidas" valor={cargando ? '—' : String(p?.unidades ?? 0)} fuerte />
           <Dato
             etiqueta="Ingresos por productos"
-            valor={cargando ? '—' : formatearMoneda(p?.ingresos ?? 0)}
+            valor={cargando ? '—' : formatearDinero(p?.ingresos ?? 0)}
           />
           {/* EXISTENCIAS BAJAS Y AGOTADOS NO SON DEL PERIODO: son de HOY. Un
               reporte de junio abierto en agosto no puede decir cuanto stock
@@ -452,7 +452,7 @@ function Cursos({ reporte, cargando, onIr }: PropiedadesDeLaSeccion) {
           <Dato etiqueta="Inscripciones vendidas" valor={cargando ? '—' : String(c?.vendidos ?? 0)} fuerte />
           <Dato
             etiqueta="Ingresos por cursos"
-            valor={cargando ? '—' : formatearMoneda(c?.ingresos ?? 0)}
+            valor={cargando ? '—' : formatearDinero(c?.ingresos ?? 0)}
           />
           <Dato etiqueta="Personas inscritas" valor={cargando ? '—' : String(c?.inscritos ?? 0)} />
           <Dato etiqueta="Por empezar" valor={cargando ? '—' : String(c?.proximos ?? 0)} />
@@ -498,7 +498,7 @@ function Cursos({ reporte, cargando, onIr }: PropiedadesDeLaSeccion) {
                         ? `${f.inscritos} · sin cupo`
                         : `${f.inscritos}/${f.cupo}`}
                     </td>
-                    <td className="pz-tabla__numero">{formatearMoneda(f.ingresos)}</td>
+                    <td className="pz-tabla__numero">{formatearDinero(f.ingresos)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -514,7 +514,7 @@ function Gastos({ reporte, cargando, onIr }: PropiedadesDeLaSeccion) {
   const g = reporte?.gastos;
   const raya = '—';
   const moneda = (n: number | null | undefined): string =>
-    n === null || n === undefined ? raya : formatearMoneda(n);
+    n === null || n === undefined ? raya : formatearDinero(n);
   const categorias: readonly CategoriaDeGasto[] = g?.categorias ?? [];
 
   return (
@@ -527,7 +527,7 @@ function Gastos({ reporte, cargando, onIr }: PropiedadesDeLaSeccion) {
           </button>
         </div>
         <div className="pz-datos">
-          <Dato etiqueta="Total gastado" valor={cargando ? raya : formatearMoneda(g?.total ?? 0)} fuerte />
+          <Dato etiqueta="Total gastado" valor={cargando ? raya : formatearDinero(g?.total ?? 0)} fuerte />
           <Dato etiqueta="Gastos registrados" valor={cargando ? raya : String(g?.cuantos ?? 0)} />
           <Dato etiqueta="Gasto promedio" valor={cargando ? raya : moneda(g?.promedio)} />
           <Dato etiqueta="Mayor gasto" valor={cargando ? raya : moneda(g?.mayor)} />
@@ -552,7 +552,7 @@ function Gastos({ reporte, cargando, onIr }: PropiedadesDeLaSeccion) {
                 <span className="tt-secundario">
                   {c.cuantos} {c.cuantos === 1 ? 'gasto' : 'gastos'}
                 </span>
-                <strong className="tt-dato">{formatearMoneda(c.monto)}</strong>
+                <strong className="tt-dato">{formatearDinero(c.monto)}</strong>
               </li>
             ))}
           </ul>
@@ -580,10 +580,10 @@ function Caja({ reporte, cargando, onIr }: PropiedadesDeLaSeccion) {
           </button>
         </div>
         <div className="pz-datos">
-          <Dato etiqueta="Cobros que entraron" valor={cargando ? '—' : formatearMoneda(c?.ventas ?? 0)} fuerte />
-          <Dato etiqueta="Ingresos capturados a mano" valor={cargando ? '—' : formatearMoneda(c?.ingresosManuales ?? 0)} />
-          <Dato etiqueta="Retiros" valor={cargando ? '—' : formatearMoneda(c?.retiros ?? 0)} />
-          <Dato etiqueta="Gastos pagados del cajón" valor={cargando ? '—' : formatearMoneda(c?.gastosDeCaja ?? 0)} />
+          <Dato etiqueta="Cobros que entraron" valor={cargando ? '—' : formatearDinero(c?.ventas ?? 0)} fuerte />
+          <Dato etiqueta="Ingresos capturados a mano" valor={cargando ? '—' : formatearDinero(c?.ingresosManuales ?? 0)} />
+          <Dato etiqueta="Retiros" valor={cargando ? '—' : formatearDinero(c?.retiros ?? 0)} />
+          <Dato etiqueta="Gastos pagados del cajón" valor={cargando ? '—' : formatearDinero(c?.gastosDeCaja ?? 0)} />
           <Dato etiqueta="Movimientos" valor={cargando ? '—' : String(c?.movimientos ?? 0)} />
         </div>
         {/* EL DESCUADRE ES LO UNICO QUE DETECTA QUE FALTA DINERO, y por eso se
@@ -591,7 +591,7 @@ function Caja({ reporte, cargando, onIr }: PropiedadesDeLaSeccion) {
             dice que se cobro contra lo que se conto fisicamente al cerrar. */}
         <p className="tt-secundario">
           El descuadre del período suma las diferencias de los cortes ya firmados:{' '}
-          <strong>{cargando ? '—' : formatearMoneda(c?.descuadre ?? 0)}</strong>.
+          <strong>{cargando ? '—' : formatearDinero(c?.descuadre ?? 0)}</strong>.
         </p>
       </section>
 
@@ -620,13 +620,13 @@ function Caja({ reporte, cargando, onIr }: PropiedadesDeLaSeccion) {
                   <tr key={s.id}>
                     <td>{s.nombre}</td>
                     <td className="pz-tabla__numero">
-                      {s.esperado === null ? '—' : formatearMoneda(s.esperado)}
+                      {s.esperado === null ? '—' : formatearDinero(s.esperado)}
                     </td>
                     <td className="pz-tabla__numero">
-                      {s.contado === null ? '—' : formatearMoneda(s.contado)}
+                      {s.contado === null ? '—' : formatearDinero(s.contado)}
                     </td>
                     <td className="pz-tabla__numero">
-                      {s.diferencia === null ? '—' : formatearMoneda(s.diferencia)}
+                      {s.diferencia === null ? '—' : formatearDinero(s.diferencia)}
                     </td>
                   </tr>
                 ))}

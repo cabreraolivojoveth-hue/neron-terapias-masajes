@@ -16,7 +16,7 @@
  * forma de distinguir "este mes no" de "ya no va mas".
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import {
   COMO_SE_DICE_EL_ESTADO,
   COMO_SE_DICE_LA_FRECUENCIA,
@@ -138,7 +138,7 @@ export function Recurrentes({
               <span className="pz-renglon__cuerpo">
                 <span className="pz-renglon__titulo">{r.concepto}</span>
                 <span className="pz-renglon__pie">
-                  {formatearMoneda(r.montoCentavos)} ·{' '}
+                  {formatearDinero(r.montoCentavos)} ·{' '}
                   {COMO_SE_DICE_LA_FRECUENCIA[r.frecuencia]} ·{' '}
                   {r.estado === 'activo' ? cuandoToca(r.proximaFecha, hoy) : 'Sin próxima fecha'}
                 </span>

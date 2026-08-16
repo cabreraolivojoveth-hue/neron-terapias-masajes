@@ -18,8 +18,8 @@
  */
 
 import { Boton } from '@neron/base/ui';
-import { formatearMoneda } from '@neron/base/utils';
 import type { ReactNode } from 'react';
+import { formatearDinero } from '../datos/moneda.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
 import { duracionEnPalabras, fechaLarga } from '../ui/fechas-en-palabras.js';
 import type { CitaEnAgenda, EstadoDeCita, Historial } from '../datos/citas.js';
@@ -226,7 +226,7 @@ export function PanelDeCita({
       <Renglon icono="bolsa" titulo="Servicio">
         {cita.servicio}
         {cita.servicioPrecio > 0 ? (
-          <span className="agenda-panel__secundario"> · {formatearMoneda(cita.servicioPrecio)}</span>
+          <span className="agenda-panel__secundario"> · {formatearDinero(cita.servicioPrecio)}</span>
         ) : null}
       </Renglon>
 

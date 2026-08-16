@@ -14,7 +14,7 @@
  * eso son varios segundos cada vez que alguien abre Ventas.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { Categoria } from '../marca.js';
 import type { ResumenDeVentas, VentaEnLista } from '../datos/ventas.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
@@ -35,7 +35,7 @@ export interface CifraDelDia {
 export function cifrasDelDia(r: ResumenDeVentas | null): CifraDelDia[] {
   const cargando = r === null;
   const n = (v: number): string => (cargando ? '—' : String(v));
-  const m = (v: number): string => (cargando ? '' : formatearMoneda(v));
+  const m = (v: number): string => (cargando ? '' : formatearDinero(v));
 
   return [
     {
@@ -124,7 +124,7 @@ export function EstadisticasDelDia({
 
       {resumen && resumen.ticketPromedio !== null ? (
         <p className="tt-secundario">
-          Ticket promedio: {formatearMoneda(resumen.ticketPromedio)} — lo cobrado entre las ventas
+          Ticket promedio: {formatearDinero(resumen.ticketPromedio)} — lo cobrado entre las ventas
           cobradas.
         </p>
       ) : (

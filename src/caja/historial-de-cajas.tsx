@@ -10,8 +10,8 @@
  * vez de pintar un cero que se leería como "cuadró".
  */
 
+import { formatearDinero } from '../datos/moneda.js';
 import { Modal } from '../ui/modal.js';
-import { formatearMoneda } from '@neron/base/utils';
 import type { CajaDelHistorial, ReporteDeCaja } from '../datos/caja.js';
 import {
   COMO_SE_DICE_EL_METODO_DE_CAJA,
@@ -106,25 +106,25 @@ export function HistorialDeCajas({
                       )}
                     </td>
                     <td className="pz-tabla__numero">
-                      {formatearMoneda(c.saldoInicialCentavos)}
+                      {formatearDinero(c.saldoInicialCentavos)}
                     </td>
-                    <td className="pz-tabla__numero">{formatearMoneda(c.esperadoCentavos)}</td>
+                    <td className="pz-tabla__numero">{formatearDinero(c.esperadoCentavos)}</td>
                     {/* Nulo = todavia nadie conto. Cero seria decir que se
                         conto y el cajon estaba vacio. */}
                     <td className="pz-tabla__numero">
                       {c.contadoCentavos === null ? (
                         <span className="tt-falta">Sin contar</span>
                       ) : (
-                        formatearMoneda(c.contadoCentavos)
+                        formatearDinero(c.contadoCentavos)
                       )}
                     </td>
                     <td className={`pz-tabla__numero caja-diferencia--${como}`}>
                       {c.diferenciaCentavos === null ? (
                         <span className="tt-falta">—</span>
                       ) : c.diferenciaCentavos < 0 ? (
-                        `−${formatearMoneda(-c.diferenciaCentavos)}`
+                        `−${formatearDinero(-c.diferenciaCentavos)}`
                       ) : (
-                        formatearMoneda(c.diferenciaCentavos)
+                        formatearDinero(c.diferenciaCentavos)
                       )}
                     </td>
                     <td>
@@ -245,16 +245,16 @@ export function ReportesDeCaja({
             <dl className="vta-totales">
               <div>
                 <dt>Ingresos</dt>
-                <dd className="caja-entra">{formatearMoneda(reporte.ingresosCentavos)}</dd>
+                <dd className="caja-entra">{formatearDinero(reporte.ingresosCentavos)}</dd>
               </div>
               <div>
                 <dt>Egresos</dt>
-                <dd className="caja-sale">−{formatearMoneda(reporte.egresosCentavos)}</dd>
+                <dd className="caja-sale">−{formatearDinero(reporte.egresosCentavos)}</dd>
               </div>
               <div className="vta-totales__total">
                 <dt>Neto</dt>
                 <dd>
-                  {formatearMoneda(reporte.ingresosCentavos - reporte.egresosCentavos)}
+                  {formatearDinero(reporte.ingresosCentavos - reporte.egresosCentavos)}
                 </dd>
               </div>
               <div>
@@ -272,7 +272,7 @@ export function ReportesDeCaja({
                       <span className="caja-leyenda__que">
                         {COMO_SE_DICE_EL_METODO_DE_CAJA[m.metodo] ?? m.metodo}
                       </span>
-                      <span className="caja-leyenda__cuanto">{formatearMoneda(m.centavos)}</span>
+                      <span className="caja-leyenda__cuanto">{formatearDinero(m.centavos)}</span>
                       <span className="caja-leyenda__parte">{m.movimientos}</span>
                     </li>
                   ))}
@@ -289,7 +289,7 @@ export function ReportesDeCaja({
                       <span className="caja-leyenda__que">
                         {COMO_SE_DICE_LA_CLASE[c.clase] ?? c.clase}
                       </span>
-                      <span className="caja-leyenda__cuanto">{formatearMoneda(c.centavos)}</span>
+                      <span className="caja-leyenda__cuanto">{formatearDinero(c.centavos)}</span>
                       <span className="caja-leyenda__parte">{c.movimientos}</span>
                     </li>
                   ))}
@@ -304,7 +304,7 @@ export function ReportesDeCaja({
                   {reporte.porUsuario.map((u) => (
                     <li key={u.usuario} className="caja-leyenda__renglon">
                       <span className="caja-leyenda__que">{u.usuario}</span>
-                      <span className="caja-leyenda__cuanto">{formatearMoneda(u.centavos)}</span>
+                      <span className="caja-leyenda__cuanto">{formatearDinero(u.centavos)}</span>
                       <span className="caja-leyenda__parte">{u.movimientos}</span>
                     </li>
                   ))}
@@ -330,8 +330,8 @@ export function ReportesDeCaja({
                           {c.diferenciaCentavos === null
                             ? '—'
                             : c.diferenciaCentavos < 0
-                              ? `−${formatearMoneda(-c.diferenciaCentavos)}`
-                              : formatearMoneda(c.diferenciaCentavos)}
+                              ? `−${formatearDinero(-c.diferenciaCentavos)}`
+                              : formatearDinero(c.diferenciaCentavos)}
                         </span>
                       </li>
                     ))}

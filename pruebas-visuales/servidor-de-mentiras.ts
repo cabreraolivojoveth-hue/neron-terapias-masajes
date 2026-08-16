@@ -688,6 +688,138 @@ const RESPUESTAS: Readonly<Record<string, unknown>> = {
     },
   ],
 
+  /* --- Configuracion ---------------------------------------------- */
+  /**
+   * EL CENTRO DE MENTIRAS SE LLAMA COMO EL DE VERDAD, y es el unico caso.
+   *
+   * El nombre y el lema del producto son los que salen en la barra lateral de
+   * TODAS las fotos: cambiarlos aqui haria que las trece capturas anteriores
+   * dejaran de parecerse al diseño por un motivo que no tiene nada que ver con
+   * lo que se esta revisando. Todo lo demas de este bloque —telefono,
+   * direccion, RFC— es utileria, y se nota que lo es.
+   */
+  configuracion_del_centro: {
+    nombre: 'Centro Holístico',
+    centro: {
+      lema: 'Bienestar & Terapias',
+      telefono: '646 000 0000',
+      correo: 'contacto@ejemplo.mx',
+      sitio: 'ejemplo.mx',
+      direccion: 'Avenida de ejemplo 100',
+      ciudad: 'Ensenada',
+      zonaHoraria: 'America/Tijuana',
+      moneda: 'MXN',
+      decimales: 2,
+      impuestoNombre: 'IVA',
+      impuestoTasa: 16,
+      impuestoIncluido: true,
+      metodosDePago: ['efectivo', 'tarjeta', 'transferencia'],
+      rfc: '',
+      razonSocial: '',
+      regimenFiscal: '',
+      direccionFiscal: '',
+      pieDeComprobante: '',
+      tema: 'sistema',
+      menosMovimiento: false,
+      horarios: [
+        { dia: 1, cerrado: false, abre: '09:00', cierra: '19:00' },
+        { dia: 2, cerrado: false, abre: '09:00', cierra: '19:00' },
+        { dia: 3, cerrado: false, abre: '09:00', cierra: '19:00' },
+        { dia: 4, cerrado: false, abre: '09:00', cierra: '19:00' },
+        { dia: 5, cerrado: false, abre: '09:00', cierra: '19:00' },
+        { dia: 6, cerrado: false, abre: '09:00', cierra: '14:00' },
+        { dia: 7, cerrado: true, abre: '09:00', cierra: '19:00' },
+      ],
+    },
+    creadoEn: enHoras(-8000),
+    miembros: 2,
+  },
+  licencia_del_centro: {
+    administrada: true,
+    plan: 'Plan de ejemplo',
+    estado: 'activa',
+    expiraEn: enDias(28),
+    actualizadaEn: enHoras(-200),
+    permiteGuardar: true,
+  },
+  actividad_reciente_del_centro: [
+    {
+      id: uuid(980), ocurridoEn: enHoras(-2), usuario: 'Quien administra',
+      modulo: 'configuracion', accion: 'editar', entidad: 't_vitrina',
+    },
+    {
+      id: uuid(981), ocurridoEn: enHoras(-20), usuario: 'Quien administra',
+      modulo: 'clientes', accion: 'crear', entidad: uuid(200),
+    },
+    {
+      id: uuid(982), ocurridoEn: enHoras(-30), usuario: 'Quien atiende',
+      modulo: 'caja', accion: 'cobrar', entidad: uuid(701),
+    },
+  ],
+  equipo_del_centro: {
+    miembros: [
+      {
+        id: uuid(400), usuarioId: uuid(1), correo: 'administra@ejemplo.mx',
+        nombre: 'Quien administra', rol: 'dueno', rolEtiqueta: 'Dueña',
+        activo: true, eliminado: false, permisos: null, soyYo: true, creadoEn: enHoras(-8000),
+      },
+      {
+        id: uuid(401), usuarioId: uuid(2), correo: 'atiende@ejemplo.mx',
+        nombre: 'Quien atiende', rol: 'terapeuta', rolEtiqueta: 'Terapeuta',
+        activo: true, eliminado: false, permisos: null, soyYo: false, creadoEn: enHoras(-4000),
+      },
+    ],
+    invitaciones: [
+      {
+        id: uuid(402), correo: 'recepcion@ejemplo.mx', nombre: 'Quien recibe',
+        rol: 'recepcion', rolEtiqueta: 'Recepción', creadaEn: enHoras(-10),
+      },
+    ],
+    duenosActivos: 1,
+  },
+  roles_del_centro: [
+    { id: 'dueno', etiqueta: 'Dueña', permisos: {}, activo: true, cuantos: 1 },
+    {
+      id: 'recepcion', etiqueta: 'Recepción', activo: true, cuantos: 0,
+      permisos: { gestionarClientes: true, gestionarAgenda: true, cobrar: true },
+    },
+    {
+      id: 'terapeuta', etiqueta: 'Terapeuta', activo: true, cuantos: 1,
+      permisos: { gestionarClientes: true, gestionarAgenda: true, verExpediente: true },
+    },
+  ],
+  bitacora_del_centro: {
+    total: 3,
+    pagina: 1,
+    porPagina: 20,
+    modulos: ['caja', 'clientes', 'configuracion'],
+    gente: [
+      { id: uuid(1), nombre: 'Quien administra' },
+      { id: uuid(2), nombre: 'Quien atiende' },
+    ],
+    filas: [
+      {
+        id: uuid(980), ocurridoEn: enHoras(-2), usuarioId: uuid(1),
+        usuario: 'Quien administra', rol: 'Dueña', modulo: 'configuracion',
+        accion: 'editar', detalle: null, entidad: 't_vitrina',
+        antes: null, despues: null, motivo: null,
+      },
+      {
+        id: uuid(981), ocurridoEn: enHoras(-20), usuarioId: uuid(1),
+        usuario: 'Quien administra', rol: 'Dueña', modulo: 'clientes',
+        accion: 'crear', detalle: null, entidad: uuid(200),
+        antes: null, despues: null, motivo: null,
+      },
+      {
+        id: uuid(982), ocurridoEn: enHoras(-30), usuarioId: uuid(2),
+        usuario: 'Quien atiende', rol: 'Terapeuta', modulo: 'caja',
+        accion: 'cobrar', detalle: null, entidad: uuid(701),
+        antes: null, despues: null, motivo: null,
+      },
+    ],
+  },
+  exportar_del_centro: { que: 'clientes', total: 0, entregadas: 0, tope: 5000, filas: [] },
+
   /* --- Compartido ------------------------------------------------ */
   buscar_en_todo: [],
   siguiente_folio: 'V-00004',
@@ -758,6 +890,27 @@ export function supabase(): unknown {
       getUser: () => Promise.resolve({ data: { user: null }, error: null }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
       signOut: () => Promise.resolve({ error: null }),
+      updateUser: () => Promise.resolve({ data: { user: null }, error: null }),
+      /*
+       * EL SEGUNDO FACTOR, DE MENTIRAS Y VACIO A PROPOSITO.
+       *
+       * La pantalla de Seguridad pregunta que factores hay antes de pintar
+       * nada. Sin esta pieza, la vitrina revienta al abrirla y la foto sale de
+       * una pantalla en blanco — que es exactamente el fallo que la vitrina
+       * existe para cachar, pero causado por la propia vitrina.
+       *
+       * Contesta que NO hay ninguno: es el estado en el que se ve el camino
+       * completo de dar de alta, que es lo que hay que poder mirar.
+       */
+      mfa: {
+        listFactors: () => Promise.resolve({ data: { all: [], totp: [] }, error: null }),
+        getAuthenticatorAssuranceLevel: () =>
+          Promise.resolve({ data: { currentLevel: 'aal1', nextLevel: 'aal1' }, error: null }),
+        enroll: () => Promise.resolve({ data: null, error: { message: 'La vitrina no da de alta nada.' } }),
+        challengeAndVerify: () =>
+          Promise.resolve({ data: null, error: { message: 'La vitrina no verifica nada.' } }),
+        unenroll: () => Promise.resolve({ data: null, error: null }),
+      },
     },
   };
 }

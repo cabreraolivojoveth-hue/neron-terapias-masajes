@@ -9,7 +9,7 @@
 import { Boton, Campo } from '@neron/base/ui';
 import { useState, type FormEvent } from 'react';
 import { supabase } from '../supabase.js';
-import { LEMA, NOMBRE_DEL_PRODUCTO } from '../marca.js';
+import { LEMA_POR_OMISION, NOMBRE_POR_OMISION } from '../datos/configuracion.js';
 import { Hoja } from '../marco/hoja.js';
 
 export function Entrar() {
@@ -50,8 +50,8 @@ export function Entrar() {
         <div className="terapias-entrar__marca">
           <Hoja pequena />
           <div>
-            <h1 className="terapias-entrar__titulo">{NOMBRE_DEL_PRODUCTO}</h1>
-            <p className="terapias-entrar__lema">{LEMA}</p>
+            <h1 className="terapias-entrar__titulo">{NOMBRE_POR_OMISION}</h1>
+            <p className="terapias-entrar__lema">{LEMA_POR_OMISION}</p>
           </div>
         </div>
 

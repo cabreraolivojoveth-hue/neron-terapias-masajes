@@ -11,8 +11,8 @@
  * leeria como "no hay dato".
  */
 
-import { formatearMoneda } from '@neron/base/utils';
 import { useState, type ReactNode } from 'react';
+import { formatearDinero } from '../datos/moneda.js';
 import type { DatosDeAjuste, FichaDeProducto, ProveedorEnLista } from '../datos/productos.js';
 import { COMO_SE_DICE_EL_STOCK, margenDe } from '../datos/productos.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
@@ -180,7 +180,7 @@ export function PanelDelProducto({
           {pestana === 'informacion' ? (
             <div className="srv-detalle__cuerpo">
               <Renglon icono="dinero" titulo="Precio de venta">
-                {formatearMoneda(ficha.precioCentavos)}
+                {formatearDinero(ficha.precioCentavos)}
               </Renglon>
 
               <Renglon icono="recibo" titulo="Costo">
@@ -189,7 +189,7 @@ export function PanelDelProducto({
                   <span className="tt-falta">Tu rol no ve costos</span>
                 ) : (
                   <>
-                    {formatearMoneda(ficha.costoCentavos)}
+                    {formatearDinero(ficha.costoCentavos)}
                     {margen !== null ? (
                       <span className="tt-secundario"> · {margen}% de margen</span>
                     ) : null}
@@ -283,8 +283,8 @@ export function PanelDelProducto({
                         <span>{v.cantidad}</span>
                         {/* EL PRECIO HISTORICO. Si el catalogo sube mañana,
                             este renglon sigue diciendo lo que se cobro. */}
-                        <span>{formatearMoneda(v.precioUnitario)}</span>
-                        <strong>{formatearMoneda(v.total)}</strong>
+                        <span>{formatearDinero(v.precioUnitario)}</span>
+                        <strong>{formatearDinero(v.total)}</strong>
                       </span>
                     </li>
                   ))}

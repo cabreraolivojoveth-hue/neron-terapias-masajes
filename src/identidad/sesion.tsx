@@ -64,23 +64,28 @@ export function ProveedorDeSesion({ children }: { readonly children: ReactNode }
       proveedor: crearProveedorSupabase(cliente),
       directorio: crearDirectorioSupabase(cliente),
       /**
-       * EL SEGUNDO FACTOR, APAGADO A PROPOSITO. ES DEUDA, NO AJUSTE.
+       * EL SEGUNDO FACTOR YA NO SE APAGA. LA DEUDA ESTA PAGADA.
        *
-       * La base exige verificacion en dos pasos a dueño y administrador, y
-       * hace bien: son las cuentas que mueven usuarios, permisos e historial.
-       * Pero Terapias todavia no tiene la pantalla donde una persona da de
-       * alta su segundo factor — eso llega con Configuracion.
+       * Aqui vivio `segundoFactorApagado: true` durante nueve bloques, con su
+       * razon escrita al lado: la base exige verificacion en dos pasos a dueño
+       * y administrador —hace bien, son las cuentas que mueven usuarios,
+       * permisos e historial— y Terapias no tenia ninguna pantalla donde darla
+       * de alta. Sin el apagado, el dueño entraba con su correo y su
+       * contraseña, la conexion funcionaba, y el sistema le contestaba "falta
+       * el segundo paso": un paso que no existia forma de completar. Quedo
+       * encerrado afuera de su propio centro, con el sistema publicado.
        *
-       * EL RESULTADO EN PRODUCCION FUE ESTE: el dueño entro con su correo y
-       * contraseña, la conexion funciono, y el sistema le respondio "falta el
-       * segundo paso". Un paso que no existia forma de completar. Quedo
-       * encerrado afuera de su propio centro, con el sistema ya publicado.
+       * LO QUE LO ARREGLA NO ES SOLO QUE EXISTA LA PANTALLA. Es DONDE esta:
+       * `src/configuracion/segundo-factor.tsx` se pinta en dos sitios, y el
+       * segundo es el que cierra el agujero — la pantalla de "falta el segundo
+       * paso" de `aplicacion.tsx`, o sea del lado de AFUERA. Ponerla solo
+       * dentro de Configuracion habria repetido el fallo exacto: quien no
+       * tiene segundo factor no entra, asi que jamas llegaria al modulo donde
+       * darlo de alta.
        *
-       * CUANDO SE QUITA: en cuanto Configuracion tenga la pantalla de alta del
-       * segundo factor. No es opcional ni queda a criterio — hay una guardia
-       * en `guardias/fronteras.ts` que revienta la publicacion en cuanto
-       * aparezca `src/configuracion/`, justo para que esta linea no se quede
-       * aqui para siempre.
+       * La guardia 8 de `guardias/fronteras.ts` era la que ataba quitar esta
+       * linea a que existiera `src/configuracion/`. Sigue encendida: si alguien
+       * la vuelve a escribir, revienta la publicacion.
        */
       /**
        * LAS CAPACIDADES DE TERAPIAS, DECLARADAS A LA BASE.
@@ -100,7 +105,6 @@ export function ProveedorDeSesion({ children }: { readonly children: ReactNode }
        * declara una capacidad que no llega hasta aqui.
        */
       capacidadesDelProducto: CAPACIDADES_DE_TERAPIAS,
-      segundoFactorApagado: true,
       alFallar: (error, que) => {
         console.error(`[sesion] ${que}: ${error.message}`);
         // Y ademas SE MUESTRA. Un error que solo vive en la consola es un

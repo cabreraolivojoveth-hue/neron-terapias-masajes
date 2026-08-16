@@ -21,7 +21,7 @@
  */
 
 import { Boton } from '@neron/base/ui';
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero, impuestoDe } from '../datos/moneda.js';
 import type { MetodoDePago, PagoDelCarrito, RenglonDelCarrito } from '../datos/ventas.js';
 import {
   COMO_SE_DICE_EL_METODO,
@@ -74,8 +74,8 @@ export function porQueNoSePuedeCobrar(
   const total = totalDelCarrito(renglones, descuento);
   if (total <= 0) return 'El total quedó en cero: revisa los descuentos.';
   const falta = faltaPorPagar(renglones, descuento, pagos);
-  if (falta > 0) return `Faltan ${formatearMoneda(falta)} por cubrir.`;
-  if (falta < 0) return `Los pagos se pasan por ${formatearMoneda(-falta)}.`;
+  if (falta > 0) return `Faltan ${formatearDinero(falta)} por cubrir.`;
+  if (falta < 0) return `Los pagos se pasan por ${formatearDinero(-falta)}.`;
   return '';
 }
 
@@ -184,7 +184,7 @@ export function AplicarDescuento({
 
       {puede && valdria > 0 ? (
         <p className="tt-secundario" role="status">
-          Quedaría un descuento de {formatearMoneda(valdria)} sobre el subtotal.
+          Quedaría un descuento de {formatearDinero(valdria)} sobre el subtotal.
         </p>
       ) : null}
     </section>
@@ -201,6 +201,23 @@ export interface PropiedadesDelCobro {
   readonly pagos: readonly PagoDelCarrito[];
   readonly metodoPuesto: string;
   readonly efectivoRecibido: string;
+  /**
+   * LOS METODOS QUE EL CENTRO ACEPTA, que los administra Configuracion.
+   *
+   * NO es una copia: es la MISMA lista, resuelta al leer. Si aqui hubiera una
+   * segunda lista, desactivar la tarjeta en Configuracion no cambiaria nada en
+   * el mostrador — que es exactamente la configuracion aislada que este modulo
+   * no hace.
+   *
+   * Y lo que se desactiva solo afecta a lo NUEVO: las ventas de ayer conservan
+   * el metodo con el que se cobraron. Cambiar la historia por un ajuste de hoy
+   * dejaria el corte de caja sin cuadrar contra nada.
+   */
+  readonly metodosAceptados: readonly string[];
+  /** Como se llama el impuesto del centro y cuanto es. Sale de Configuracion. */
+  readonly impuestoNombre: string;
+  readonly impuestoTasa: number;
+  readonly impuestoIncluido: boolean;
   readonly trabajando: boolean;
   readonly error: string | null;
   onMetodo(clave: string): void;
@@ -219,6 +236,10 @@ export function Cobro({
   pagos,
   metodoPuesto,
   efectivoRecibido,
+  metodosAceptados,
+  impuestoNombre,
+  impuestoTasa,
+  impuestoIncluido,
   trabajando,
   error,
   onMetodo,
@@ -253,29 +274,43 @@ export function Cobro({
       <dl className="vta-totales">
         <div>
           <dt>Subtotal</dt>
-          <dd>{formatearMoneda(subtotal)}</dd>
+          <dd>{formatearDinero(subtotal)}</dd>
         </div>
         <div>
           <dt>Descuento</dt>
           <dd className={descuentoCentavos > 0 ? 'vta-totales__resta' : ''}>
-            {descuentoCentavos > 0 ? `−${formatearMoneda(descuentoCentavos)}` : formatearMoneda(0)}
+            {descuentoCentavos > 0 ? `−${formatearDinero(descuentoCentavos)}` : formatearDinero(0)}
           </dd>
         </div>
         <div>
-          {/* CERO PORQUE NO HAY NINGUNO CONFIGURADO, y se dice cual se aplico.
-              Un "IVA (16%)" inventado cambia lo que el cliente paga. */}
-          <dt>IVA (0%)</dt>
-          <dd>{formatearMoneda(0)}</dd>
+          {/*
+            EL IMPUESTO SALE DE CONFIGURACION, no de un numero escrito aqui.
+            Antes decia "IVA (0%)" a secas porque no habia donde configurarlo;
+            un "16%" inventado cambia lo que el cliente paga.
+
+            Y SE DICE SI VA DENTRO O ENCIMA. Son dos cuentas distintas: dentro
+            se saca hacia atras y el total no se toca; encima se suma y el total
+            sube. Sin decirlo, el mismo numero significa dos cosas.
+          */}
+          <dt>
+            {impuestoNombre || 'Impuesto'} ({impuestoTasa}%)
+            {impuestoTasa > 0 ? (
+              <span className="vta-totales__nota">
+                {impuestoIncluido ? ' ya incluido' : ' se suma'}
+              </span>
+            ) : null}
+          </dt>
+          <dd>{formatearDinero(impuestoDe(subtotal - descuentoCentavos, impuestoTasa, impuestoIncluido))}</dd>
         </div>
         <div className="vta-totales__total">
           <dt>Total</dt>
-          <dd>{formatearMoneda(total)}</dd>
+          <dd>{formatearDinero(total)}</dd>
         </div>
       </dl>
 
       <div className="vta-apagar">
         <span className="vta-apagar__que">Total a pagar</span>
-        <span className="vta-apagar__cuanto">{formatearMoneda(total)}</span>
+        <span className="vta-apagar__cuanto">{formatearDinero(total)}</span>
       </div>
 
       <div className="vta-metodos">
@@ -283,7 +318,12 @@ export function Cobro({
           Método de pago
         </span>
         <div className="vta-metodos__rejilla" role="group" aria-labelledby="vta-metodo-titulo">
-          {BOTONES_DE_PAGO.map((b) => (
+          {/* "Mixto" no es un metodo: abre el reparto, asi que se ofrece
+              siempre que haya mas de uno aceptado. Filtrarlo con los demas lo
+              haria desaparecer en cuanto el centro apagara "otro". */}
+          {BOTONES_DE_PAGO.filter(
+            (b) => b.clave === 'mixto' ? metodosAceptados.length > 1 : metodosAceptados.includes(b.clave),
+          ).map((b) => (
             <button
               key={b.clave}
               type="button"
@@ -306,7 +346,7 @@ export function Cobro({
             el corte de caja sabe cuánto entró de cada cosa.
           </p>
           <div className="vta-metodos__botones" role="group" aria-label="Agregar forma de pago">
-            {METODOS.map((m) => (
+            {METODOS.filter((m) => metodosAceptados.includes(m)).map((m) => (
               <button
                 key={m}
                 type="button"
@@ -370,12 +410,12 @@ export function Cobro({
           </label>
           <div className="vta-cambio">
             <span className="tt-etiqueta">Cambio</span>
-            <span className="vta-cambio__valor">{formatearMoneda(cambio)}</span>
+            <span className="vta-cambio__valor">{formatearDinero(cambio)}</span>
           </div>
           {/* EL CAMBIO NO ES UN EGRESO: a la caja entra lo aplicado. */}
           <p className="tt-secundario">
             El cambio no se registra como salida: a la caja entran{' '}
-            {formatearMoneda(enEfectivo)} en efectivo.
+            {formatearDinero(enEfectivo)} en efectivo.
           </p>
         </div>
       ) : null}
@@ -383,8 +423,8 @@ export function Cobro({
       {falta !== 0 && pagos.length > 0 ? (
         <p className="tt-secundario" role="status">
           {falta > 0
-            ? `Faltan ${formatearMoneda(falta)}.`
-            : `Se pasan ${formatearMoneda(-falta)}. Baja los montos: el cambio se calcula con el efectivo recibido, no pagando de más.`}
+            ? `Faltan ${formatearDinero(falta)}.`
+            : `Se pasan ${formatearDinero(-falta)}. Baja los montos: el cambio se calcula con el efectivo recibido, no pagando de más.`}
         </p>
       ) : null}
 
@@ -429,7 +469,7 @@ export function Cobro({
       ) : null}
 
       <span className="tt-secundario">
-        Pagado {formatearMoneda(pagado)} de {formatearMoneda(total)}
+        Pagado {formatearDinero(pagado)} de {formatearDinero(total)}
       </span>
     </aside>
   );

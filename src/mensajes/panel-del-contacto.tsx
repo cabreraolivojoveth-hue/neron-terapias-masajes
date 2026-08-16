@@ -16,7 +16,7 @@
  * personas llamadas como su teléfono.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { ExpedienteDeCliente } from '../datos/clientes.js';
 import type {
   CanalDeMensajes,
@@ -128,14 +128,14 @@ export function PanelDelContacto({
                     <div className="pz-dato pz-dato--renglon">
                       <span className="tt-etiqueta">Ha gastado</span>
                       <span className="pz-dato__valor">
-                        {formatearMoneda(expediente.totalGastado)}
+                        {formatearDinero(expediente.totalGastado)}
                       </span>
                     </div>
                     {expediente.adeudo > 0 ? (
                       <div className="pz-dato pz-dato--renglon">
                         <span className="tt-etiqueta">Debe</span>
                         <span className="pz-pastilla pz-pastilla--peligro">
-                          {formatearMoneda(expediente.adeudo)}
+                          {formatearDinero(expediente.adeudo)}
                         </span>
                       </div>
                     ) : null}

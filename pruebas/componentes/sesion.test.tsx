@@ -91,22 +91,25 @@ describe('el enganche con el portero', () => {
     expect(screen.getByTestId('estado').textContent).toBe('sin-sesion');
   });
 
-  it('arma el portero con el segundo factor APAGADO, y eso es a proposito', () => {
+  it('arma el portero SIN apagar el segundo factor: la deuda esta pagada', () => {
     /**
-     * Lo que paso en produccion: el dueño entro con su correo y contraseña,
-     * la conexion funciono, y el sistema le contesto "falta el segundo paso"
-     * — un paso que Terapias todavia no tiene pantalla para completar. Quedo
-     * afuera de su propio centro.
+     * ESTA PRUEBA ERA LA CONTRARIA HASTA EL BLOQUE 10, y vale la pena contarlo.
      *
-     * Esta prueba NO celebra el apagado. Lo fija por escrito para que se vea
-     * en la lista de pruebas, y para que el dia que se quite falle aqui y no
-     * en la cara de alguien que intenta entrar. La otra mitad la hace la
-     * guardia que revienta en cuanto exista `src/configuracion/`.
+     * Decia `expect(...segundoFactorApagado).toBe(true)` y fijaba por escrito
+     * un atajo con su razon: la base exige verificacion en dos pasos a dueño y
+     * administrador, y Terapias no tenia ninguna pantalla donde darla de alta.
+     * Sin el apagado, el dueño entraba bien y el sistema le contestaba "falta
+     * el segundo paso" — un paso imposible de completar. Quedo encerrado
+     * afuera de su propio centro, con el sistema publicado.
+     *
+     * Configuracion trajo esa pantalla, y —lo que de verdad cierra el
+     * agujero— la puso tambien del lado de AFUERA, en la pantalla de "falta el
+     * segundo paso". Asi que el apagado se quito, y esta prueba lo vigila al
+     * reves: si vuelve a aparecer, falla aqui.
      */
     pintar();
-    expect(porteroFalso.opciones?.['segundoFactorApagado']).toBe(true);
-    // Y jamas las dos cosas a la vez: seria configuracion contradictoria, y
-    // la base resuelve eso cerrando la puerta — de vuelta al mismo encierro.
+    expect(porteroFalso.opciones?.['segundoFactorApagado']).toBeUndefined();
+    // Tampoco se exige a todos: la base ya decide a quien, segun su rol.
     expect(porteroFalso.opciones?.['segundoFactorParaTodos']).toBeUndefined();
   });
 });

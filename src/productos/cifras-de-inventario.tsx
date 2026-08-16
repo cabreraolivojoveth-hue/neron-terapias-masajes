@@ -11,7 +11,7 @@
  * que se leeria como "no hay inventario".
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { Categoria } from '../marca.js';
 import type { ResumenDeProductos } from '../datos/productos.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
@@ -45,7 +45,7 @@ export function cifrasDeInventario(r: ResumenDeProductos | null): CifraDeInventa
       etiqueta: 'Valor de inventario',
       icono: 'dinero',
       // `null` es "no puedes verlo", que es OTRA cosa que "vale cero".
-      valor: cargando ? '—' : r!.valorCentavos === null ? '—' : formatearMoneda(r!.valorCentavos),
+      valor: cargando ? '—' : r!.valorCentavos === null ? '—' : formatearDinero(r!.valorCentavos),
       pie: cargando
         ? ''
         : r!.valorCentavos === null

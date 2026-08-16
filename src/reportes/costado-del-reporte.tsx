@@ -17,8 +17,8 @@
  * que no se vendio nada.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
 import type { Fecha } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { Reporte, ReporteGuardado } from '../datos/reportes.js';
 import { Icono } from '../ui/iconos.js';
 import { MenuDeAcciones } from '../ui/menu.js';
@@ -136,13 +136,13 @@ export function CostadoDelReporte({
           <div className="pz-dato pz-dato--renglon">
             <span className="tt-etiqueta">Ingresos</span>
             <span className="pz-dato__valor">
-              {cargando ? raya : formatearMoneda(f?.ingresos ?? 0)}
+              {cargando ? raya : formatearDinero(f?.ingresos ?? 0)}
             </span>
           </div>
           <div className="pz-dato pz-dato--renglon">
             <span className="tt-etiqueta">Egresos</span>
             <span className="pz-dato__valor rep-egreso">
-              {cargando ? raya : formatearMoneda(f?.egresos ?? 0)}
+              {cargando ? raya : formatearDinero(f?.egresos ?? 0)}
             </span>
           </div>
           {/* LA GANANCIA NETA SE DERIVA, no se guarda. Un total guardado se
@@ -151,7 +151,7 @@ export function CostadoDelReporte({
           <div className="pz-dato pz-dato--renglon rep-neta">
             <span className="tt-etiqueta">Ganancia neta</span>
             <strong className="tt-dato">
-              {cargando ? raya : formatearMoneda(f?.utilidad ?? 0)}
+              {cargando ? raya : formatearDinero(f?.utilidad ?? 0)}
             </strong>
           </div>
           <div className="pz-dato pz-dato--renglon">
@@ -167,7 +167,7 @@ export function CostadoDelReporte({
           <div className="pz-dato pz-dato--renglon">
             <span className="tt-etiqueta">Ventas promedio por día</span>
             <span className="pz-dato__valor">
-              {cargando ? raya : formatearMoneda(f?.promedioDiario ?? 0)}
+              {cargando ? raya : formatearDinero(f?.promedioDiario ?? 0)}
             </span>
           </div>
           <div className="pz-dato pz-dato--renglon">

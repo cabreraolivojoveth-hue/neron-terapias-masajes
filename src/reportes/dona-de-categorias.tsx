@@ -15,7 +15,7 @@
  * nada.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { CategoriaDeIngreso } from '../datos/reportes.js';
 import { Icono } from '../ui/iconos.js';
 
@@ -143,7 +143,7 @@ export function DonaDeCategorias({
             </svg>
             <div className="caja-anillo__centro">
               <span className="tt-pie">Total</span>
-              <strong className="tt-dato">{formatearMoneda(total)}</strong>
+              <strong className="tt-dato">{formatearDinero(total)}</strong>
             </div>
           </div>
 
@@ -160,7 +160,7 @@ export function DonaDeCategorias({
                   style={{ background: tonoDeLaRebanada(i) }}
                 />
                 <span className="caja-leyenda__que">{r.nombre}</span>
-                <span className="caja-leyenda__cuanto">{formatearMoneda(r.monto)}</span>
+                <span className="caja-leyenda__cuanto">{formatearDinero(r.monto)}</span>
                 <span className="caja-leyenda__parte">{r.parte}%</span>
               </li>
             ))}

@@ -1931,6 +1931,122 @@ async function correr(): Promise<void> {
     anotar('NO se ve el historial de un recordatorio ajeno', n === 0, `vio ${n}`);
   });
 
+  grupo('Configuracion — la puerta de todo sigue cerrada');
+
+  /*
+   * ESTOS SON LOS ATAQUES MAS IMPORTANTES DEL BLOQUE 10, y el motivo es el
+   * agujero mas grave que la base existe para no repetir: en Neron POS la lista
+   * de usuarios vivia dentro del bloque JSON que el navegador escribe, asi que
+   * una cajera podia cambiarse el rol a dueña sin atacar nada.
+   *
+   * Configuracion abre una puerta a `membresia` y a `rol` —hace falta: no hay
+   * servidor propio— pero SOLO por funciones que comprueban `gestionarUsuarios`
+   * antes de tocar nada. Si esa comprobacion se cayera, no fallaria nada: el
+   * sistema seguiria funcionando igual y cualquiera podria subirse de rol.
+   */
+
+  await como(RECEPCION, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`update membresia set rol = 'dueno' where id = $1`, [membresiaRecepcion]));
+    anotar('recepcion NO se sube el rol escribiendo la tabla', e !== null, e ?? 'se subio');
+  });
+
+  await como(RECEPCION, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`insert into membresia (negocio_id, usuario_id, correo, nombre, rol)
+                     values ($1, gen_random_uuid(), 'colado@ejemplo.mx', 'Colado', 'dueno')`, [CENTRO]));
+    anotar('recepcion NO se mete a nadie mas al centro', e !== null, e ?? 'lo metio');
+  });
+
+  await como(RECEPCION, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select public.invitar_al_centro($1,'colado@ejemplo.mx','Colado','dueno')`, [CENTRO]));
+    anotar('recepcion NO invita ni por la funcion', e !== null, e ?? 'invito');
+  });
+
+  await como(RECEPCION, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select public.guardar_configuracion_del_centro($1,'Centro de la recepcion','{}'::jsonb)`, [CENTRO]));
+    anotar('recepcion NO renombra el centro', e !== null, e ?? 'lo renombro');
+  });
+
+  await como(RECEPCION, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`update negocio set nombre = 'Mio' where id = $1`, [CENTRO]));
+    anotar('nadie escribe la tabla negocio directamente', e !== null, e ?? 'la escribio');
+  });
+
+  await como(DUENA, async () => {
+    /*
+     * NI LA DUEÑA SE BAJA A SI MISMA. Es la mitad de la proteccion anti-bloqueo
+     * que no depende de ningun permiso: sin esto, la unica dueña se cambia a
+     * "consulta" con un clic y se queda fuera de su propio centro sin forma de
+     * volver.
+     */
+    const e = await rechazado(() =>
+      cliente.query(`select public.cambiar_rol_en_el_centro($1,'consulta')`, [membresiaDuena]));
+    anotar('la dueña NO se cambia el rol a si misma', e !== null, e ?? 'se lo cambio');
+  });
+
+  await como(DUENA, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select public.cambiar_acceso_en_el_centro($1, false, false)`, [membresiaDuena]));
+    anotar('la dueña NO se quita el acceso a si misma', e !== null, e ?? 'se lo quito');
+  });
+
+  await como(DUENA, async () => {
+    // El rol `dueno` se guarda con la lista de permisos VACIA a proposito:
+    // `app.tiene_permiso` devuelve true en cuanto lo ve. Escribirsela es como un
+    // centro se queda sin nadie que pueda todo.
+    const e = await rechazado(() =>
+      cliente.query(`select public.guardar_rol_del_centro($1,'dueno','Dueña','{"zonaDePeligro":false}'::jsonb)`, [CENTRO]));
+    anotar('el rol de dueño NO se edita, ni por la dueña', e !== null, e ?? 'lo edito');
+  });
+
+  await como(RECEPCION, async () => {
+    // La bitacora la lee quien tiene `verAuditoria`, y recepcion no lo tiene.
+    // No se le esconde el boton: la base no le entrega ni una fila.
+    const n = await cuantos(`select * from auditoria where negocio_id = $1`, [CENTRO]);
+    anotar('recepcion NO lee la bitacora del centro', n === 0, `vio ${n}`);
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const n = await cuantos(`select * from invitacion where negocio_id = $1`, [CENTRO]);
+    anotar('el dueño de otro centro NO ve las invitaciones de este', n === 0, `vio ${n}`);
+  });
+
+  await como(RECEPCION, async () => {
+    // `invitacion` guarda correos de gente: es dato personal, y leerlo pide
+    // `gestionarUsuarios` igual que escribirlo.
+    const n = await cuantos(`select * from invitacion where negocio_id = $1`, [CENTRO]);
+    anotar('recepcion NO ve los correos invitados', n === 0, `vio ${n}`);
+  });
+
+  await como(RECEPCION, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`insert into invitacion (negocio_id, correo, nombre, rol)
+                     values ($1,'yo@ejemplo.mx','Yo','dueno')`, [CENTRO]));
+    anotar('nadie escribe invitacion directamente', e !== null, e ?? 'la escribio');
+  });
+
+  await como(RECEPCION, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select public.exportar_del_centro($1,'clientes')`, [CENTRO]));
+    anotar('recepcion NO exporta los datos del centro', e !== null, e ?? 'los exporto');
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select public.configuracion_del_centro($1)`, [CENTRO]));
+    anotar('NO se lee la configuracion de otro centro', e !== null, e ?? 'la leyo');
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select public.transferir_propiedad_del_centro($1,$2)`, [CENTRO, membresiaRecepcion]));
+    anotar('NO se transfiere un centro ajeno', e !== null, e ?? 'lo transfirio');
+  });
+
   grupo('Controles positivos — que el centro pueda trabajar');
 
   await como(DUENA, async () => {

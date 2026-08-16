@@ -17,8 +17,8 @@
  */
 
 import { Boton, Campo } from '@neron/base/ui';
+import { formatearDinero } from '../datos/moneda.js';
 import { Modal } from '../ui/modal.js';
-import { formatearMoneda } from '@neron/base/utils';
 import { useState } from 'react';
 import type { CajaAbierta } from '../datos/caja.js';
 import {
@@ -32,8 +32,8 @@ import { Icono } from '../ui/iconos.js';
 export function comoSeDiceLaDiferencia(centavos: number): string {
   const como = comoSeLeeLaDiferencia(centavos);
   if (como === 'cuadra') return 'La caja cuadra.';
-  if (como === 'sobra') return `Sobran ${formatearMoneda(centavos)}.`;
-  return `Faltan ${formatearMoneda(-centavos)}.`;
+  if (como === 'sobra') return `Sobran ${formatearDinero(centavos)}.`;
+  return `Faltan ${formatearDinero(-centavos)}.`;
 }
 
 /**
@@ -83,29 +83,29 @@ export function CorteDeCaja({
             <dl className="vta-totales">
               <div>
                 <dt>Saldo inicial</dt>
-                <dd>{formatearMoneda(caja.saldoInicialCentavos)}</dd>
+                <dd>{formatearDinero(caja.saldoInicialCentavos)}</dd>
               </div>
               <div>
                 <dt>Entró en efectivo</dt>
-                <dd>{formatearMoneda(caja.efectivoEntroCentavos)}</dd>
+                <dd>{formatearDinero(caja.efectivoEntroCentavos)}</dd>
               </div>
               <div>
                 <dt>Salió en efectivo</dt>
                 <dd className="vta-totales__resta">
-                  −{formatearMoneda(caja.efectivoSalioCentavos)}
+                  −{formatearDinero(caja.efectivoSalioCentavos)}
                 </dd>
               </div>
               <div className="vta-totales__total">
                 <dt>Efectivo esperado</dt>
-                <dd>{formatearMoneda(esperado)}</dd>
+                <dd>{formatearDinero(esperado)}</dd>
               </div>
             </dl>
 
             {/* LO QUE NO ESTA EN EL CAJON, dicho aparte para que nadie lo
                 busque entre los billetes. */}
             <p className="tt-secundario">
-              Entraron {formatearMoneda(caja.ingresosCentavos)} en total, pero solo{' '}
-              {formatearMoneda(caja.efectivoEntroCentavos)} fueron en efectivo. La tarjeta y la
+              Entraron {formatearDinero(caja.ingresosCentavos)} en total, pero solo{' '}
+              {formatearDinero(caja.efectivoEntroCentavos)} fueron en efectivo. La tarjeta y la
               transferencia van al banco: no se cuentan en el cajón.
             </p>
 
@@ -184,11 +184,11 @@ export function CorteDeCaja({
                 ) : (
                   <>
                     <span className="caja-veredicto__cuanto">
-                      {formatearMoneda(Math.abs(diferencia))}
+                      {formatearDinero(Math.abs(diferencia))}
                     </span>
                     <span className="tt-secundario">
-                      Contaste {formatearMoneda(contadoCentavos)} y se esperaban{' '}
-                      {formatearMoneda(esperado)}.
+                      Contaste {formatearDinero(contadoCentavos)} y se esperaban{' '}
+                      {formatearDinero(esperado)}.
                     </span>
                   </>
                 )}
@@ -200,18 +200,18 @@ export function CorteDeCaja({
             <dl className="vta-totales">
               <div>
                 <dt>Esperado</dt>
-                <dd>{formatearMoneda(esperado)}</dd>
+                <dd>{formatearDinero(esperado)}</dd>
               </div>
               <div>
                 <dt>Contado</dt>
-                <dd>{formatearMoneda(contadoCentavos)}</dd>
+                <dd>{formatearDinero(contadoCentavos)}</dd>
               </div>
               <div className="vta-totales__total">
                 <dt>Diferencia</dt>
                 <dd className={`caja-diferencia--${como}`}>
                   {diferencia < 0
-                    ? `−${formatearMoneda(-diferencia)}`
-                    : formatearMoneda(diferencia)}
+                    ? `−${formatearDinero(-diferencia)}`
+                    : formatearDinero(diferencia)}
                 </dd>
               </div>
             </dl>

@@ -1,5 +1,5 @@
 -- =====================================================================
--- PARTE 4 DE 5 — pegar en Supabase -> SQL Editor -> Run
+-- PARTE 5 DE 6 — pegar en Supabase -> SQL Editor -> Run
 -- =====================================================================
 --
 -- Proyecto: hgypobbanvkwnqmepqim (neron-terapias). MIRA EL REF EN LA BARRA
@@ -11,114 +11,8 @@
 -- Es seguro correrla las veces que haga falta: todo va con `if not exists`
 -- o `create or replace`.
 --
--- CUANDO ESTA DIGA "Success", SIGUE CON LA PARTE 5.
+-- CUANDO ESTA DIGA "Success", SIGUE CON LA PARTE 6.
 --
-grant execute on function public.ajustar_recordatorio(uuid, text, text) to authenticated;
-
--- CANCELAR NO ES COMPLETAR, y son dos cosas distintas para el negocio: una se
--- hizo y la otra ya no aplica. Contarlas juntas convertiria "27 completados"
--- en un numero que nadie puede usar.
-create or replace function public.cancelar_recordatorio(
-  p_id uuid,
-  p_motivo text default null
-) returns void
-language plpgsql
-security invoker
-set search_path = public, pg_temp
-as $$
-declare
-  v_fila recordatorio;
-begin
-  select * into v_fila from recordatorio where id = p_id;
-  if not found then
-    raise exception 'Ese recordatorio no existe.' using errcode = 'no_data_found';
-  end if;
-  if not app.puede_tocar_recordatorio(p_id) then
-    raise exception 'Este recordatorio no es tuyo.' using errcode = 'insufficient_privilege';
-  end if;
-
-  update recordatorio
-     set estado = 'descartado', actualizado_en = now(), actualizado_por = auth.uid()
-   where id = p_id;
-
-  perform app.anotar_recordatorio(v_fila.negocio_id, p_id, 'cancelado',
-    jsonb_build_object('estado', v_fila.estado),
-    jsonb_build_object('estado', 'descartado', 'motivo', nullif(btrim(coalesce(p_motivo, '')), '')));
-end;
-$$;
-
-grant execute on function public.cancelar_recordatorio(uuid, text) to authenticated;
-
--- ELIMINAR ES MARCAR, NUNCA BORRAR. La regla 9 del bloque 0 vale igual aqui:
--- el historial de por que nadie confirmo aquella cita se pierde entero si la
--- fila desaparece. Y ademas libera el hueco del indice de origen, que es la
--- forma de decirle a una automatizacion "vuelve a avisarme de esto".
-create or replace function public.eliminar_recordatorio(p_id uuid) returns void
-language plpgsql
-security invoker
-set search_path = public, pg_temp
-as $$
-declare
-  v_fila recordatorio;
-begin
-  select * into v_fila from recordatorio where id = p_id;
-  if not found then
-    raise exception 'Ese recordatorio no existe.' using errcode = 'no_data_found';
-  end if;
-  if not app.puede_tocar_recordatorio(p_id) then
-    raise exception 'Este recordatorio no es tuyo.' using errcode = 'insufficient_privilege';
-  end if;
-
-  -- El renglon del historial va ANTES del borrado logico: despues, la fila ya
-  -- no cuenta como visible y el rastro quedaria sin su ultimo paso.
-  perform app.anotar_recordatorio(v_fila.negocio_id, p_id, 'eliminado',
-    jsonb_build_object('titulo', v_fila.titulo, 'estado', v_fila.estado), null);
-
-  update recordatorio set eliminado = true, actualizado_en = now(), actualizado_por = auth.uid()
-   where id = p_id;
-end;
-$$;
-
-grant execute on function public.eliminar_recordatorio(uuid) to authenticated;
-
--- DUPLICAR CREA OTRA ENTIDAD, con su propio id y su propio historial. Lo que NO
--- se copia es el estado ni la recurrencia: una copia nace pendiente y suelta,
--- porque copiar la regla dejaria dos reglas generando el mismo recordatorio.
-create or replace function public.duplicar_recordatorio(p_id uuid, p_fecha date default null)
-returns uuid
-language plpgsql
-security invoker
-set search_path = public, pg_temp
-as $$
-declare
-  v_fila  recordatorio;
-  v_nuevo uuid;
-begin
-  select * into v_fila from recordatorio where id = p_id and not eliminado;
-  if not found then
-    raise exception 'Ese recordatorio no existe.' using errcode = 'no_data_found';
-  end if;
-  if not app.es_miembro(v_fila.negocio_id) then
-    raise exception 'No perteneces a este negocio.' using errcode = 'insufficient_privilege';
-  end if;
-
-  insert into recordatorio (negocio_id, titulo, detalle, notas, fecha, hora, prioridad,
-                            categoria_id, responsable_id, entidad_tipo, entidad_id,
-                            anticipacion_min, creado_por, estado)
-  values (v_fila.negocio_id, left(v_fila.titulo || ' (copia)', 160), v_fila.detalle, v_fila.notas,
-          coalesce(p_fecha, v_fila.fecha), v_fila.hora, v_fila.prioridad, v_fila.categoria_id,
-          v_fila.responsable_id, v_fila.entidad_tipo, v_fila.entidad_id, v_fila.anticipacion_min,
-          auth.uid(), 'pendiente')
-  returning id into v_nuevo;
-
-  perform app.anotar_recordatorio(v_fila.negocio_id, v_nuevo, 'creado', null,
-    jsonb_build_object('duplicadoDe', p_id));
-  return v_nuevo;
-end;
-$$;
-
-grant execute on function public.duplicar_recordatorio(uuid, date) to authenticated;
-
 -- El rastro de un recordatorio, del mas reciente al mas viejo.
 create or replace function public.historial_del_recordatorio(p_id uuid)
 returns table (
@@ -496,5 +390,94 @@ begin
         consejo = excluded.consejo,
         actualizado_en = now(),
         actualizado_por = auth.uid();
+end;
+$$;
+
+grant execute on function public.guardar_ajustes_de_recordatorios(text, boolean, int, time, boolean, boolean, int, text, text) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 16. LAS AUTOMATIZACIONES
+-- ---------------------------------------------------------------------
+create or replace function public.automatizaciones_de_recordatorios(p_negocio text) returns jsonb
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+begin
+  if not app.es_miembro(p_negocio) then
+    raise exception 'No perteneces a este negocio.' using errcode = 'insufficient_privilege';
+  end if;
+
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+             'id', a.id, 'evento', a.evento, 'activa', a.activa,
+             'plantillaTitulo', a.plantilla_titulo, 'plantillaDetalle', a.plantilla_detalle,
+             'diasAntes', a.dias_antes, 'hora', a.hora, 'prioridad', a.prioridad,
+             'categoriaId', a.categoria_id, 'categoria', c.nombre,
+             'responsableId', a.responsable_id, 'responsable', m.nombre,
+             'creados', (select count(*) from recordatorio r
+                          where r.automatizacion_id = a.id and not r.eliminado))
+           order by a.evento)
+      from recordatorio_automatizacion a
+      left join categoria c on c.id = a.categoria_id
+      left join membresia m on m.id = a.responsable_id
+     where a.negocio_id = p_negocio and not a.eliminado
+  ), '[]'::jsonb);
+end;
+$$;
+
+grant execute on function public.automatizaciones_de_recordatorios(text) to authenticated;
+
+create or replace function public.guardar_automatizacion_de_recordatorios(
+  p_negocio text,
+  p_evento text,
+  p_activa boolean,
+  p_titulo text,
+  p_detalle text default null,
+  p_dias_antes int default 1,
+  p_hora time default null,
+  p_prioridad text default 'normal',
+  p_categoria uuid default null,
+  p_responsable uuid default null
+) returns uuid
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+  v_id uuid;
+begin
+  if not app.es_miembro(p_negocio) then
+    raise exception 'No perteneces a este negocio.' using errcode = 'insufficient_privilege';
+  end if;
+  if not app.tiene_permiso(p_negocio, 'gestionarConfiguracion') then
+    raise exception 'Encender una automatización le crea recordatorios a todo el centro y pide '
+                    'permiso de configuración.' using errcode = 'insufficient_privilege';
+  end if;
+  if btrim(coalesce(p_titulo, '')) = '' then
+    raise exception 'La automatización necesita el título del recordatorio que va a crear.'
+      using errcode = 'check_violation';
+  end if;
+
+  insert into recordatorio_automatizacion
+    (negocio_id, evento, activa, plantilla_titulo, plantilla_detalle, dias_antes, hora,
+     prioridad, categoria_id, responsable_id)
+  values (p_negocio, p_evento, coalesce(p_activa, false), btrim(p_titulo),
+          nullif(btrim(coalesce(p_detalle, '')), ''), coalesce(p_dias_antes, 1), p_hora,
+          coalesce(p_prioridad, 'normal'), p_categoria, p_responsable)
+  on conflict (negocio_id, evento) do update
+    set activa = excluded.activa,
+        plantilla_titulo = excluded.plantilla_titulo,
+        plantilla_detalle = excluded.plantilla_detalle,
+        dias_antes = excluded.dias_antes,
+        hora = excluded.hora,
+        prioridad = excluded.prioridad,
+        categoria_id = excluded.categoria_id,
+        responsable_id = excluded.responsable_id,
+        eliminado = false,
+        actualizado_en = now()
+  returning id into v_id;
+
+  return v_id;
 end;
 $$;

@@ -16,8 +16,8 @@
  */
 
 import { Boton, Campo } from '@neron/base/ui';
+import { formatearDinero } from '../datos/moneda.js';
 import { Modal } from '../ui/modal.js';
-import { formatearMoneda } from '@neron/base/utils';
 import { useState } from 'react';
 import type { LoQueSeMueve, MetodoDeCaja } from '../datos/caja.js';
 import {
@@ -45,7 +45,7 @@ export function porQueNoSePuedeGuardar(
     return 'Escribe de qué es. Dentro de seis meses es lo único que lo explica.';
   }
   if (tipo === 'egreso' && metodo === 'efectivo' && montoCentavos > efectivoDisponible) {
-    return `En la caja hay ${formatearMoneda(efectivoDisponible)}: no se pueden retirar ${formatearMoneda(montoCentavos)}.`;
+    return `En la caja hay ${formatearDinero(efectivoDisponible)}: no se pueden retirar ${formatearDinero(montoCentavos)}.`;
   }
   return '';
 }
@@ -98,7 +98,7 @@ export function RegistrarMovimiento({
           onChange={(e) => setMonto(e.target.value.replace(/[^\d]/g, ''))}
           numerico
           obligatorio
-          ayuda={`En pesos. Ahora mismo: ${formatearMoneda(montoCentavos)}.`}
+          ayuda={`En pesos. Ahora mismo: ${formatearDinero(montoCentavos)}.`}
         />
 
         <Campo
@@ -132,7 +132,7 @@ export function RegistrarMovimiento({
         <p className="tt-secundario">
           {metodo === 'efectivo'
             ? esRetiro
-              ? `Sale del cajón. Ahora hay ${formatearMoneda(efectivoDisponible)}.`
+              ? `Sale del cajón. Ahora hay ${formatearDinero(efectivoDisponible)}.`
               : 'Entra al cajón y cuenta para el corte.'
             : 'No toca el efectivo del cajón: ese dinero no pasa por ahí. Sí cuenta como movimiento del negocio.'}
         </p>

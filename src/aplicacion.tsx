@@ -11,7 +11,7 @@
 
 import { ProveedorDeNavegacion, resolverMenu, useNavegacion } from '@neron/base/marco';
 import { Boton } from '@neron/base/ui';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ProveedorDeSesion, useSesion, useTardaDemasiado } from './identidad/sesion.js';
 import { Armazon } from './marco/armazon.js';
 import { Hoja } from './marco/hoja.js';
@@ -28,10 +28,21 @@ import { LibroDeGastos } from './gastos/libro-de-gastos.js';
 import { Analisis } from './reportes/analisis.js';
 import { Bandeja } from './mensajes/bandeja.js';
 import { CentroDeRecordatorios } from './recordatorios/centro-de-recordatorios.js';
+import { CentroDeConfiguracion } from './configuracion/centro-de-configuracion.js';
+import { SegundoFactor } from './configuracion/segundo-factor.js';
 import { Mostrador } from './caja/mostrador.js';
 import { Pendiente } from './modulos/pendiente.js';
 import { GRUPOS, MODULOS, MODULO_POR_OMISION, modulosVisibles } from './modulos/registro.js';
-import { LEMA, NOMBRE_DEL_PRODUCTO } from './marca.js';
+import { useConsulta } from './datos/consulta.js';
+import {
+  LEMA_POR_OMISION,
+  NOMBRE_POR_OMISION,
+  llaveDeLaConfiguracion,
+  reclamarInvitaciones,
+  traerConfiguracion,
+  type ConfiguracionDelCentro,
+} from './datos/configuracion.js';
+import { ponerLaMoneda } from './datos/moneda.js';
 import { Entrar } from './pantallas/entrar.js';
 import { HAY_CONEXION } from './supabase.js';
 
@@ -117,13 +128,100 @@ function Cargando() {
   );
 }
 
+/**
+ * "Ya me invitaron": convierte la invitación pendiente en membresía.
+ *
+ * El correo NO viaja como parámetro: lo saca la base del token de la sesión. Si
+ * viniera de aquí, cualquiera se daría de alta en el centro de cualquiera
+ * escribiendo el correo del invitado.
+ *
+ * Al encontrar algo se recarga en vez de refrescar la sesión a mano: la
+ * membresía nueva cambia el negocio, los roles y los permisos de golpe, y
+ * arrancar limpio es más seguro que ir avisando pieza por pieza.
+ */
+function BuscarMiInvitacion() {
+  const [buscando, setBuscando] = useState(false);
+  const [dijo, setDijo] = useState<string | null>(null);
+
+  return (
+    <>
+      <Boton
+        tono="contorno"
+        trabajando={buscando}
+        onClick={() => {
+          setBuscando(true);
+          setDijo(null);
+          void reclamarInvitaciones()
+            .then((cuantas) => {
+              if (cuantas > 0) window.location.reload();
+              else setDijo('No hay ninguna invitación pendiente para tu correo.');
+            })
+            .catch((e: Error) => setDijo(e.message))
+            .finally(() => setBuscando(false));
+        }}
+      >
+        Ya me invitaron, buscar mi invitación
+      </Boton>
+      {dijo ? <p>{dijo}</p> : null}
+    </>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* El interior, ya con sesion                                          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * LO QUE CONFIGURACION LE IMPONE A TODO EL SISTEMA.
+ *
+ * VIVE AQUI Y NO DENTRO DEL MODULO DE CONFIGURACION, y esa es la diferencia
+ * entre una configuracion de verdad y una que solo cambia la pantalla donde se
+ * configura. Con el efecto dentro del modulo, el sistema se pondria oscuro al
+ * abrir Configuracion y volveria a claro al salir; y la moneda solo seria la
+ * del centro mientras se estuviera mirando la pantalla que la define.
+ *
+ * SON LAS TRES COSAS QUE NO PERTENECEN A NINGUN MODULO:
+ *
+ *   · el TEMA, que pinta las trece pantallas,
+ *   · el MENOS MOVIMIENTO, por la misma razon,
+ *   · la MONEDA, que escriben Ventas, Caja, Gastos, Reportes, Inicio,
+ *     Productos, Servicios y Cursos.
+ *
+ * "El del sistema" NO escribe el atributo del tema: lo deja quitado y manda la
+ * media query de la hoja, que es la que sigue al sistema operativo. Ponerle
+ * "claro" a la fuerza dejaria al centro con la unica ventana que no acompaña al
+ * resto de la computadora al anochecer.
+ */
+function useLoQueMandaEnTodo(negocio: string): void {
+  const configuracion = useConsulta<ConfiguracionDelCentro>(
+    negocio ? llaveDeLaConfiguracion(negocio) : null,
+    () => traerConfiguracion(negocio),
+  );
+  const tema = configuracion.datos?.datos.tema ?? 'sistema';
+  const menos = configuracion.datos?.datos.menosMovimiento ?? false;
+  const moneda = configuracion.datos?.datos.moneda ?? '';
+  const decimales = configuracion.datos?.datos.decimales ?? 2;
+
+  useEffect(() => {
+    const raiz = document.documentElement;
+    if (tema === 'sistema') raiz.removeAttribute('data-tema');
+    else raiz.setAttribute('data-tema', tema);
+    if (menos) raiz.setAttribute('data-menos-movimiento', 'si');
+    else raiz.removeAttribute('data-menos-movimiento');
+  }, [tema, menos]);
+
+  useEffect(() => {
+    // Mientras no llega la configuracion NO se toca: dejar la de omision
+    // durante medio segundo es mejor que escribir todos los importes dos
+    // veces, una con cada signo.
+    if (moneda !== '') ponerLaMoneda(moneda, decimales);
+  }, [moneda, decimales]);
+}
+
 function Interior() {
   const { acceso, cerrarSesion } = useSesion();
   const { ruta, ir } = useNavegacion();
+  useLoQueMandaEnTodo(acceso?.negocioId ?? '');
   if (!acceso) return null;
 
   const visibles = modulosVisibles(acceso.permisos);
@@ -191,6 +289,11 @@ function Interior() {
           /* RECORDATORIOS NO ES DUEÑO DE NINGUNA OTRA ENTIDAD: guarda a que
              cosa se refiere y el nombre lo resuelve la base al leer. */
           <CentroDeRecordatorios />
+        ) : modulo === 'configuracion' ? (
+          /* CONFIGURACION ADMINISTRA LAS SIETE TABLAS DE LA BASE y no duplica
+             ninguna. Lo que se guarda ahi manda sobre los demas modulos: la
+             moneda, los metodos de pago, el impuesto, los horarios y el tema. */
+          <CentroDeConfiguracion />
         ) : modulo === 'reportes' ? (
           /* REPORTES NO ES UN MODULO MAS: no tiene tabla propia ni escribe una
              cifra. Lee de los otros ocho y los suma en el servidor. */
@@ -233,16 +336,26 @@ function Segun() {
   if (estado === 'cargando') return <Cargando />;
   if (estado === 'sin-sesion') return <Entrar />;
 
+  /**
+   * EL SEGUNDO PASO SE DA DE ALTA AQUI MISMO, Y ESO ES LO QUE PAGA LA DEUDA.
+   *
+   * Antes esta pantalla decia "termina de configurarla desde tu correo" — y no
+   * habia ningun correo ni ninguna pantalla: el dueño quedaba encerrado afuera
+   * de su propio centro, con el sistema publicado. Ese fue el fallo que obligo
+   * a poner `segundoFactorApagado: true` y la guardia que ataba quitarlo a que
+   * existiera `src/configuracion/`.
+   *
+   * La pantalla de alta TIENE que vivir de este lado. Ponerla solo dentro de
+   * Configuracion habria repetido el fallo exacto: quien no tiene segundo
+   * factor no entra, asi que jamas llegaria al modulo donde darlo de alta.
+   */
   if (estado === 'falta-segundo-factor') {
     return (
       <Aviso
         titulo="Falta el segundo paso"
         accion={<Boton tono="contorno" onClick={() => void cerrarSesion()}>Salir</Boton>}
       >
-        <p>
-          Tu cuenta tiene permisos que exigen verificación en dos pasos. Termina de configurarla
-          desde tu correo para poder entrar.
-        </p>
+        <SegundoFactor bloqueando />
       </Aviso>
     );
   }
@@ -257,6 +370,14 @@ function Segun() {
           Entraste bien, pero nadie te ha dado de alta en un centro. Pídele a quien administra el
           sistema que te invite con este correo.
         </p>
+        {/*
+          Y SI YA TE INVITARON, AQUI SE APLICA. Una invitacion se guarda contra
+          un correo porque la membresia necesita una cuenta que todavia no
+          existe; este boton es el momento en que las dos se juntan. Sin el, la
+          invitacion se queda esperando para siempre y quien la recibio ve esta
+          misma pantalla cada vez que entra, sin nada que hacer.
+        */}
+        <BuscarMiInvitacion />
       </Aviso>
     );
   }
@@ -291,7 +412,7 @@ export function Aplicacion() {
     return (
       <Aviso titulo="Falta configurar la conexión">
         <p>
-          {NOMBRE_DEL_PRODUCTO} · {LEMA} todavía no sabe con qué base de datos hablar.
+          {NOMBRE_POR_OMISION} · {LEMA_POR_OMISION} todavía no sabe con qué base de datos hablar.
         </p>
         <p>
           Crea el archivo <code>.env</code> con <code>VITE_SUPABASE_URL</code> y{' '}

@@ -2,7 +2,8 @@ import { contraste } from '@neron/base/ui';
 import { CLARO, OSCURO } from '@neron/base/ui';
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { cssDeMarca, LEMA, MARCA_CLARO, MARCA_OSCURO, NOMBRE_DEL_PRODUCTO } from '../src/marca.js';
+import { cssDeMarca, MARCA_CLARO, MARCA_OSCURO } from '../src/marca.js';
+import { LEMA_POR_OMISION, NOMBRE_POR_OMISION } from '../src/datos/configuracion.js';
 
 /** El minimo de la norma AA para texto normal. */
 const AA = 4.5;
@@ -66,9 +67,23 @@ describe('las variables que se le pegan al documento', () => {
 });
 
 describe('el nombre del centro', () => {
-  it('no esta vacio', () => {
-    expect(NOMBRE_DEL_PRODUCTO.length).toBeGreaterThan(0);
-    expect(LEMA.length).toBeGreaterThan(0);
+  it('YA NO VIVE EN marca.ts: lo administra Configuracion', () => {
+    /*
+     * Estuvieron aqui con un comentario que decia "hasta que Configuracion lo
+     * administre". Ya lo administra: el nombre sale de `negocio.nombre` y el
+     * lema del bloque de configuracion. Lo que queda son los valores de
+     * ARRANQUE, para las pantallas que se pintan SIN sesion —entrar y "falta
+     * configurar la conexion"—, donde no hay a quien preguntarle como se llama
+     * el centro.
+     */
+    expect(NOMBRE_POR_OMISION.length).toBeGreaterThan(0);
+    expect(LEMA_POR_OMISION.length).toBeGreaterThan(0);
+  });
+
+  it('y marca.ts se quedo SOLO con los colores', async () => {
+    const marca: Record<string, unknown> = await import('../src/marca.js');
+    expect(marca['NOMBRE_DEL_PRODUCTO']).toBeUndefined();
+    expect(marca['LEMA']).toBeUndefined();
   });
 });
 

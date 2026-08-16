@@ -82,6 +82,15 @@ const LO_QUE_SE_ABRE: readonly {
      categorias. Los tres pasan por el Modal del producto, asi que los tres
      tienen que tapar la ventana entera. */
   { modulo: 'recordatorios', botones: ['Nuevo recordatorio', 'Configuración de recordatorios', 'Categorías'] },
+  /*
+   * CONFIGURACION ABRE TRES, Y NINGUNO SE LLAMA "Configuración".
+   *
+   * En la barra lateral hay un boton con ese nombre exacto: si uno de estos se
+   * llamara igual, este guion apretaria el del menu, se iria de la pantalla y
+   * daria por revisado un velo que nunca abrio. Es la trampa que ya se pago en
+   * Recordatorios, donde hubo que ponerle un `aria-label` mas largo al boton.
+   */
+  { modulo: 'configuracion', botones: ['Ayuda y soporte', 'Mi perfil', 'Cambiar contraseña'] },
 ];
 
 /** Lo mas oscuro que se le permite a un velo. Mas que esto borra lo de atras. */

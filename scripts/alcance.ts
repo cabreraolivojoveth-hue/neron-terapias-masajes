@@ -89,6 +89,9 @@ const LO_QUE_SE_REVISA: readonly {
   { modulo: 'reportes', abre: ['Guardar reporte actual'] },
   { modulo: 'mensajes', abre: ['Plantillas', 'Nuevo mensaje'] },
   { modulo: 'recordatorios', abre: ['Nuevo recordatorio', 'Configuración de recordatorios'] },
+  /* La rejilla de catorce tarjetas crece hacia abajo: es justo la forma con la
+     que el cobro se salia de la pantalla en un portatil bajo. */
+  { modulo: 'configuracion', abre: ['Ayuda y soporte', 'Mi perfil'] },
 ];
 
 interface Falla { donde: string; que: string }

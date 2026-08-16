@@ -59,7 +59,14 @@ export type NombreDeIcono =
   | 'moneda'
   | 'soporte'
   | 'carrito'
-  | 'cajon';
+  | 'cajon'
+  /* Los tres que pidio Configuracion. Escudo para lo que protege, nube para lo
+     que se guarda fuera y bloques para lo que se conecta con otra cosa: son
+     los tres dibujos que ya no se podian sustituir por uno parecido sin que la
+     tarjeta dijera algo distinto de lo que hace. */
+  | 'escudo'
+  | 'nube'
+  | 'bloques';
 
 /**
  * Todo en una rejilla de 24 y con trazo, no relleno.
@@ -174,6 +181,20 @@ const TRAZOS: Readonly<Record<NombreDeIcono, string[]>> = {
     'M3.2 8.4h17.6v10.2a1.4 1.4 0 0 1-1.4 1.4H4.6a1.4 1.4 0 0 1-1.4-1.4z',
     'M3.2 8.4 5.4 4.2h13.2l2.2 4.2',
     'M9.6 12.4h4.8',
+  ],
+  escudo: [
+    'M12 2.8 4.8 5.6v5.5c0 4.4 3 8.4 7.2 9.9 4.2-1.5 7.2-5.5 7.2-9.9V5.6z',
+    'M9.2 12.1 11.3 14.2l3.9-4',
+  ],
+  nube: [
+    'M7.4 18.4a4.2 4.2 0 0 1-.5-8.4 5.6 5.6 0 0 1 10.7-1.2 3.9 3.9 0 0 1 .5 7.7',
+    'M12 20.4v-7.2',
+    'M9.2 15.4 12 12.6l2.8 2.8',
+  ],
+  bloques: [
+    'M12 3.2c3.9 0 7 1 7 2.3s-3.1 2.3-7 2.3-7-1-7-2.3S8.1 3.2 12 3.2z',
+    'M5 5.5v13c0 1.3 3.1 2.3 7 2.3s7-1 7-2.3v-13',
+    'M5 12c0 1.3 3.1 2.3 7 2.3s7-1 7-2.3',
   ],
 };
 

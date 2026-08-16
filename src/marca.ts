@@ -153,6 +153,19 @@ export function cssDeMarca(): string {
  */
 export const COLOR_POR_OMISION = MARCA_CLARO.marca;
 
-/** El nombre del centro. Vive aqui hasta que Configuracion lo administre. */
-export const NOMBRE_DEL_PRODUCTO = 'Centro Holístico';
-export const LEMA = 'Bienestar & Terapias';
+/*
+ * EL NOMBRE Y EL LEMA YA NO VIVEN AQUI.
+ *
+ * Estuvieron en este archivo con un comentario que decia "hasta que
+ * Configuracion lo administre". Ya lo administra: el nombre es de
+ * `negocio.nombre` y el lema del bloque de configuracion del centro, y los dos
+ * se resuelven AL LEER — que es la regla de las conexiones, la misma por la que
+ * una cita guarda el id del paciente y nunca su nombre.
+ *
+ * Lo que se necesita antes de que haya sesion —la pantalla de entrar, la de
+ * "falta configurar la conexion"— sale de `NOMBRE_POR_OMISION` y
+ * `LEMA_POR_OMISION`, en `src/datos/configuracion.ts`.
+ *
+ * Asi este archivo se quedo con lo unico que de verdad cambia entre un producto
+ * NERON y otro: los colores.
+ */

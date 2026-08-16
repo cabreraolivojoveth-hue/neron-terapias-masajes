@@ -18,8 +18,8 @@
  * guardados como un peso, y no se nota hasta el corte.
  */
 
+import { formatearDinero } from '../datos/moneda.js';
 import { Modal } from '../ui/modal.js';
-import { formatearMoneda } from '@neron/base/utils';
 import type { Categoria } from '../datos/categorias.js';
 import type { ProveedorEnLista } from '../datos/productos.js';
 import {
@@ -295,7 +295,7 @@ export function FormularioDeGasto({
                 </select>
                 {datos.montoCentavos > datos.efectivoCentavos && datos.efectivoCentavos > 0 ? (
                   <span className="tt-secundario">
-                    Resto: {formatearMoneda(datos.montoCentavos - datos.efectivoCentavos)}
+                    Resto: {formatearDinero(datos.montoCentavos - datos.efectivoCentavos)}
                   </span>
                 ) : null}
               </label>
@@ -330,7 +330,7 @@ export function FormularioDeGasto({
           <p className="gto-aviso-caja">
             <Icono nombre="cajon" lado={14} />{' '}
             {sale > 0
-              ? `Saldrán ${formatearMoneda(sale)} del cajón.`
+              ? `Saldrán ${formatearDinero(sale)} del cajón.`
               : 'No sale efectivo del cajón: se registra como egreso del negocio.'}
           </p>
 

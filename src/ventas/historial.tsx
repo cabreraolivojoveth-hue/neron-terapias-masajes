@@ -8,7 +8,7 @@
  * es la informacion que hace falta al cuadrar el cajon.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { CotizacionEnLista, VentaEnLista } from '../datos/ventas.js';
 import { COMO_SE_DICE_EL_METODO } from '../datos/ventas.js';
 import { Icono } from '../ui/iconos.js';
@@ -166,7 +166,7 @@ export function Historial({
                   {/* Sin cliente se dice MOSTRADOR, no se inventa uno. */}
                   <td>{v.cliente ?? <span className="tt-falta">Mostrador</span>}</td>
                   <td>{v.vendedor ?? <span className="tt-falta">—</span>}</td>
-                  <td className="pz-tabla__numero">{formatearMoneda(v.totalCentavos)}</td>
+                  <td className="pz-tabla__numero">{formatearDinero(v.totalCentavos)}</td>
                   <td>{comoSeLeenLosMetodos(v.metodos)}</td>
                   <td>
                     <span className={`pz-pastilla vta-estado--${v.estado}`}>
@@ -275,7 +275,7 @@ export function Cotizaciones({
                 </span>
                 <span className="pz-renglon__pie">
                   {c.fecha} · {c.cliente ?? 'Sin cliente'} ·{' '}
-                  {formatearMoneda(c.totalCentavos)}
+                  {formatearDinero(c.totalCentavos)}
                   {c.vence ? ` · vence ${c.vence}` : ''}
                 </span>
               </span>

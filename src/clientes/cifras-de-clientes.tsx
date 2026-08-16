@@ -19,7 +19,7 @@
  * eso, el numero es un misterio y cada quien le supone una regla distinta.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { Categoria } from '../marca.js';
 import type { ResumenDeClientes } from '../datos/clientes.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
@@ -151,7 +151,7 @@ export function cifrasDelPie(r: ResumenDeClientes | null): Cifra[] {
 /** El numero listo para leerse. `null` nunca se convierte en cero. */
 export function textoDeLaCifra(valor: number | null, moneda = false): string {
   if (valor === null || !Number.isFinite(valor)) return '—';
-  return moneda ? formatearMoneda(valor) : String(valor);
+  return moneda ? formatearDinero(valor) : String(valor);
 }
 
 function Tarjeta({ c }: { readonly c: Cifra }) {

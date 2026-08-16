@@ -1,5 +1,5 @@
 -- =====================================================================
--- PARTE 3 DE 5 — pegar en Supabase -> SQL Editor -> Run
+-- PARTE 4 DE 6 — pegar en Supabase -> SQL Editor -> Run
 -- =====================================================================
 --
 -- Proyecto: hgypobbanvkwnqmepqim (neron-terapias). MIRA EL REF EN LA BARRA
@@ -11,136 +11,8 @@
 -- Es seguro correrla las veces que haga falta: todo va con `if not exists`
 -- o `create or replace`.
 --
--- CUANDO ESTA DIGA "Success", SIGUE CON LA PARTE 4.
+-- CUANDO ESTA DIGA "Success", SIGUE CON LA PARTE 5.
 --
-comment on function public.recordatorios_del_centro(text, date, text, text, uuid, uuid, text, text, date, date, boolean, boolean, text, boolean, int, int) is
-  'La lista con todo resuelto y paginada EN EL SERVIDOR, en una sola pasada. Los nombres se '
-  'resuelven al leer; "vencido" se calcula, nunca se guarda.';
-
-grant execute on function public.recordatorios_del_centro(text, date, text, text, uuid, uuid, text, text, date, date, boolean, boolean, text, boolean, int, int) to authenticated;
-
--- ---------------------------------------------------------------------
--- 9. EL RESUMEN — las cuatro cifras, la dona y los proximos, en un viaje
--- ---------------------------------------------------------------------
---
--- UN VIAJE Y NO SEIS. Las cuatro tarjetas de arriba, la dona del costado, la
--- lista de proximos y las metricas de cumplimiento salen de la misma tabla; una
--- consulta por tarjeta serian seis viajes cada vez que alguien abre la
--- pantalla.
---
--- LAS METRICAS DE CUMPLIMIENTO SOLO SE MANDAN SI HAY CON QUE. Un "0% de
--- cumplimiento" cuando no se ha completado nada todavia no es un dato: es un
--- reproche inventado. Se manda `null` y la pantalla no pinta la tarjeta.
-create or replace function public.resumen_de_recordatorios(
-  p_negocio text,
-  p_hoy date
-) returns jsonb
-language plpgsql
-security invoker
-set search_path = public, pg_temp
-as $$
-declare
-  v_dias        int;
-  v_mes         date := date_trunc('month', p_hoy)::date;
-  v_cerrados    bigint;
-  v_horas       numeric;
-begin
-  if not app.es_miembro(p_negocio) then
-    raise exception 'No perteneces a este negocio.' using errcode = 'insufficient_privilege';
-  end if;
-
-  select coalesce(dias_de_proximos, 7) into v_dias
-    from recordatorio_ajustes where negocio_id = p_negocio;
-  v_dias := coalesce(v_dias, 7);
-
-  select count(*), avg(extract(epoch from (completado_en - creado_en)) / 3600.0)
-    into v_cerrados, v_horas
-    from recordatorio
-   where negocio_id = p_negocio and not eliminado and estado = 'hecho'
-     and completado_en is not null and completado_en >= v_mes;
-
-  return jsonb_build_object(
-    'diasDeProximos', v_dias,
-    'pendientes', (
-      select count(*) from recordatorio
-       where negocio_id = p_negocio and not eliminado and estado = 'pendiente'),
-    'hoy', (
-      select count(*) from recordatorio
-       where negocio_id = p_negocio and not eliminado and estado = 'pendiente' and fecha = p_hoy),
-    'vencidos', (
-      select count(*) from recordatorio
-       where negocio_id = p_negocio and not eliminado and estado = 'pendiente' and fecha < p_hoy),
-    'proximos', (
-      select count(*) from recordatorio
-       where negocio_id = p_negocio and not eliminado and estado = 'pendiente'
-         and fecha > p_hoy and fecha <= p_hoy + v_dias),
-    -- "Completados: este mes", igual que dice el diseño. Un total historico
-    -- solo sube y a los dos años deja de significar nada.
-    'completados', v_cerrados,
-    'cancelados', (
-      select count(*) from recordatorio
-       where negocio_id = p_negocio and not eliminado and estado = 'descartado'),
-    'total', (
-      select count(*) from recordatorio where negocio_id = p_negocio and not eliminado),
-    -- SIN NADA CERRADO NO HAY PROMEDIO. Se manda null; la pantalla no inventa
-    -- un cero que se leeria como "todo se resuelve al instante".
-    'horasPromedio', case when v_cerrados = 0 then null else round(v_horas, 1) end,
-    'porCategoria', (
-      select coalesce(jsonb_agg(x order by x->>'nombre'), '[]'::jsonb) from (
-        select jsonb_build_object(
-                 'id', c.id, 'nombre', coalesce(c.nombre, 'Sin categoría'), 'color', c.color,
-                 'cuantos', count(*),
-                 'hechos', count(*) filter (where r.estado = 'hecho')) as x
-          from recordatorio r
-          left join categoria c on c.id = r.categoria_id
-         where r.negocio_id = p_negocio and not r.eliminado
-         group by c.id, c.nombre, c.color
-      ) t),
-    'porResponsable', (
-      select coalesce(jsonb_agg(x order by x->>'nombre'), '[]'::jsonb) from (
-        select jsonb_build_object(
-                 'id', m.id, 'nombre', coalesce(m.nombre, 'Sin responsable'),
-                 'cuantos', count(*),
-                 'hechos', count(*) filter (where r.estado = 'hecho'),
-                 'vencidos', count(*) filter (where r.estado = 'pendiente' and r.fecha < p_hoy)) as x
-          from recordatorio r
-          left join membresia m on m.id = r.responsable_id
-         where r.negocio_id = p_negocio and not r.eliminado
-         group by m.id, m.nombre
-      ) t),
-    -- LOS PROXIMOS DEL COSTADO. Ordenados por FECHA y no por prioridad: uno
-    -- urgente para dentro de tres semanas no es lo que hay que hacer hoy.
-    'proximosRecordatorios', (
-      select coalesce(jsonb_agg(x order by (x->>'fecha')::date, x->>'hora' nulls last), '[]'::jsonb)
-        from (
-          select jsonb_build_object(
-                   'id', r.id, 'titulo', r.titulo, 'fecha', r.fecha, 'hora', r.hora,
-                   'prioridad', r.prioridad,
-                   'entidadTipo', r.entidad_tipo,
-                   'entidadNombre', case r.entidad_tipo
-                     when 'cliente'  then (select cl.nombre from cliente cl where cl.id = r.entidad_id)
-                     when 'cita'     then (select coalesce(cl.nombre, 'Cita') from cita ci
-                                            left join cliente cl on cl.id = ci.cliente_id
-                                            where ci.id = r.entidad_id)
-                     when 'venta'    then (select v.folio from venta v where v.id = r.entidad_id)
-                     when 'curso'    then (select cu.nombre from curso cu where cu.id = r.entidad_id)
-                     when 'producto' then (select p.nombre from producto p where p.id = r.entidad_id)
-                     when 'servicio' then (select s.nombre from servicio s where s.id = r.entidad_id)
-                     when 'gasto'    then (select g.descripcion from gasto g where g.id = r.entidad_id)
-                   end,
-                   'categoria', c.nombre,
-                   'vencido', r.fecha < p_hoy) as x
-            from recordatorio r
-            left join categoria c on c.id = r.categoria_id
-           where r.negocio_id = p_negocio and not r.eliminado and r.estado = 'pendiente'
-           order by r.fecha, r.hora nulls last
-           limit 5
-        ) t),
-    'consejo', (select consejo from recordatorio_ajustes where negocio_id = p_negocio)
-  );
-end;
-$$;
-
 comment on function public.resumen_de_recordatorios(text, date) is
   'Las cuatro cifras, la dona, los proximos y el cumplimiento en UN viaje. El promedio y el '
   'cumplimiento van en null cuando no hay con que calcularlos: un 0% inventado es un reproche.';
@@ -485,3 +357,109 @@ begin
   end if;
 end;
 $$;
+
+grant execute on function public.ajustar_recordatorio(uuid, text, text) to authenticated;
+
+-- CANCELAR NO ES COMPLETAR, y son dos cosas distintas para el negocio: una se
+-- hizo y la otra ya no aplica. Contarlas juntas convertiria "27 completados"
+-- en un numero que nadie puede usar.
+create or replace function public.cancelar_recordatorio(
+  p_id uuid,
+  p_motivo text default null
+) returns void
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+  v_fila recordatorio;
+begin
+  select * into v_fila from recordatorio where id = p_id;
+  if not found then
+    raise exception 'Ese recordatorio no existe.' using errcode = 'no_data_found';
+  end if;
+  if not app.puede_tocar_recordatorio(p_id) then
+    raise exception 'Este recordatorio no es tuyo.' using errcode = 'insufficient_privilege';
+  end if;
+
+  update recordatorio
+     set estado = 'descartado', actualizado_en = now(), actualizado_por = auth.uid()
+   where id = p_id;
+
+  perform app.anotar_recordatorio(v_fila.negocio_id, p_id, 'cancelado',
+    jsonb_build_object('estado', v_fila.estado),
+    jsonb_build_object('estado', 'descartado', 'motivo', nullif(btrim(coalesce(p_motivo, '')), '')));
+end;
+$$;
+
+grant execute on function public.cancelar_recordatorio(uuid, text) to authenticated;
+
+-- ELIMINAR ES MARCAR, NUNCA BORRAR. La regla 9 del bloque 0 vale igual aqui:
+-- el historial de por que nadie confirmo aquella cita se pierde entero si la
+-- fila desaparece. Y ademas libera el hueco del indice de origen, que es la
+-- forma de decirle a una automatizacion "vuelve a avisarme de esto".
+create or replace function public.eliminar_recordatorio(p_id uuid) returns void
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+  v_fila recordatorio;
+begin
+  select * into v_fila from recordatorio where id = p_id;
+  if not found then
+    raise exception 'Ese recordatorio no existe.' using errcode = 'no_data_found';
+  end if;
+  if not app.puede_tocar_recordatorio(p_id) then
+    raise exception 'Este recordatorio no es tuyo.' using errcode = 'insufficient_privilege';
+  end if;
+
+  -- El renglon del historial va ANTES del borrado logico: despues, la fila ya
+  -- no cuenta como visible y el rastro quedaria sin su ultimo paso.
+  perform app.anotar_recordatorio(v_fila.negocio_id, p_id, 'eliminado',
+    jsonb_build_object('titulo', v_fila.titulo, 'estado', v_fila.estado), null);
+
+  update recordatorio set eliminado = true, actualizado_en = now(), actualizado_por = auth.uid()
+   where id = p_id;
+end;
+$$;
+
+grant execute on function public.eliminar_recordatorio(uuid) to authenticated;
+
+-- DUPLICAR CREA OTRA ENTIDAD, con su propio id y su propio historial. Lo que NO
+-- se copia es el estado ni la recurrencia: una copia nace pendiente y suelta,
+-- porque copiar la regla dejaria dos reglas generando el mismo recordatorio.
+create or replace function public.duplicar_recordatorio(p_id uuid, p_fecha date default null)
+returns uuid
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+  v_fila  recordatorio;
+  v_nuevo uuid;
+begin
+  select * into v_fila from recordatorio where id = p_id and not eliminado;
+  if not found then
+    raise exception 'Ese recordatorio no existe.' using errcode = 'no_data_found';
+  end if;
+  if not app.es_miembro(v_fila.negocio_id) then
+    raise exception 'No perteneces a este negocio.' using errcode = 'insufficient_privilege';
+  end if;
+
+  insert into recordatorio (negocio_id, titulo, detalle, notas, fecha, hora, prioridad,
+                            categoria_id, responsable_id, entidad_tipo, entidad_id,
+                            anticipacion_min, creado_por, estado)
+  values (v_fila.negocio_id, left(v_fila.titulo || ' (copia)', 160), v_fila.detalle, v_fila.notas,
+          coalesce(p_fecha, v_fila.fecha), v_fila.hora, v_fila.prioridad, v_fila.categoria_id,
+          v_fila.responsable_id, v_fila.entidad_tipo, v_fila.entidad_id, v_fila.anticipacion_min,
+          auth.uid(), 'pendiente')
+  returning id into v_nuevo;
+
+  perform app.anotar_recordatorio(v_fila.negocio_id, v_nuevo, 'creado', null,
+    jsonb_build_object('duplicadoDe', p_id));
+  return v_nuevo;
+end;
+$$;
+
+grant execute on function public.duplicar_recordatorio(uuid, date) to authenticated;

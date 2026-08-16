@@ -11,8 +11,8 @@
  * · Material    — lo que se reparte.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
 import { useState, type ReactNode } from 'react';
+import { formatearDinero } from '../datos/moneda.js';
 import type {
   DatosDeMaterial,
   DatosDeSesion,
@@ -318,7 +318,7 @@ export function PanelDelCurso({
               </Renglon>
 
               <Renglon icono="dinero" titulo="Precio">
-                {formatearMoneda(ficha.precioCentavos)}
+                {formatearDinero(ficha.precioCentavos)}
               </Renglon>
 
               <Renglon icono="nota" titulo="Descripción">

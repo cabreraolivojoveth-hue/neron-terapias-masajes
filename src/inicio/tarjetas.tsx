@@ -20,7 +20,7 @@
  */
 
 import { comparar, comoSeDice } from '@neron/base/tablero';
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { Categoria } from '../marca.js';
 import type { ResumenDeInicio } from '../datos/tablero.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
@@ -135,7 +135,7 @@ export function tarjetasDeInicio(
 /** El numero, ya listo para leerse. `null` no se convierte en cero jamas. */
 export function textoDelValor(valor: number | null, moneda: boolean): string {
   if (valor === null || !Number.isFinite(valor)) return '—';
-  return moneda ? formatearMoneda(valor) : String(valor);
+  return moneda ? formatearDinero(valor) : String(valor);
 }
 
 function Tarjeta({

@@ -16,8 +16,8 @@
  * los numeros que no cuadran entre dos pantallas.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
 import type { Fecha } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { ProfesionalBreve } from '../datos/citas.js';
 import type { ClienteEnLista, ExpedienteDeCliente } from '../datos/clientes.js';
 import { etiquetaDeEstadoDeCliente } from '../datos/clientes.js';
@@ -339,7 +339,7 @@ export function InformacionDelCliente({
             <div className="pz-dato">
               <dt className="tt-pie">Gastado</dt>
               <dd className="tt-dato">
-                {formatearMoneda(expediente.totalGastado)}
+                {formatearDinero(expediente.totalGastado)}
               </dd>
             </div>
             <div className="pz-dato">
@@ -349,7 +349,7 @@ export function InformacionDelCliente({
           </dl>
 
           {expediente.adeudo > 0 ? (
-            <p className="pz-pastilla pz-pastilla--peligro">Debe {formatearMoneda(expediente.adeudo)}</p>
+            <p className="pz-pastilla pz-pastilla--peligro">Debe {formatearDinero(expediente.adeudo)}</p>
           ) : null}
 
           <button type="button" className="pz-boton pz-boton--ancho" onClick={onVerExpediente}>

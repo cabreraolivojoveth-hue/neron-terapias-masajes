@@ -13,8 +13,8 @@
  * el curso dura cinco semanas corridas.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
 import { useEffect, useState } from 'react';
+import { formatearDinero } from '../datos/moneda.js';
 import type { Categoria } from '../datos/categorias.js';
 import type { CursoEnLista, VidaDeCurso } from '../datos/cursos.js';
 import { estaLleno } from '../datos/cursos.js';
@@ -403,7 +403,7 @@ export function TablaDeCursos({
                           {f.cuanto ? <span className="cur-fecha__cuanto">{f.cuanto}</span> : null}
                         </span>
                       </td>
-                      <td className="pz-tabla__numero">{formatearMoneda(c.precioCentavos)}</td>
+                      <td className="pz-tabla__numero">{formatearDinero(c.precioCentavos)}</td>
                       <td>
                         <span
                           className={`cur-lugares${estaLleno(c.cupo, c.ocupados) ? ' cur-lugares--lleno' : ''}`}
@@ -462,7 +462,7 @@ export function TablaDeCursos({
                     <span className="cur-tarjeta__datos">
                       <span>{f.cuando}</span>
                       <span>{comoSeLeenLosLugares(c.cupo, c.ocupados)} alumnos</span>
-                      <span>{formatearMoneda(c.precioCentavos)}</span>
+                      <span>{formatearDinero(c.precioCentavos)}</span>
                     </span>
                   </button>
                 </li>

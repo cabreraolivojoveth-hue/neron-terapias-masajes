@@ -26,7 +26,13 @@ const RENGLON: RenglonDelCarrito = {
 function pintar(extra: Partial<React.ComponentProps<typeof Cobro>> = {}) {
   const props: React.ComponentProps<typeof Cobro> = {
     renglones: [], descuentoCentavos: 0, pagos: [], metodoPuesto: '',
-    efectivoRecibido: '', trabajando: false, error: null,
+    efectivoRecibido: '',
+    // Lo que manda Configuracion. Por omision, todo aceptado y sin impuesto:
+    // es lo que ve un centro que todavia no lo configuro.
+    metodosAceptados: ['efectivo', 'tarjeta', 'transferencia', 'otro'],
+    impuestoNombre: 'IVA',
+    impuestoTasa: 0,
+    impuestoIncluido: true, trabajando: false, error: null,
     onMetodo: () => {}, onAgregarPago: () => {}, onMontoDelPago: () => {},
     onQuitarPago: () => {}, onEfectivoRecibido: () => {},
     onCobrar: () => {}, onCotizar: () => {}, onIrACaja: () => {},

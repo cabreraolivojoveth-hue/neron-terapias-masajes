@@ -12,8 +12,8 @@
  */
 
 import { Boton, Campo, Confirmacion } from '@neron/base/ui';
-import { formatearMoneda } from '@neron/base/utils';
 import { useState } from 'react';
+import { formatearDinero } from '../datos/moneda.js';
 import type { FichaDeVenta } from '../datos/ventas.js';
 import { COMO_SE_DICE_EL_METODO, COMO_SE_DICE_EL_TIPO } from '../datos/ventas.js';
 import { Icono } from '../ui/iconos.js';
@@ -159,7 +159,7 @@ export function DetalleDeVenta({
                       {verCostos && i.costoUnitario !== null ? (
                         <span className="pz-renglon__pie">
                           Utilidad{' '}
-                          {formatearMoneda(
+                          {formatearDinero(
                             utilidadDelRenglon(i.subtotal, i.costoUnitario, i.cantidad) ?? 0,
                           )}
                         </span>
@@ -173,8 +173,8 @@ export function DetalleDeVenta({
                   </td>
                   <td className="pz-tabla__numero">{i.cantidad}</td>
                   {/* EL PRECIO DE ESE DIA. */}
-                  <td className="pz-tabla__numero">{formatearMoneda(i.precioUnitario)}</td>
-                  <td className="pz-tabla__numero">{formatearMoneda(i.subtotal)}</td>
+                  <td className="pz-tabla__numero">{formatearDinero(i.precioUnitario)}</td>
+                  <td className="pz-tabla__numero">{formatearDinero(i.subtotal)}</td>
                 </tr>
               ))}
             </tbody>
@@ -184,23 +184,23 @@ export function DetalleDeVenta({
         <dl className="vta-totales">
           <div>
             <dt>Subtotal</dt>
-            <dd>{formatearMoneda(venta.subtotalCentavos)}</dd>
+            <dd>{formatearDinero(venta.subtotalCentavos)}</dd>
           </div>
           <div>
             <dt>Descuento</dt>
             <dd className={venta.descuentoCentavos > 0 ? 'vta-totales__resta' : ''}>
               {venta.descuentoCentavos > 0
-                ? `−${formatearMoneda(venta.descuentoCentavos)}`
-                : formatearMoneda(0)}
+                ? `−${formatearDinero(venta.descuentoCentavos)}`
+                : formatearDinero(0)}
             </dd>
           </div>
           <div>
             <dt>Impuestos</dt>
-            <dd>{formatearMoneda(venta.impuestoCentavos)}</dd>
+            <dd>{formatearDinero(venta.impuestoCentavos)}</dd>
           </div>
           <div className="vta-totales__total">
             <dt>Total</dt>
-            <dd>{formatearMoneda(venta.totalCentavos)}</dd>
+            <dd>{formatearDinero(venta.totalCentavos)}</dd>
           </div>
         </dl>
 
@@ -219,7 +219,7 @@ export function DetalleDeVenta({
                     <span className="vta-pago__metodo">
                       {COMO_SE_DICE_EL_METODO[p.metodo] ?? p.metodo}
                     </span>
-                    <span className="vta-pago__monto">{formatearMoneda(p.montoCentavos)}</span>
+                    <span className="vta-pago__monto">{formatearDinero(p.montoCentavos)}</span>
                   </li>
                 ))}
               </ul>
@@ -228,7 +228,7 @@ export function DetalleDeVenta({
                 un egreso, y a la caja entro lo aplicado. */}
             {venta.efectivoRecibidoCentavos !== null ? (
               <span className="tt-secundario">
-                Recibió {formatearMoneda(venta.efectivoRecibidoCentavos)} en efectivo. El cambio no
+                Recibió {formatearDinero(venta.efectivoRecibidoCentavos)} en efectivo. El cambio no
                 se registró como salida.
               </span>
             ) : null}
@@ -296,7 +296,7 @@ export function DetalleDeVenta({
         <p>
           La venta NO se borra: se queda en el historial marcada como cancelada. Los productos
           vuelven al inventario con un movimiento contrario, la inscripción a curso que haya pagado
-          se da de baja, y la caja recibe el egreso contrario por {formatearMoneda(venta.totalCentavos)}.
+          se da de baja, y la caja recibe el egreso contrario por {formatearDinero(venta.totalCentavos)}.
         </p>
         <Campo
           etiqueta="Motivo"

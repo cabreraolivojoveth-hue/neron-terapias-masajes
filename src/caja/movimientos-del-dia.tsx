@@ -12,7 +12,7 @@
  * entradas y salidas sin decirlo se lee como "lo que se vendio hoy" y no lo es.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { PorClase } from '../datos/caja.js';
 import { COMO_SE_DICE_LA_CLASE } from '../datos/caja.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
@@ -97,7 +97,7 @@ export function MovimientosDelDia({
               <span
                 className={`caja-clase__monto${c.centavos < 0 ? ' caja-clase__monto--sale' : ''}`}
               >
-                {c.centavos < 0 ? `−${formatearMoneda(-c.centavos)}` : formatearMoneda(c.centavos)}
+                {c.centavos < 0 ? `−${formatearDinero(-c.centavos)}` : formatearDinero(c.centavos)}
               </span>
             </li>
           ))}
@@ -109,8 +109,8 @@ export function MovimientosDelDia({
         <span className="caja-clase__cuantos">{movimientos}</span>
         <span className={`caja-clase__monto${netoCentavos < 0 ? ' caja-clase__monto--sale' : ''}`}>
           {netoCentavos < 0
-            ? `−${formatearMoneda(-netoCentavos)}`
-            : formatearMoneda(netoCentavos)}
+            ? `−${formatearDinero(-netoCentavos)}`
+            : formatearDinero(netoCentavos)}
         </span>
       </footer>
       <p className="tt-secundario">

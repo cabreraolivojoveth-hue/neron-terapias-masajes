@@ -22,9 +22,11 @@ import { LibroDeGastos } from '../src/gastos/libro-de-gastos.js';
 import { Analisis } from '../src/reportes/analisis.js';
 import { Bandeja } from '../src/mensajes/bandeja.js';
 import { CentroDeRecordatorios } from '../src/recordatorios/centro-de-recordatorios.js';
+import { CentroDeConfiguracion } from '../src/configuracion/centro-de-configuracion.js';
 import { Pendiente } from '../src/modulos/pendiente.js';
 import { GRUPOS, MODULOS, modulosVisibles } from '../src/modulos/registro.js';
-import { LEMA, NOMBRE_DEL_PRODUCTO, cssDeMarca } from '../src/marca.js';
+import { cssDeMarca } from '../src/marca.js';
+import { LEMA_POR_OMISION, NOMBRE_POR_OMISION } from '../src/datos/configuracion.js';
 import { MarcaVisible } from '../src/marco/marca-visible.js';
 import { Buscador } from '../src/marco/buscador.js';
 import { CampanaDeAvisos } from '../src/marco/notificaciones.js';
@@ -51,6 +53,7 @@ const PANTALLAS: Readonly<Record<string, () => React.JSX.Element>> = {
   reportes: () => <Analisis />,
   mensajes: () => <Bandeja />,
   recordatorios: () => <CentroDeRecordatorios />,
+  configuracion: () => <CentroDeConfiguracion />,
 };
 
 function Vitrina() {
@@ -91,7 +94,7 @@ function Vitrina() {
 
 const raiz = document.getElementById('raiz');
 if (!raiz) throw new Error('Falta <div id="raiz">.');
-document.title = `Vitrina · ${LEMA}`;
+document.title = `Vitrina · ${NOMBRE_POR_OMISION} · ${LEMA_POR_OMISION}`;
 
 /**
  * SIN `StrictMode` a proposito.

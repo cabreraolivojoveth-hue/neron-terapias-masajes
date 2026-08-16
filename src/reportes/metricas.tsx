@@ -16,7 +16,7 @@
  * pueden estar hablando de otro periodo que las pestañas de abajo.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { Categoria } from '../marca.js';
 import type { Reporte } from '../datos/reportes.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
@@ -64,7 +64,7 @@ export function cifrasDelReporte(r: Reporte | null): CifraDelReporte[] {
       categoria: 'ventas',
       etiqueta: 'Ingresos totales',
       icono: 'moneda',
-      valor: cargando ? raya : formatearMoneda(r.metricas.ingresos),
+      valor: cargando ? raya : formatearDinero(r.metricas.ingresos),
       pie: ingresos.texto,
       sube: ingresos.sube,
       cargando,

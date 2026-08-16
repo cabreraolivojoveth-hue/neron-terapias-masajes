@@ -13,7 +13,7 @@
  * partir de ahi hay dos numeros y nadie sabe cual creer.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { ExpedienteDeCliente } from '../datos/clientes.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
 import { fechaLarga } from '../ui/fechas-en-palabras.js';
@@ -146,7 +146,7 @@ export function TarjetasDelCliente({
           {/* El dinero solo a quien puede verlo. Lo que de verdad protege es que
               la base no le entrega las ventas a quien no tiene "verFinanzas". */}
           {permisos['verFinanzas'] === true ? (
-            <Linea que="Total invertido" valor={formatearMoneda(e.totalGastado)} />
+            <Linea que="Total invertido" valor={formatearDinero(e.totalGastado)} />
           ) : null}
           <Linea
             que="Última visita"

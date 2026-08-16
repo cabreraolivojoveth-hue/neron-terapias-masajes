@@ -22,8 +22,8 @@
  */
 
 import { comoArea, comoPolilinea } from '@neron/base/tablero';
-import { formatearMoneda } from '@neron/base/utils';
 import { useEffect, useRef, useState } from 'react';
+import { formatearDinero } from '../datos/moneda.js';
 import type { ClaveDePeriodo, DiaConIngreso, PeriodoDeIngresos } from '../datos/tablero.js';
 import { diaCorto, diaYMes } from '../ui/fechas-en-palabras.js';
 
@@ -280,7 +280,7 @@ export function GraficaDeIngresos({
                     onMouseLeave={() => setActivo((a) => (a === i ? null : a))}
                     onFocus={() => setActivo(i)}
                     onBlur={() => setActivo((a) => (a === i ? null : a))}
-                    aria-label={`${diaYMes(d.fecha)}: ${formatearMoneda(d.total)}`}
+                    aria-label={`${diaYMes(d.fecha)}: ${formatearDinero(d.total)}`}
                   >
                     {hayAlgo && punto ? (
                       <span className="ini-grafica__punto" style={{ top: `${punto.y}%` }} />
@@ -304,7 +304,7 @@ export function GraficaDeIngresos({
               >
                 <span className="ini-grafica__globo-dia">{diaYMes(dias[activo]!.fecha)}</span>
                 <span className="ini-grafica__globo-total">
-                  {formatearMoneda(dias[activo]!.total)}
+                  {formatearDinero(dias[activo]!.total)}
                 </span>
               </div>
             ) : null}

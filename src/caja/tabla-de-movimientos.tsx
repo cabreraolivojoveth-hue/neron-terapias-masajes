@@ -12,7 +12,7 @@
  * 200" enseñando los 10 de una lista ya recortada.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { MovimientoDeCaja } from '../datos/caja.js';
 import {
   CLASES_DE_MOVIMIENTO,
@@ -32,8 +32,8 @@ const ICONO_DEL_METODO: Readonly<Record<string, NombreDeIcono>> = {
 /** Como se escribe el monto de un movimiento. Los que salen llevan signo. */
 export function comoSeEscribeElMonto(m: MovimientoDeCaja): string {
   return m.tipo === 'egreso'
-    ? `−${formatearMoneda(m.montoCentavos)}`
-    : formatearMoneda(m.montoCentavos);
+    ? `−${formatearDinero(m.montoCentavos)}`
+    : formatearDinero(m.montoCentavos);
 }
 
 /**

@@ -13,7 +13,7 @@
  * algo que no va a pasar y de paso le cuenta a quien no debe que existe.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import {
   COMO_SE_DICE_EL_METODO,
   COMO_SE_DICE_LA_FRECUENCIA,
@@ -91,7 +91,7 @@ export function PanelDelGasto({
 
       <div className="gto-detalle__cifra">
         <span className="tt-etiqueta">Monto</span>
-        <strong className="tt-dato">{formatearMoneda(gasto.montoCentavos)}</strong>
+        <strong className="tt-dato">{formatearDinero(gasto.montoCentavos)}</strong>
       </div>
 
       {/*
@@ -107,12 +107,12 @@ export function PanelDelGasto({
         <span className="pz-renglon__cuerpo">
           <span className="pz-renglon__titulo">
             {salioDelCajon > 0
-              ? `Salieron ${formatearMoneda(salioDelCajon)} del cajón`
+              ? `Salieron ${formatearDinero(salioDelCajon)} del cajón`
               : 'No salió efectivo del cajón'}
           </span>
           <span className="pz-renglon__pie">
             {gasto.metodo === 'mixto' && gasto.metodoResto
-              ? `${formatearMoneda(salioDelCajon)} en efectivo y el resto con ${COMO_SE_DICE_EL_METODO[gasto.metodoResto].toLowerCase()}`
+              ? `${formatearDinero(salioDelCajon)} en efectivo y el resto con ${COMO_SE_DICE_EL_METODO[gasto.metodoResto].toLowerCase()}`
               : gasto.metodo === 'efectivo'
                 ? 'Pagado en efectivo'
                 : `Pagado con ${COMO_SE_DICE_EL_METODO[gasto.metodo].toLowerCase()}: es egreso del negocio, no del cajón`}

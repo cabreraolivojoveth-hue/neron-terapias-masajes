@@ -186,7 +186,22 @@ export const MODULOS: readonly ModuloDelProducto[] = [
     id: 'configuracion',
     etiqueta: 'Configuración',
     icono: 'engrane',
-    capacidad: 'gestionarConfiguracion',
+    /*
+     * LO VE CUALQUIER MIEMBRO, Y NO ES UN DESCUIDO.
+     *
+     * Pedia `gestionarConfiguracion` mientras el modulo no existia. Al
+     * construirlo quedo claro que adentro viven dos cosas que NO son del
+     * centro sino de la CUENTA de cada quien: la contraseña y la verificacion
+     * en dos pasos. Con el permiso puesto, media plantilla se quedaba sin poder
+     * cambiar su propia contraseña — y, peor, el dueño que todavia no tiene
+     * segundo factor no llegaria nunca a la pantalla donde darlo de alta.
+     *
+     * Las catorce tarjetas de adentro SI respetan su capacidad, una por una, y
+     * un grupo que se queda sin ninguna desaparece. Es la misma decision que
+     * Caja: el modulo se abre para quien pueda hacer algo dentro, y adentro
+     * cada quien ve lo suyo.
+     */
+    capacidad: null,
     bloque: 10,
     promesa: 'Datos del centro, horarios, usuarios, roles y permisos.',
   },

@@ -39,6 +39,11 @@ import { useSesion } from '../identidad/sesion.js';
 import { ControlesDeAgenda } from './controles.js';
 import { ventanaDelDia } from './disposicion.js';
 import { FormularioDeCita, type ValoresDeCita } from './formulario.js';
+import {
+  llaveDeLaConfiguracion,
+  traerConfiguracion,
+  type ConfiguracionDelCentro,
+} from '../datos/configuracion.js';
 import { PanelDeCita } from './panel.js';
 import { mover, rangoDe, type Vista } from './rangos.js';
 import { Leyenda, VistaDia, VistaMes, VistaSemana } from './vistas.js';
@@ -95,6 +100,20 @@ export function Agenda() {
   const profesionales = useConsulta<ProfesionalBreve[]>(
     negocio ? `profesionales:${negocio}` : null,
     () => traerProfesionales(negocio),
+  );
+
+  /*
+   * LOS HORARIOS DEL CENTRO, QUE ADMINISTRA CONFIGURACION.
+   *
+   * Agenda no guarda ninguna copia: pregunta. Es la misma regla que impide que
+   * una cita guarde el nombre del paciente — el dia que el centro cambie su
+   * horario, el aviso de "fuera de hora" lo respeta sin tocar una linea de
+   * aqui. Y comparte llave de cache con la barra lateral, asi que no cuesta un
+   * viaje mas al servidor.
+   */
+  const configuracion = useConsulta<ConfiguracionDelCentro>(
+    negocio ? llaveDeLaConfiguracion(negocio) : null,
+    () => traerConfiguracion(negocio),
   );
 
   const cita = (citas.datos ?? []).find((c) => c.id === seleccionada) ?? null;
@@ -407,6 +426,10 @@ export function Agenda() {
           servicios={servicios.datos ?? []}
           profesionales={profesionales.datos ?? []}
           soloHorario={formulario.modo === 'reagendar'}
+          /* LOS HORARIOS LOS ADMINISTRA CONFIGURACION y Agenda los pregunta.
+             Comparten llave de cache con la barra lateral y con el propio
+             modulo de Configuracion, asi que esto no cuesta un viaje mas. */
+          horarios={configuracion.datos?.datos.horarios ?? []}
           trabajando={guardar.trabajando || mover_.trabajando}
           error={guardar.error ?? mover_.error}
           onGuardar={(v) => void alGuardar(v)}

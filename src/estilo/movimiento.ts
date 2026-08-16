@@ -219,5 +219,25 @@ export function movimiento(): string {
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Y EL MISMO APAGADO, PEDIDO DESDE CONFIGURACION.
+ *
+ * La media query de arriba obedece al sistema operativo de cada quien, que es
+ * lo correcto y no se toca. Esta lo apaga para TODO EL CENTRO desde la pantalla
+ * de Apariencia — hace falta porque en un mostrador la computadora suele ser
+ * compartida y nadie va a entrar a las preferencias de Windows para pedirlo.
+ *
+ * Las dos reglas son la misma; se repiten en vez de juntarse en un selector
+ * porque una media query y un atributo no se pueden mezclar en la misma lista.
+ */
+[data-menos-movimiento='si'] *,
+[data-menos-movimiento='si'] *::before,
+[data-menos-movimiento='si'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
 `;
 }

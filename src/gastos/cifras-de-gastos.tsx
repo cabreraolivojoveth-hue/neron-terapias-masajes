@@ -15,7 +15,7 @@
  * buscar de que fue; con el concepto al lado, la tarjeta ya contesto.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { Categoria } from '../marca.js';
 import type { ResumenDeGastos } from '../datos/gastos.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
@@ -45,7 +45,7 @@ export function cifrasDeGastos(r: ResumenDeGastos | null): CifraDeGasto[] {
       categoria: 'ventas',
       etiqueta: 'Total gastos',
       icono: 'moneda',
-      valor: cargando ? raya : formatearMoneda(r.totalCentavos),
+      valor: cargando ? raya : formatearDinero(r.totalCentavos),
       // SIN PERIODO ANTERIOR SE DICE, no se inventa un porcentaje contra cero.
       pie: cargando
         ? ''
@@ -60,7 +60,7 @@ export function cifrasDeGastos(r: ResumenDeGastos | null): CifraDeGasto[] {
       categoria: 'citas',
       etiqueta: 'Gasto promedio diario',
       icono: 'barras',
-      valor: cargando ? raya : formatearMoneda(r.promedioDiarioCentavos),
+      valor: cargando ? raya : formatearDinero(r.promedioDiarioCentavos),
       pie: cargando ? '' : `Entre ${r.dias} ${r.dias === 1 ? 'día' : 'días'} del periodo`,
       esBueno: null,
       cargando,
@@ -80,7 +80,7 @@ export function cifrasDeGastos(r: ResumenDeGastos | null): CifraDeGasto[] {
       categoria: 'cursos',
       etiqueta: 'Mayor gasto',
       icono: 'alerta',
-      valor: cargando ? raya : r.mayor ? formatearMoneda(r.mayor.centavos) : 'Sin datos',
+      valor: cargando ? raya : r.mayor ? formatearDinero(r.mayor.centavos) : 'Sin datos',
       pie: cargando ? '' : (r.mayor?.concepto ?? ''),
       esBueno: null,
       cargando,

@@ -12,8 +12,8 @@
  *   una segunda auditoria: seria otra cosa mas que se puede desincronizar.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
 import { useState, type ReactNode } from 'react';
+import { formatearDinero } from '../datos/moneda.js';
 import type { FichaDeServicio } from '../datos/servicios.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
 import { Pista } from '../ui/pista.js';
@@ -216,7 +216,7 @@ export function DetalleDeServicio({
               </Renglon>
 
               <Renglon icono="dinero" titulo="Precio">
-                {formatearMoneda(ficha.precioCentavos)}
+                {formatearDinero(ficha.precioCentavos)}
               </Renglon>
 
               <Renglon icono="estrella" titulo="Precio promocional">
@@ -224,7 +224,7 @@ export function DetalleDeServicio({
                   <span className="tt-falta">Sin promoción</span>
                 ) : (
                   <>
-                    {formatearMoneda(ficha.precioPromocionalCentavos)}
+                    {formatearDinero(ficha.precioPromocionalCentavos)}
                     {/* Se dice si la promocion esta VIGENTE hoy, no solo que
                         existe: una promocion que ya vencio sigue guardada, y
                         verla sin fecha hace creer que se esta cobrando. */}

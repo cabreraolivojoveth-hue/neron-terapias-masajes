@@ -18,7 +18,7 @@
  * semana por mes es un solo punto inutil.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { PasoDeLaSerie, PuntoDeLaSerie } from '../datos/reportes.js';
 import { Icono } from '../ui/iconos.js';
 
@@ -141,7 +141,7 @@ export function LineasDeIngresos({
             className="rep-lienzo"
             viewBox={`0 0 ${ANCHO} ${ALTO}`}
             role="img"
-            aria-label={`Ingresos y egresos del período, con un máximo de ${formatearMoneda(techo)}`}
+            aria-label={`Ingresos y egresos del período, con un máximo de ${formatearDinero(techo)}`}
           >
             {rayas.map((r) => {
               const y = MARGEN.arriba + alto - r * alto;
@@ -155,7 +155,7 @@ export function LineasDeIngresos({
                     y2={y}
                   />
                   <text className="rep-eje" x={MARGEN.izquierda - 8} y={y + 4} textAnchor="end">
-                    {formatearMoneda(Math.round(techo * r))}
+                    {formatearDinero(Math.round(techo * r))}
                   </text>
                 </g>
               );
@@ -172,7 +172,7 @@ export function LineasDeIngresos({
                   cy={egresos[i]?.y ?? 0}
                   r="3"
                 >
-                  <title>{`${p.punto}: ${formatearMoneda(p.egresos)} de egresos`}</title>
+                  <title>{`${p.punto}: ${formatearDinero(p.egresos)} de egresos`}</title>
                 </circle>
                 <circle
                   className="rep-marca rep-marca--ingresos"
@@ -180,7 +180,7 @@ export function LineasDeIngresos({
                   cy={ingresos[i]?.y ?? 0}
                   r="3"
                 >
-                  <title>{`${p.punto}: ${formatearMoneda(p.ingresos)} de ingresos`}</title>
+                  <title>{`${p.punto}: ${formatearDinero(p.ingresos)} de ingresos`}</title>
                 </circle>
                 {i % cada === 0 ? (
                   <text

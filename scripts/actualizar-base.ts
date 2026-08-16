@@ -65,7 +65,16 @@ const DESDE = '-- RECORDATORIOS — EL SEGUIMIENTO DE LO PENDIENTE (bloque 7)';
  * Lo que NO se hace es moverlas al final del instalador para que entren solas:
  * eso desordena el archivo y es como se partio la seccion de Reportes en dos.
  */
-const ADEMAS = ['public.ventas_del_rango', 'public.resumen_inicio'];
+/*
+ * `registrar_venta` ENTRA AQUI PORQUE EL BLOQUE 10 LA CAMBIO.
+ *
+ * Vive muy por encima de la frontera —es del bloque 6— y aun asi cambio: hasta
+ * hoy escribia `impuesto_centavos = 0` a mano, y ahora lee la tasa que se
+ * configura en Configuracion. Sin sacarla por aqui, el archivo saldria sin ella
+ * y el impuesto configurado no se aplicaria a ninguna venta: la pantalla lo
+ * enseñaria y el servidor seguiria guardando cero.
+ */
+const ADEMAS = ['public.ventas_del_rango', 'public.resumen_inicio', 'public.registrar_venta'];
 
 const CABECERA = `-- =====================================================================
 -- ACTUALIZAR-BASE.sql — SOLO LO NUEVO
@@ -73,31 +82,38 @@ const CABECERA = `-- ===========================================================
 --
 -- Pegar en Supabase -> SQL Editor -> Run. Una sola vez basta.
 --
+-- Va al proyecto \`hgypobbanvkwnqmepqim\` (neron-terapias). MIRA EL REF EN LA
+-- BARRA DE DIRECCIONES: hay otro que se llama casi igual y correr esto alli ya
+-- costo una mañana.
+--
 -- Es seguro correrlo las veces que haga falta: no borra datos, no reescribe
--- filas, y todo va con \`if not exists\` o \`create or replace\`. Si ya corriste
--- una version anterior de este archivo, correr esta otra vez no hace daño.
+-- filas, y todo va con \`if not exists\` o \`create or replace\`.
 --
--- QUE TRAE: SOLO EL BLOQUE 7, RECORDATORIOS.
+-- QUE TRAE:
 --
---   · La tabla \`recordatorio\` del bloque 0 se completa —hora, categoria,
---     responsable, notas, prioridad urgente, origen, anticipacion y quien lo
---     cerro—. NO se sustituye: dos disparadores de Agenda ya escriben en ella.
---   · Llegan \`recordatorio_recurrente\` (la REGLA, no las ocurrencias),
---     \`recordatorio_evento\` (el rastro, solo se agrega), \`recordatorio_ajustes\`
---     y \`recordatorio_automatizacion\`, con sus reglas de fila y sus permisos.
---   · Veinte funciones del modulo.
+--   1. RECORDATORIOS (bloque 7). Si ya lo corriste, volver a correrlo no hace
+--      daño.
+--   2. CONFIGURACION (bloque 10), al final:
+--      · \`licencia\` gana la columna \`plan\`, que escribe la plataforma.
+--      · Nace \`invitacion\`, con sus reglas de fila y su permiso. Es la unica
+--        tabla nueva del bloque: \`membresia.usuario_id\` es not null, asi que
+--        no se puede dar de alta a quien todavia no tiene cuenta.
+--      · Dieciseis funciones: la ficha del centro, el equipo, los roles, la
+--        bitacora, la licencia, exportar y transferir la propiedad.
 --
--- Y ARRIBA, EN LAS CORRECCIONES: \`resumen_inicio\` vuelve a crearse para separar
--- los recordatorios de hoy de los vencidos. Sin ella el sitio funciona, pero las
--- dos tarjetas nuevas de Inicio salen en cero.
+-- Y ARRIBA, EN LAS CORRECCIONES:
 --
--- LO DE ANTES YA NO VIENE. Eliminar-producto, el expediente clinico, Gastos,
--- Reportes y Mensajes ya estan corridos en la base, asi que la frontera se movio
--- y este archivo volvio a ser corto. No es cosmetico: el archivo largo reventaba
--- al pegarlo — el troceador del editor de Supabase perdia el hilo de los \`$$\` y
--- mandaba media funcion.
+--   · \`registrar_venta\` VUELVE A CREARSE, y esto es lo importante del bloque:
+--     hasta hoy escribia \`impuesto_centavos = 0\` a mano. Ahora lee la tasa que
+--     se configura en Configuracion y la desglosa —hacia atras si el precio ya
+--     la lleva dentro, encima si no—. Sin correr esto, la pantalla enseñaria el
+--     impuesto configurado y el servidor seguiria guardando cero.
+--   · \`resumen_inicio\` y \`ventas_del_rango\`, sin cambios de esta vez.
 --
--- Sin correr esto, el sitio se publica igual y Recordatorios abre con un error
+-- LO YA COBRADO NO SE TOCA: la cuenta del impuesto solo corre al registrar una
+-- venta nueva. Cambiar la tasa hoy no reescribe el mes pasado.
+--
+-- Sin correr esto, el sitio se publica igual y Configuracion abre con un error
 -- que no dice nada util: el navegador pide funciones que la base no tiene.
 -- Vercel publica el navegador, no la base.
 --

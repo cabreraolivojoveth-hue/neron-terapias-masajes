@@ -12,8 +12,8 @@
  * pixeles no se leen: se adivinan.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
 import { useEffect, useState } from 'react';
+import { formatearDinero } from '../datos/moneda.js';
 import type { Categoria } from '../datos/categorias.js';
 import type { EstadoDeStock, ProductoEnLista } from '../datos/productos.js';
 import { COMO_SE_DICE_EL_STOCK } from '../datos/productos.js';
@@ -74,7 +74,7 @@ export function accionesPara(
 
 /** El costo listo para leerse. `null` es "no puedes verlo", no cero. */
 export function textoDelCosto(costo: number | null): string {
-  return costo === null ? '—' : formatearMoneda(costo);
+  return costo === null ? '—' : formatearDinero(costo);
 }
 
 /* ------------------------------------------------------------------ */
@@ -333,7 +333,7 @@ export function TablaDeProductos({
                         <span className="tt-falta">Sin categoría</span>
                       )}
                     </td>
-                    <td className="pz-tabla__numero">{formatearMoneda(p.precioCentavos)}</td>
+                    <td className="pz-tabla__numero">{formatearDinero(p.precioCentavos)}</td>
                     <td className="pz-tabla__numero">{textoDelCosto(p.costoCentavos)}</td>
                     <td className="pz-tabla__numero">
                       <span className={`prd-stock prd-stock--${p.inventario}`}>
@@ -382,7 +382,7 @@ export function TablaDeProductos({
                     </span>
                   </span>
                   <span className="cur-tarjeta__datos">
-                    <span>{formatearMoneda(p.precioCentavos)}</span>
+                    <span>{formatearDinero(p.precioCentavos)}</span>
                     <span>
                       {p.stockActual} {p.unidad}
                     </span>

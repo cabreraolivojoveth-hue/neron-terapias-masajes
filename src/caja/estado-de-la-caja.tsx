@@ -14,7 +14,7 @@
  * cero ahí haría creer que ya cuadró.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { CajaAbierta } from '../datos/caja.js';
 import { Icono } from '../ui/iconos.js';
 
@@ -75,7 +75,7 @@ export function EstadoDeLaCaja({
           <div className="caja-dato">
             <span className="tt-etiqueta">Saldo inicial</span>
             <span className="pz-dato__valor">
-              {formatearMoneda(caja.saldoInicialCentavos)}
+              {formatearDinero(caja.saldoInicialCentavos)}
             </span>
           </div>
 
@@ -95,19 +95,19 @@ export function EstadoDeLaCaja({
         <dl className="vta-totales">
           <div>
             <dt>Saldo inicial</dt>
-            <dd>{formatearMoneda(caja.saldoInicialCentavos)}</dd>
+            <dd>{formatearDinero(caja.saldoInicialCentavos)}</dd>
           </div>
           <div>
             <dt>Entró en efectivo</dt>
-            <dd className="caja-entra">+ {formatearMoneda(caja.efectivoEntroCentavos)}</dd>
+            <dd className="caja-entra">+ {formatearDinero(caja.efectivoEntroCentavos)}</dd>
           </div>
           <div>
             <dt>Salió en efectivo</dt>
-            <dd className="caja-sale">− {formatearMoneda(caja.efectivoSalioCentavos)}</dd>
+            <dd className="caja-sale">− {formatearDinero(caja.efectivoSalioCentavos)}</dd>
           </div>
           <div className="vta-totales__total">
             <dt>Efectivo en el cajón</dt>
-            <dd>{formatearMoneda(caja.efectivoEsperadoCentavos)}</dd>
+            <dd>{formatearDinero(caja.efectivoEsperadoCentavos)}</dd>
           </div>
         </dl>
 
@@ -115,7 +115,7 @@ export function EstadoDeLaCaja({
             cifra que hace que un corte cuadre o no. */}
         <div className="caja-aparte">
           <span className="tt-etiqueta">Cobrado por otras vías</span>
-          <span className="pz-dato__valor">{formatearMoneda(noEfectivo)}</span>
+          <span className="pz-dato__valor">{formatearDinero(noEfectivo)}</span>
           <span className="tt-secundario">
             Tarjeta y transferencia. Son ingresos del centro, pero no están en el cajón: no se
             cuentan en el corte.
@@ -197,19 +197,19 @@ export function CifrasDeLaCaja({ caja }: { readonly caja: CajaAbierta }) {
   const cifras = [
     {
       clave: 'inicial', etiqueta: 'Saldo inicial', icono: 'cajon' as const,
-      valor: formatearMoneda(caja.saldoInicialCentavos), pie: 'Con lo que abrió',
+      valor: formatearDinero(caja.saldoInicialCentavos), pie: 'Con lo que abrió',
     },
     {
       clave: 'entro', etiqueta: 'Entró en efectivo', icono: 'dinero' as const,
-      valor: formatearMoneda(caja.efectivoEntroCentavos), pie: 'Solo lo cobrado en efectivo',
+      valor: formatearDinero(caja.efectivoEntroCentavos), pie: 'Solo lo cobrado en efectivo',
     },
     {
       clave: 'salio', etiqueta: 'Salió en efectivo', icono: 'salida' as const,
-      valor: `−${formatearMoneda(caja.efectivoSalioCentavos)}`, pie: 'Retiros y gastos en efectivo',
+      valor: `−${formatearDinero(caja.efectivoSalioCentavos)}`, pie: 'Retiros y gastos en efectivo',
     },
     {
       clave: 'actual', etiqueta: 'Efectivo en el cajón', icono: 'moneda' as const,
-      valor: formatearMoneda(caja.efectivoEsperadoCentavos), pie: 'Lo que debería haber ahora',
+      valor: formatearDinero(caja.efectivoEsperadoCentavos), pie: 'Lo que debería haber ahora',
     },
   ];
 

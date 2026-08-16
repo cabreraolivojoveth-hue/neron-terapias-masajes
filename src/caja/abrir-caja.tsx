@@ -11,8 +11,8 @@
  */
 
 import { Boton, Campo } from '@neron/base/ui';
+import { formatearDinero } from '../datos/moneda.js';
 import { Modal } from '../ui/modal.js';
-import { formatearMoneda } from '@neron/base/utils';
 import { useState } from 'react';
 import { centavosDeLoEscrito, type LoQueAbreUnaCaja } from '../datos/caja.js';
 import { Icono } from '../ui/iconos.js';
@@ -104,7 +104,7 @@ export function FormularioDeApertura({
           value={saldo}
           onChange={(e) => setSaldo(e.target.value.replace(/[^\d]/g, ''))}
           numerico
-          ayuda={`El efectivo con el que empieza el cajón. Ahora mismo: ${formatearMoneda(saldoCentavos)}.`}
+          ayuda={`El efectivo con el que empieza el cajón. Ahora mismo: ${formatearDinero(saldoCentavos)}.`}
         />
 
         <Campo

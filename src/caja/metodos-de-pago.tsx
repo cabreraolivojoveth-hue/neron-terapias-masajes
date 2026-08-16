@@ -13,7 +13,7 @@
  * cuatro rebanadas iguales "para que se vea" es el peor dato posible.
  */
 
-import { formatearMoneda } from '@neron/base/utils';
+import { formatearDinero } from '../datos/moneda.js';
 import type { PorMetodo } from '../datos/caja.js';
 import { COMO_SE_DICE_EL_METODO_DE_CAJA, porcentajeDelMetodo } from '../datos/caja.js';
 
@@ -119,7 +119,7 @@ export function MetodosDePago({
             </svg>
             <span className="caja-anillo__centro">
               <span className="caja-anillo__que">Total</span>
-              <span className="caja-anillo__cuanto">{formatearMoneda(totalCentavos)}</span>
+              <span className="caja-anillo__cuanto">{formatearDinero(totalCentavos)}</span>
             </span>
           </div>
 
@@ -134,7 +134,7 @@ export function MetodosDePago({
                 <span className="caja-leyenda__que">
                   {COMO_SE_DICE_EL_METODO_DE_CAJA[r.metodo] ?? r.metodo}
                 </span>
-                <span className="caja-leyenda__cuanto">{formatearMoneda(r.centavos)}</span>
+                <span className="caja-leyenda__cuanto">{formatearDinero(r.centavos)}</span>
                 <span className="caja-leyenda__parte">{r.porcentaje}%</span>
               </li>
             ))}
