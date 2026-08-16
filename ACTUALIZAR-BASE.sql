@@ -32,9 +32,8 @@
 -- un error que no dice nada util: el navegador pide funciones que la base
 -- todavia no tiene. Vercel publica el navegador, no la base.
 --
--- El archivo completo, con todas las explicaciones, sigue siendo
--- INSTALAR-EN-TERAPIAS.sql. Aqui va solo lo que falta.
-
+-- Este archivo lo genera `scripts/actualizar-base.ts` a partir de
+-- INSTALAR-EN-TERAPIAS.sql. No se edita a mano: se corre el guion.
 
 -- =====================================================================
 -- ELIMINAR UN PRODUCTO — y por que no es lo mismo que desactivarlo
@@ -1563,6 +1562,11 @@ as $$
                 from it vi join servicio s on s.id = vi.servicio_id
                where vi.tipo = 'servicio'
                group by vi.servicio_id, s.nombre
+               -- SE ORDENA ANTES DE CORTAR. Con el "limit" solo, Postgres
+               -- devuelve diez filas CUALESQUIERA y el orden de afuera las
+               -- acomoda entre ellas: la tarjeta se titula "mas realizados" y
+               -- enseña diez al azar. No falla, no avisa y no se nota.
+               order by cantidad desc, ingresos desc
                limit 10) x), '[]'::jsonb)
     ),
 
@@ -1591,6 +1595,7 @@ as $$
            where c.negocio_id = p_negocio and not c.eliminado
              and (exists (select 1 from ct where ct.cliente_id = c.id)
                   or exists (select 1 from v where v.cliente_id = c.id))
+           order by gastado desc, visitas desc
            limit 10) x), '[]'::jsonb)
     ),
 
@@ -1613,6 +1618,7 @@ as $$
                 from it vi join producto p on p.id = vi.producto_id
                where vi.tipo = 'producto'
                group by vi.producto_id, p.nombre
+               order by cantidad desc, ingresos desc
                limit 10) x), '[]'::jsonb)
     ),
 
@@ -1639,7 +1645,14 @@ as $$
                        where i.curso_id = cu.id and i.estado <> 'cancelado') as inscritos
                 from it vi join curso cu on cu.id = vi.curso_id
                where vi.tipo = 'curso'
-               group by vi.curso_id, cu.nombre, cu.cupo
+               -- "cu.id" VA EN EL AGRUPADO aunque parezca de sobra al lado de
+               -- "vi.curso_id": la subconsulta de los inscritos lo usa, y sin
+               -- el Postgres rechaza la funcion entera con "subquery uses
+               -- ungrouped column". Es un error de EJECUCION, no de sintaxis:
+               -- no lo caza crear la funcion, solo llamarla — que es por lo
+               -- que salio al pegar el instalador y no antes.
+               group by vi.curso_id, cu.id, cu.nombre, cu.cupo
+               order by cantidad desc, ingresos desc
                limit 10) x), '[]'::jsonb)
     ),
 
@@ -1650,10 +1663,20 @@ as $$
                     else round(sum(monto_centavos)::numeric / count(*)) end from g),
       'mayor', (select max(monto_centavos) from g),
       'menor', (select min(monto_centavos) from g),
+      -- EL NOMBRE SE RESUELVE POR LA REFERENCIA, no por la columna vieja.
+      -- `gasto.categoria` es texto y se quedo en 'general' para todo cuando
+      -- Gastos paso a usar `categoria_id`: agrupar por ella habria pintado la
+      -- pestaña entera con una sola barra llamada "general". Y resolverlo al
+      -- leer —en vez de copiar el nombre— es lo que hace que renombrar una
+      -- categoria se vea al dia en los reportes viejos.
       'categorias', coalesce((select jsonb_agg(jsonb_build_object(
           'categoria', x.categoria, 'monto', x.monto, 'cuantos', x.n) order by x.monto desc)
-        from (select categoria, sum(monto_centavos) as monto, count(*)::int as n
-                from g group by categoria) x), '[]'::jsonb)
+        from (select coalesce(c.nombre, nullif(gg.categoria, 'general'), 'Sin categoría') as categoria,
+                     sum(gg.monto_centavos) as monto, count(*)::int as n
+                from g gg
+                left join categoria c
+                       on c.id = gg.categoria_id and c.negocio_id = p_negocio
+               group by 1) x), '[]'::jsonb)
     ),
 
     -- --- CAJA -------------------------------------------------------
