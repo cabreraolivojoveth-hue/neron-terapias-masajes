@@ -1,139 +1,97 @@
 # Dónde me quedé — para continuar en un chat nuevo
 
-Fecha de corte: se cerró el chat por límite de tokens, con el repo **en verde** y
-todo lo terminado ya publicado en `main`.
+Fecha de corte: **16/08/2026**. Todo lo terminado está publicado en `main` y el
+SQL ya corrió en la base del producto.
 
 ---
 
 ## ESTADO DEL REPOSITORIO
 
-`npm run consistencia` → **verde**: 14 guardias, 1.300 pruebas, 12 velos y
-compilación. Los 180 ataques **no corren** en esta máquina porque falta
-`DATABASE_URL` en el `.env` (solo están las dos llaves del navegador).
+`npm run consistencia` → **verde**: 17 guardias, 1.548 pruebas, 13 velos, 84
+pantallas de alcance y compilación.
 
-Último commit publicado: el expediente clínico de Clientes.
-
----
-
-## LO QUE EL USUARIO TIENE QUE HACER (pendiente de su lado)
-
-**Correr `ACTUALIZAR-BASE.sql` en Supabase → SQL Editor → Run.** Ya está generado
-en la raíz del repo. Sin eso:
-
-- el botón **Eliminar** de un producto contesta que la función no existe;
-- la **ficha de salud** de un cliente se guarda pero no se vuelve a leer.
+**Los ataques siguen sin correr NUNCA desde esta máquina**: falta `DATABASE_URL`
+en el `.env` (solo están las dos llaves del navegador). Es la única parte de la
+batería que jamás se ha ejecutado, así que nadie ha comprobado todavía que las
+reglas de acceso por fila de verdad muerdan.
 
 ---
 
-## 1. FALLO ABIERTO Y URGENTE: el foco salta solo
+## LO QUE EL USUARIO YA HIZO (no hace falta pedirlo otra vez)
 
-**Síntoma (reportado usando el programa):** estás escribiendo en un campo de
-"Nuevo cliente" y el cursor **salta solo al campo de arriba**, sin tocar nada.
-El usuario confirmó que **pasa en todos los campos y en todos los formularios**.
+Corrió `ACTUALIZAR-BASE.sql` en el proyecto correcto y la aplicación quedó
+funcionando. Con eso entraron los cuatro bloques que faltaban: eliminar
+producto, el expediente clínico, Gastos completo y la capa de Reportes.
 
-**Causa, ya diagnosticada:** el `Modal` de `@neron/base` enfoca su primer control
-al abrirse —correcto— pero ese efecto depende de `onCerrar`:
-
-```js
-const cerrarSiSePuede = useCallback(..., [bloqueado, onCerrar]);
-useEffect(() => { ...enfocarAdentro()... }, [abierto, cerrarSiSePuede]);
-```
-
-Y las pantallas le pasan flechas escritas en línea (`onCerrar={() => setFicha(null)}`),
-que son una función NUEVA en cada render del padre. Así que **cada repintado del
-padre vuelve a enfocar el primer campo**, con la persona escribiendo en el tercero.
-
-`Confirmacion` NO tiene el fallo: su efecto depende solo de `[abierto]`.
-
-**Alcance:** 19 archivos usan `Modal`/`Confirmacion`, con 21 `onCerrar={() => …}`
-en línea.
-
-**El arreglo ya está escrito** en `borradores/modal-envoltorio.tsx.txt`. Es un
-envoltorio que guarda `onCerrar` en una `ref` y le entrega a la base una función
-de identidad **estable**, así el efecto solo depende de `abierto`.
-
-### Pasos que faltan
-
-1. Mover `borradores/modal-envoltorio.tsx.txt` → `src/ui/modal.tsx`.
-2. Cambiar los 19 archivos para que importen `Modal` de `../ui/modal.js` en vez
-   de `@neron/base/ui`. (`Confirmacion` puede seguir viniendo de la base.)
-3. **Guardia 15** en `guardias/fronteras.ts`: nadie importa `Modal` de
-   `@neron/base/ui` fuera de `src/ui/modal.tsx`. Sin la guardia, la pantalla
-   número veinte vuelve a caer y el fallo no avisa: no falla, no sale en la
-   consola, solo hace imposible capturar.
-4. `pruebas/componentes/modal.test.tsx`: que la función que recibe la base **no
-   cambie de identidad** aunque el padre se repinte, y que aun así se llame a la
-   versión de hoy al cerrar.
-5. Batería completa y publicar.
+**LA MAÑANA QUE COSTÓ, Y POR QUÉ:** el SQL se estuvo pegando en
+`cxldnxdfhxipckvduzpk`, que TAMBIÉN se llama "Neron-terapias" y es el que sale
+al entrar con el correo de todos los días. Salía sin un solo error y la pantalla
+seguía fallando. Está contado con la tabla de los tres proyectos en el §7 de
+`CLAUDE.md`. **Antes de mandar un SQL, comprobar el ref en la barra de
+direcciones** — el nombre del selector no distingue nada.
 
 ---
 
-## 2. MÓDULO REPORTES — a medio construir
+## LO QUE SE HIZO EN ESTE TRAMO
 
-El usuario mandó la foto (`imagenes de modulos/REPORTES.png`) y un encargo largo
-y muy concreto. Lo esencial de ese encargo:
-
-- Reportes **no es un módulo aislado**: es una capa de análisis que consume
-  Ventas, Gastos, Caja, Clientes, Servicios, Cursos, Productos e Inventario.
-- **Sin datos de ejemplo, sin mocks, sin números simulados.** Estados vacíos
-  bien resueltos y ceros de verdad.
-- **Nada de bases paralelas ni totales guardados.**
-- Cálculos **en el servidor**, no bajando miles de registros al navegador.
-- Un **selector de periodo global** que afecte TODO (nada debe quedarse con otro
-  periodo por accidente), filtros combinables, comparación contra el periodo
-  anterior —y si no hay con qué comparar, decir "Sin comparación disponible" en
-  vez de 0%—, ocho pestañas funcionales, drill-down a los módulos, guardar y
-  exportar reportes, y respetar permisos y aislamiento entre negocios.
-
-### YA HECHO (publicado en `main`)
-
-**Toda la capa de agregación en la base**, al final de `INSTALAR-EN-TERAPIAS.sql`:
-
-- `app.paso_de_la_serie(desde, hasta)` → agrupa por `dia` o por `mes` según el
-  largo del rango.
-- **`public.reporte_del_periodo(negocio, desde, hasta, tipo, metodo, vendedor)`**
-  — TODO el reporte en UNA llamada: periodo, `hayComparacion`, métricas con su
-  comparación, finanzas (utilidad derivada, margen `null` sin ingresos), serie
-  ingresos/egresos con el eje completo, categorías reales, ventas (ticket `null`
-  sin ventas, por método), servicios, clientes, productos, cursos, gastos y caja
-  (movimientos reales y cortes ya firmados).
-  Es `security invoker`: **las reglas de fila dan gratis el aislamiento entre
-  centros y el permiso `verFinanzas`**.
-- Tabla **`reporte_guardado`** con sus reglas de acceso, y
-  `guardar_reporte` / `reportes_guardados` / `borrar_reporte`.
-  Guarda **la pregunta (periodo y filtros), nunca la respuesta**: un reporte con
-  cifras congeladas seguiría afirmando un total que dejó de ser verdad en cuanto
-  se cancelara una venta de ese mes.
-
-### EMPEZADO Y PARKEADO
-
-`borradores/reportes-datos.ts.txt` → va a `src/datos/reportes.ts`. Está
-**completo**: tipos, `ordenarReporte`, `traerReporte`, los guardados,
-`llaveDelReporte` (la llave de cache lleva los filtros, si no cambiar un filtro
-devolvería el reporte anterior desde la cache) y `LO_QUE_TOCA_UN_REPORTE`.
-
-### LO QUE FALTA
-
-1. Mover el borrador a `src/datos/reportes.ts` + `pruebas/reportes.test.ts`.
-2. `src/reportes/` con la pantalla: encabezado, selector de periodo, filtros,
-   4 métricas con comparación, 8 pestañas, gráfica ingresos/egresos, dona de
-   categorías, resumen del periodo, rankings, guardados y exportar.
-   **Reusar las piezas compartidas** (`pz-*`) y `MenuDeAcciones` / `Plegable`.
-   Ojo con `pz-cifras`, `pz-cuerpo--maestro`, `pz-pestanas`.
-3. `registro.ts` ya tiene `reportes` con `capacidad: 'verFinanzas'`; falta
-   pintarlo en `aplicacion.tsx` (hoy cae en `Pendiente`).
-4. Una prueba por archivo nuevo (guardia 7) y capturas por pestaña con
-   `npm run capturas -- reportes --completa --toca="…"`.
-5. **Gastos no existe** (`src/gastos/` no está, el módulo muestra "Pendiente").
-   La tabla `gasto` SÍ existe y Reportes ya la consume. El usuario tiene la foto
-   `imagenes de modulos/GASTOS.png` y quedó pendiente construirlo.
+- **El foco que saltaba solo.** `src/ui/modal.tsx` le da a la base una función de
+  identidad estable; las doce pantallas con `Modal` importan de ahí. **Guardia
+  15** impide que la trece vuelva a caer.
+- **El instalador estaba partido en dos.** La sección de Reportes se había
+  pegado *dentro* de dos funciones de Gastos. Salió publicado en verde porque
+  nada de la batería abría ese archivo. **Guardia 16.**
+- **`ACTUALIZAR-BASE.sql` ya no se arma a mano:** `scripts/actualizar-base.ts` lo
+  genera desde el instalador cortando por título, no por número de línea. Antes
+  se regeneró a mano y perdió dos bloques enteros.
+- **Reportes completo**, publicado y funcionando.
+- **Tres errores de SQL** que solo aparecían al ejecutarlo: el `group by` sin
+  `cu.id`, el `limit 10` que cortaba antes de ordenar en los cuatro rankings, y
+  los gastos por categoría agrupados por la columna de texto vieja.
+- **Caja reorganizada:** sin la pestaña "El cajón" (sin tocar una cuenta), el
+  corte ya no abre el formulario al entrar, "Ventas del día" arranca con cuatro
+  y crece, su buscador encuentra por vendedor, y se fue la duplicación de
+  "Últimas ventas del día". Clientes recientes en el buscador de Cobrar.
+- **Nuevo paciente = Nuevo cliente.** La Agenda monta `FichaDeCliente`.
+- **Guardia 17:** toda clase escrita existe en la hoja. Encontró dieciocho
+  muertas, entre ellas tres formularios que seguían con el botón pelón de
+  "+ Información adicional".
+- **`npm run alcance`**, nuevo paso de la batería: diez módulos en cuatro
+  tamaños, con el carrito lleno, comprobando que a cada botón se llega.
 
 ---
 
-## 3. OTROS PENDIENTES CONOCIDOS
+## LO QUE FALTA
 
-- **Módulos que siguen en "Pendiente"** (sin `src/`): Gastos, Reportes,
-  Mensajes, Recordatorios, Configuración.
-- Cuando exista `src/configuracion/`, la **guardia 8** revienta a propósito para
-  obligar a decidir sobre el segundo factor apagado.
-- Los **ataques a la base** no se han corrido nunca desde esta máquina.
+### 1. Módulos que siguen en "Pendiente"
+
+Sin `src/`: **Mensajes**, **Recordatorios** y **Configuración**. Las fotos están
+en `imagenes de modulos/`.
+
+Cuando exista `src/configuracion/`, la **guardia 8 revienta a propósito** para
+obligar a decidir sobre el segundo factor apagado. No es un fallo: es la deuda
+cobrándose.
+
+### 2. Los ataques a la base
+
+Sigue faltando `DATABASE_URL`. Mientras tanto, la parte de seguridad del sistema
+está escrita y sin comprobar.
+
+### 3. Un cabo suelto honesto: el scroll de Cobrar
+
+Se reportó que al meter productos la zona de cobrar se iba de la pantalla sin
+poder bajar. **No se consiguió reproducir el síntoma exacto en la vitrina** — la
+tarjeta mide 592 píxeles y cabe en las cuatro ventanas de prueba. Se cambió la
+estructura igual, porque la que había era frágil: ahora la columna entera es
+pegajosa y se recorre por dentro si no cabe.
+
+`npm run alcance` es la red, **no la prueba de regresión de ese caso**. Si vuelve
+a pasar, hay que preguntar con cuántos productos y en qué pantalla, y agrandar el
+caso de `scripts/alcance.ts` hasta que lo cace.
+
+### 4. El `.env` local apunta al proyecto de pruebas, y con un error de tecleo
+
+Dice `ttps://zykqzykjlrjqsbrwpucc.supabase.co` — sin la `h` y al proyecto que no
+se usa. No afecta al sitio publicado (Vercel tiene sus propias variables) pero
+rompe el desarrollo local contra la base real. **No se tocó a propósito:**
+apuntar la máquina de alguien a producción es su decisión, no la de quien pasaba
+por ahí.
