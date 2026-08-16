@@ -36,7 +36,23 @@ const RAIZ = join(import.meta.dirname, '..');
  * desplaza en cuanto se agrega un comentario tres mil lineas mas arriba, y
  * nadie se entera hasta que el archivo sale cortado por la mitad.
  */
-const DESDE = '-- ELIMINAR UN PRODUCTO — y por que no es lo mismo que desactivarlo';
+/*
+ * SE MOVIO LA FRONTERA EL 16/08/2026, Y POR UNA RAZON QUE NO ES SOLO DE ORDEN.
+ *
+ * Antes empezaba en "ELIMINAR UN PRODUCTO", asi que el archivo arrastraba
+ * eliminar-producto, el expediente clinico, Gastos, Reportes y Mensajes —todos
+ * ya corridos— y salia de 5 419 lineas. Pegar eso en el editor de Supabase
+ * REVENTO: su troceador de sentencias perdio el hilo de los `$$` y le mando a
+ * Postgres un pedazo de `resumen_inicio` sin su cierre. El error que sale es
+ * "unterminated dollar-quoted string", que no dice nada de la causa; y encima
+ * el editor se invento un `ALTER TABLE v_ventas_hoy ENABLE ROW LEVEL SECURITY`
+ * sobre lo que en realidad son VARIABLES de un `declare`.
+ *
+ * El archivo estaba bien —hay un escaneo que lo confirma: todos los `$$` y las
+ * comillas cierran—. Lo que no aguanta es el tamaño. Asi que la frontera se
+ * mueve en cuanto un bloque queda confirmado, que es para lo que se invento.
+ */
+const DESDE = '-- RECORDATORIOS — EL SEGUIMIENTO DE LO PENDIENTE (bloque 7)';
 
 /**
  * FUNCIONES QUE VIVEN ANTES DE LA FRONTERA Y AUN ASI CAMBIARON.
@@ -61,42 +77,29 @@ const CABECERA = `-- ===========================================================
 -- filas, y todo va con \`if not exists\` o \`create or replace\`. Si ya corriste
 -- una version anterior de este archivo, correr esta otra vez no hace daño.
 --
--- QUE TRAE, en orden:
+-- QUE TRAE: SOLO EL BLOQUE 7, RECORDATORIOS.
 --
---   1. ELIMINAR UN PRODUCTO. Sin esto, el boton Eliminar de un producto
---      contesta que la funcion no existe.
---   2. EL EXPEDIENTE CLINICO DEL CLIENTE. Sin esto, la ficha de salud se
---      guarda pero no se vuelve a leer: padecimientos, alergias y
---      contraindicaciones salen vacias la siguiente vez que se abre — y son
---      justo las que hay que mirar ANTES de dar una sesion.
---   3. EL MODULO GASTOS COMPLETO: la tabla \`gasto\` completada, los
---      recurrentes, el disparador a caja con el efectivo aparte y sus ocho
---      funciones.
---   4. LA CAPA DE REPORTES: \`reporte_del_periodo\` —todo el reporte en UNA
---      llamada— y la tabla \`reporte_guardado\` con sus reglas de fila.
---   5. LA CAPA DE MENSAJES: conversaciones, hilos, canales, plantillas,
---      automatizaciones y difusiones, con sus permisos de tabla.
---   6. RECORDATORIOS COMPLETO: la tabla \`recordatorio\` del bloque 0 se
---      completa —hora, categoria, responsable, notas, recurrencia, origen y
---      quien lo cerro— y llegan \`recordatorio_recurrente\`,
---      \`recordatorio_evento\`, \`recordatorio_ajustes\` y
---      \`recordatorio_automatizacion\` con sus reglas de fila y sus veinte
---      funciones. Sin esto, Recordatorios abre y contesta que las funciones no
---      existen.
+--   · La tabla \`recordatorio\` del bloque 0 se completa —hora, categoria,
+--     responsable, notas, prioridad urgente, origen, anticipacion y quien lo
+--     cerro—. NO se sustituye: dos disparadores de Agenda ya escriben en ella.
+--   · Llegan \`recordatorio_recurrente\` (la REGLA, no las ocurrencias),
+--     \`recordatorio_evento\` (el rastro, solo se agrega), \`recordatorio_ajustes\`
+--     y \`recordatorio_automatizacion\`, con sus reglas de fila y sus permisos.
+--   · Veinte funciones del modulo.
 --
--- Y ARRIBA, EN LAS CORRECCIONES: \`resumen_inicio\` vuelve a crearse para
--- separar los recordatorios de hoy de los vencidos. Sin ella, Inicio sigue
--- funcionando pero sus dos tarjetas nuevas salen en cero.
+-- Y ARRIBA, EN LAS CORRECCIONES: \`resumen_inicio\` vuelve a crearse para separar
+-- los recordatorios de hoy de los vencidos. Sin ella el sitio funciona, pero las
+-- dos tarjetas nuevas de Inicio salen en cero.
 --
--- POR QUE VAN LOS CUATRO Y NO SOLO EL ULTIMO: la version anterior de este
--- archivo se regenero para Gastos y en el camino perdio los dos primeros
--- bloques, que nunca se llegaron a correr. Al ser todo idempotente, la
--- respuesta correcta es incluirlos otra vez en vez de pedirte que recuerdes
--- cual corriste.
+-- LO DE ANTES YA NO VIENE. Eliminar-producto, el expediente clinico, Gastos,
+-- Reportes y Mensajes ya estan corridos en la base, asi que la frontera se movio
+-- y este archivo volvio a ser corto. No es cosmetico: el archivo largo reventaba
+-- al pegarlo — el troceador del editor de Supabase perdia el hilo de los \`$$\` y
+-- mandaba media funcion.
 --
--- Sin correr esto, el sitio se publica igual y las pantallas nuevas salen con
--- un error que no dice nada util: el navegador pide funciones que la base
--- todavia no tiene. Vercel publica el navegador, no la base.
+-- Sin correr esto, el sitio se publica igual y Recordatorios abre con un error
+-- que no dice nada util: el navegador pide funciones que la base no tiene.
+-- Vercel publica el navegador, no la base.
 --
 -- Este archivo lo genera \`scripts/actualizar-base.ts\` a partir de
 -- INSTALAR-EN-TERAPIAS.sql. No se edita a mano: se corre el guion.
