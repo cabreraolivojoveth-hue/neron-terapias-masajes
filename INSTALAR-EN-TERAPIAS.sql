@@ -7572,6 +7572,70 @@ create or replace function public.resumen_de_gastos(
   p_negocio text,
   p_desde   date,
   p_hasta   date
+
+-- =====================================================================
+-- REPORTES — la capa de analisis
+-- =====================================================================
+--
+-- REPORTES NO ES DUEÑO DE NI UN DATO, y esa es toda su arquitectura. No hay
+-- tabla de reportes, no hay copia de las ventas, no hay totales guardados. Todo
+-- se cuenta EN EL MOMENTO desde las tablas de cada modulo: venta, venta_item,
+-- pago, gasto, movimiento_caja, cliente, cita, producto, curso e inscripcion.
+--
+-- POR QUE ASI Y NO CON TOTALES GUARDADOS: un total guardado se desincroniza a
+-- la primera venta cancelada, y a partir de ahi hay dos numeros verdaderos y
+-- nadie sabe cual creer. Es el mismo error que este proyecto ya evito en el
+-- expediente del cliente y en las cifras de Inicio.
+--
+-- TODO SE CALCULA EN EL SERVIDOR, en una sola llamada. Bajar mil ventas al
+-- navegador para sumarlas seria lento hoy e imposible en dos años — y ademas
+-- dejaria el calculo del lado donde se puede manipular.
+--
+-- UNA SOLA LLAMADA PARA TODO EL REPORTE, y no una por pestaña. Es lo que
+-- garantiza que las ocho pestañas hablen del MISMO periodo y de los MISMOS
+-- filtros: con una consulta por pestaña, basta que una se quede con el periodo
+-- viejo para que la pantalla se contradiga a si misma sin avisar.
+--
+-- `security invoker` NO ES UN DETALLE: hace que las reglas de acceso por fila se
+-- apliquen con los permisos de QUIEN LLAMA. De ahi salen gratis dos cosas que el
+-- encargo pedia: un centro jamas ve los datos de otro, y quien no tiene
+-- `verFinanzas` no obtiene cifras de dinero aunque llame a la funcion a mano
+-- desde la consola.
+
+-- ---------------------------------------------------------------------
+-- COMO SE AGRUPA LA SERIE DEL TIEMPO
+-- ---------------------------------------------------------------------
+-- Un rango de un año agrupado por dia son trescientos sesenta y cinco puntos:
+-- ilegible. Uno de una semana agrupado por mes es un solo punto: inutil. Se
+-- decide por el largo del rango y se DICE en la respuesta, para que la grafica
+-- pueda rotular el eje como corresponde.
+create or replace function app.paso_de_la_serie(p_desde date, p_hasta date)
+returns text
+language sql
+immutable
+as $$
+  select case when (p_hasta - p_desde) > 92 then 'mes' else 'dia' end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- EL REPORTE DEL PERIODO
+-- ---------------------------------------------------------------------
+--
+-- LOS FILTROS SE COMBINAN Y TODOS SON OPCIONALES. `null` significa "sin
+-- filtrar", no "ninguno": un filtro que al quedarse vacio devuelve cero seria
+-- indistinguible de un periodo sin ventas.
+--
+--   p_tipo      servicio | producto | curso — de que se compone el ingreso
+--   p_metodo    efectivo | tarjeta | transferencia | otro
+--   p_vendedor  quien cobro la venta
+--
+create or replace function public.reporte_del_periodo(
+  p_negocio  text,
+  p_desde    date,
+  p_hasta    date,
+  p_tipo     text default null,
+  p_metodo   text default null,
+  p_vendedor uuid default null
 )
 returns jsonb
 language sql
@@ -7693,6 +7757,447 @@ $$;
 -- nada. Se desactiva: deja de ofrecerse al capturar y los viejos la conservan.
 create or replace function public.gastos_de_la_categoria(p_categoria uuid)
 returns bigint
+  with
+  -- El periodo anterior COMPARABLE: mismo numero de dias, pegado hacia atras.
+  -- Comparar un mes contra una semana daria una caida del 75% que no existe.
+  rango as (
+    select p_desde as desde, p_hasta as hasta,
+           (p_hasta - p_desde + 1) as dias,
+           (p_desde - (p_hasta - p_desde + 1))::date as desde_ant,
+           (p_desde - 1)::date as hasta_ant,
+           app.paso_de_la_serie(p_desde, p_hasta) as paso
+  ),
+
+  -- --- LAS VENTAS QUE CUENTAN --------------------------------------
+  -- Solo las COBRADAS. Un borrador no es dinero y una cancelada dejo de serlo;
+  -- las dos se conservan en su tabla, pero no suman aqui.
+  v as (
+    select ve.* from venta ve, rango r
+    where ve.negocio_id = p_negocio and not ve.eliminado
+      and ve.estado = 'cobrada'
+      and ve.fecha between r.desde and r.hasta
+      and (p_vendedor is null or ve.creada_por = p_vendedor)
+      and (p_metodo is null or exists (
+            select 1 from pago pg where pg.venta_id = ve.id and pg.metodo = p_metodo))
+  ),
+  v_ant as (
+    select ve.* from venta ve, rango r
+    where ve.negocio_id = p_negocio and not ve.eliminado
+      and ve.estado = 'cobrada'
+      and ve.fecha between r.desde_ant and r.hasta_ant
+      and (p_vendedor is null or ve.creada_por = p_vendedor)
+      and (p_metodo is null or exists (
+            select 1 from pago pg where pg.venta_id = ve.id and pg.metodo = p_metodo))
+  ),
+  it as (
+    select vi.* from venta_item vi join v on v.id = vi.venta_id
+    where p_tipo is null or vi.tipo = p_tipo
+  ),
+  it_ant as (
+    select vi.* from venta_item vi join v_ant on v_ant.id = vi.venta_id
+    where p_tipo is null or vi.tipo = p_tipo
+  ),
+
+  -- CON FILTRO DE TIPO, EL INGRESO ES EL DE ESOS RENGLONES; sin filtro, es el
+  -- total de la venta. No es lo mismo: el total lleva el descuento general, que
+  -- no pertenece a ningun renglon. Sumar renglones siempre daria de mas.
+  ingresos as (
+    select case when p_tipo is null
+                then (select coalesce(sum(total_centavos), 0) from v)
+                else (select coalesce(sum(subtotal_centavos), 0) from it) end as monto,
+           case when p_tipo is null
+                then (select coalesce(sum(total_centavos), 0) from v_ant)
+                else (select coalesce(sum(subtotal_centavos), 0) from it_ant) end as antes
+  ),
+
+  -- --- LOS GASTOS DEL PERIODO --------------------------------------
+  g as (
+    select ga.* from gasto ga, rango r
+    where ga.negocio_id = p_negocio and not ga.eliminado
+      and ga.fecha between r.desde and r.hasta
+  ),
+
+  -- --- LAS CITAS COMPLETADAS ---------------------------------------
+  -- "Servicios realizados" sale de AGENDA, no de las ventas: una sesion se da
+  -- aunque se haya cobrado otro dia, y un paquete se cobra una vez y se da en
+  -- cuatro sesiones. Contarlo desde la venta diria cuatro veces menos.
+  ct as (
+    select ci.* from cita ci, rango r
+    where ci.negocio_id = p_negocio and not ci.eliminado
+      and ci.estado = 'completada'
+      and ci.fecha between r.desde and r.hasta
+  ),
+  ct_ant as (
+    select ci.* from cita ci, rango r
+    where ci.negocio_id = p_negocio and not ci.eliminado
+      and ci.estado = 'completada'
+      and ci.fecha between r.desde_ant and r.hasta_ant
+  ),
+
+  -- Quien fue atendido: quien tuvo cita completada O compro. Sin unir las dos,
+  -- una venta de mostrador a alguien identificado no contaria como atencion.
+  atendidos as (
+    select count(*)::int as n from (
+      select cliente_id from ct where cliente_id is not null
+      union
+      select cliente_id from v where cliente_id is not null
+    ) x
+  ),
+  atendidos_ant as (
+    select count(*)::int as n from (
+      select cliente_id from ct_ant where cliente_id is not null
+      union
+      select cliente_id from v_ant where cliente_id is not null
+    ) x
+  ),
+
+  -- ¿HAY CON QUE COMPARAR? Si el centro no existia antes del periodo, no se
+  -- inventa un "+100%": se dice que no hay comparacion. Un porcentaje contra la
+  -- nada es el numero mas facil de creerse y el mas falso.
+  hubo_antes as (
+    select exists (
+      select 1 from venta ve, rango r
+      where ve.negocio_id = p_negocio and not ve.eliminado and ve.estado = 'cobrada'
+        and ve.fecha between r.desde_ant and r.hasta_ant
+    ) or exists (
+      select 1 from gasto ga, rango r
+      where ga.negocio_id = p_negocio and not ga.eliminado
+        and ga.fecha between r.desde_ant and r.hasta_ant
+    ) as hay
+  ),
+
+  -- --- LA SERIE DE INGRESOS CONTRA EGRESOS -------------------------
+  -- Se genera el eje COMPLETO del periodo y se pegan los importes encima. Sin
+  -- generarlo, un dia sin ventas simplemente no existiria y la linea saltaria
+  -- de martes a jueves como si el miercoles no hubiera pasado.
+  eje as (
+    select case when r.paso = 'mes'
+                then date_trunc('month', d)::date
+                else d::date end as punto
+    from rango r, generate_series(r.desde, r.hasta, interval '1 day') d
+    group by 1
+  ),
+  serie as (
+    select e.punto,
+           coalesce((select sum(x.total_centavos) from v x, rango r
+                      where case when r.paso = 'mes'
+                                 then date_trunc('month', x.fecha)::date else x.fecha end = e.punto), 0) as ingresos,
+           coalesce((select sum(y.monto_centavos) from g y, rango r
+                      where case when r.paso = 'mes'
+                                 then date_trunc('month', y.fecha)::date else y.fecha end = e.punto), 0) as egresos
+    from eje e
+  )
+
+  select jsonb_build_object(
+    'periodo', (select jsonb_build_object(
+        'desde', r.desde, 'hasta', r.hasta, 'dias', r.dias,
+        'desdeAnterior', r.desde_ant, 'hastaAnterior', r.hasta_ant,
+        'paso', r.paso) from rango r),
+
+    'hayComparacion', (select hay from hubo_antes),
+
+    'metricas', jsonb_build_object(
+      'ingresos',       (select monto from ingresos),
+      'ingresosAntes',  (select antes from ingresos),
+      'ventas',         (select count(*)::int from v),
+      'ventasAntes',    (select count(*)::int from v_ant),
+      'clientes',       (select n from atendidos),
+      'clientesAntes',  (select n from atendidos_ant),
+      'servicios',      (select count(*)::int from ct),
+      'serviciosAntes', (select count(*)::int from ct_ant)
+    ),
+
+    'finanzas', jsonb_build_object(
+      'ingresos', (select monto from ingresos),
+      'egresos',  (select coalesce(sum(monto_centavos), 0) from g),
+      -- LA UTILIDAD SE DERIVA, no se guarda: ingresos menos egresos. Un tercer
+      -- numero guardado aparte se desincroniza de los otros dos.
+      'utilidad', (select monto from ingresos) - (select coalesce(sum(monto_centavos), 0) from g),
+      -- El margen necesita ingresos: sin ellos es `null`, no cero por ciento.
+      'margen', (select case when monto = 0 then null
+                  else round(((monto - (select coalesce(sum(monto_centavos), 0) from g))::numeric
+                              / monto) * 100, 1) end from ingresos),
+      'promedioDiario', (select round((select monto from ingresos)::numeric / greatest(r.dias, 1))
+                          from rango r),
+      'clientesNuevos', (select count(*)::int from cliente c, rango r
+                          where c.negocio_id = p_negocio and not c.eliminado
+                            and c.creado_en::date between r.desde and r.hasta),
+      'serviciosRealizados', (select count(*)::int from ct),
+      'cursosVendidos', (select coalesce(sum(cantidad), 0)::int from it where tipo = 'curso')
+    ),
+
+    'serie', coalesce((select jsonb_agg(jsonb_build_object(
+        'punto', s.punto, 'ingresos', s.ingresos, 'egresos', s.egresos) order by s.punto)
+      from serie s), '[]'::jsonb),
+
+    -- Las categorias del ingreso NO son un catalogo: son los tipos que de
+    -- verdad se vendieron. Si no se vendio ni un curso, "Cursos" no aparece.
+    'categorias', coalesce((select jsonb_agg(jsonb_build_object(
+        'clave', x.tipo, 'monto', x.monto, 'cuantos', x.cuantos) order by x.monto desc)
+      from (select tipo, sum(subtotal_centavos) as monto, sum(cantidad)::int as cuantos
+              from it group by tipo) x), '[]'::jsonb),
+
+    'ventas', jsonb_build_object(
+      'cobradas',  (select count(*)::int from v),
+      'canceladas', (select count(*)::int from venta ve, rango r
+                      where ve.negocio_id = p_negocio and not ve.eliminado
+                        and ve.estado = 'cancelada' and ve.fecha between r.desde and r.hasta),
+      -- Sin ventas el ticket es `null`, no cero: no se divide entre cero y
+      -- "$0 de ticket promedio" se leeria como que se vendio regalado.
+      'ticket',  (select case when count(*) = 0 then null
+                    else round(sum(total_centavos)::numeric / count(*)) end from v),
+      'maxima',  (select max(total_centavos) from v),
+      'minima',  (select min(total_centavos) from v),
+      'porMetodo', coalesce((select jsonb_agg(jsonb_build_object(
+          'metodo', x.metodo, 'monto', x.monto, 'operaciones', x.n) order by x.monto desc)
+        from (select pg.metodo, sum(pg.monto_centavos) as monto, count(*)::int as n
+                from pago pg join v on v.id = pg.venta_id
+               group by pg.metodo) x), '[]'::jsonb)
+    ),
+
+    'servicios', jsonb_build_object(
+      'realizados', (select count(*)::int from ct),
+      'ingresos', (select coalesce(sum(subtotal_centavos), 0) from it where tipo = 'servicio'),
+      'ranking', coalesce((select jsonb_agg(jsonb_build_object(
+          'id', x.id, 'nombre', x.nombre, 'cantidad', x.cantidad, 'ingresos', x.ingresos)
+          order by x.cantidad desc, x.ingresos desc)
+        from (select vi.servicio_id as id, s.nombre,
+                     sum(vi.cantidad)::int as cantidad, sum(vi.subtotal_centavos) as ingresos
+                from it vi join servicio s on s.id = vi.servicio_id
+               where vi.tipo = 'servicio'
+               group by vi.servicio_id, s.nombre
+               limit 10) x), '[]'::jsonb)
+    ),
+
+    'clientes', jsonb_build_object(
+      'totales', (select count(*)::int from cliente c
+                   where c.negocio_id = p_negocio and not c.eliminado),
+      -- NUEVO es quien se dio de alta en el periodo, no quien compro por
+      -- primera vez: alguien de hace dos años que vuelve hoy no es nuevo.
+      'nuevos', (select count(*)::int from cliente c, rango r
+                  where c.negocio_id = p_negocio and not c.eliminado
+                    and c.creado_en::date between r.desde and r.hasta),
+      'atendidos', (select n from atendidos),
+      'recurrentes', (select count(*)::int from (
+          select cliente_id from ct where cliente_id is not null
+          group by cliente_id having count(*) > 1) x),
+      'ranking', coalesce((select jsonb_agg(jsonb_build_object(
+          'id', x.id, 'nombre', x.nombre, 'visitas', x.visitas,
+          'compras', x.compras, 'gastado', x.gastado)
+          order by x.gastado desc, x.visitas desc)
+        from (
+          select c.id, c.nombre,
+                 (select count(*)::int from ct where ct.cliente_id = c.id) as visitas,
+                 (select count(*)::int from v where v.cliente_id = c.id) as compras,
+                 (select coalesce(sum(total_centavos), 0) from v where v.cliente_id = c.id) as gastado
+            from cliente c
+           where c.negocio_id = p_negocio and not c.eliminado
+             and (exists (select 1 from ct where ct.cliente_id = c.id)
+                  or exists (select 1 from v where v.cliente_id = c.id))
+           limit 10) x), '[]'::jsonb)
+    ),
+
+    'productos', jsonb_build_object(
+      'unidades', (select coalesce(sum(cantidad), 0)::int from it where tipo = 'producto'),
+      'ingresos', (select coalesce(sum(subtotal_centavos), 0) from it where tipo = 'producto'),
+      -- El stock es de HOY, no del periodo: un inventario historico pediria
+      -- reconstruirlo movimiento a movimiento y no es lo que se pregunta aqui.
+      'bajos', (select count(*)::int from producto p
+                 where p.negocio_id = p_negocio and not p.eliminado and p.activo
+                   and app.estado_de_stock(p.stock_actual, p.stock_minimo) = 'bajo'),
+      'agotados', (select count(*)::int from producto p
+                    where p.negocio_id = p_negocio and not p.eliminado and p.activo
+                      and app.estado_de_stock(p.stock_actual, p.stock_minimo) = 'agotado'),
+      'ranking', coalesce((select jsonb_agg(jsonb_build_object(
+          'id', x.id, 'nombre', x.nombre, 'cantidad', x.cantidad, 'ingresos', x.ingresos)
+          order by x.cantidad desc, x.ingresos desc)
+        from (select vi.producto_id as id, p.nombre,
+                     sum(vi.cantidad)::int as cantidad, sum(vi.subtotal_centavos) as ingresos
+                from it vi join producto p on p.id = vi.producto_id
+               where vi.tipo = 'producto'
+               group by vi.producto_id, p.nombre
+               limit 10) x), '[]'::jsonb)
+    ),
+
+    'cursos', jsonb_build_object(
+      'vendidos', (select coalesce(sum(cantidad), 0)::int from it where tipo = 'curso'),
+      'ingresos', (select coalesce(sum(subtotal_centavos), 0) from it where tipo = 'curso'),
+      'inscritos', (select count(*)::int from inscripcion i, rango r
+                     where i.negocio_id = p_negocio and i.estado <> 'cancelado'
+                       and i.creado_en::date between r.desde and r.hasta),
+      'proximos', (select count(*)::int from curso cu, rango r
+                    where cu.negocio_id = p_negocio and not cu.eliminado
+                      and cu.estado = 'programado' and cu.fecha_inicio >= r.hasta),
+      'terminados', (select count(*)::int from curso cu, rango r
+                      where cu.negocio_id = p_negocio and not cu.eliminado
+                        and cu.estado = 'terminado'
+                        and coalesce(cu.fecha_fin, cu.fecha_inicio) between r.desde and r.hasta),
+      'ranking', coalesce((select jsonb_agg(jsonb_build_object(
+          'id', x.id, 'nombre', x.nombre, 'cantidad', x.cantidad,
+          'ingresos', x.ingresos, 'inscritos', x.inscritos, 'cupo', x.cupo)
+          order by x.cantidad desc, x.ingresos desc)
+        from (select vi.curso_id as id, cu.nombre, cu.cupo,
+                     sum(vi.cantidad)::int as cantidad, sum(vi.subtotal_centavos) as ingresos,
+                     (select count(*)::int from inscripcion i
+                       where i.curso_id = cu.id and i.estado <> 'cancelado') as inscritos
+                from it vi join curso cu on cu.id = vi.curso_id
+               where vi.tipo = 'curso'
+               group by vi.curso_id, cu.nombre, cu.cupo
+               limit 10) x), '[]'::jsonb)
+    ),
+
+    'gastos', jsonb_build_object(
+      'total',   (select coalesce(sum(monto_centavos), 0) from g),
+      'cuantos', (select count(*)::int from g),
+      'promedio', (select case when count(*) = 0 then null
+                    else round(sum(monto_centavos)::numeric / count(*)) end from g),
+      'mayor', (select max(monto_centavos) from g),
+      'menor', (select min(monto_centavos) from g),
+      'categorias', coalesce((select jsonb_agg(jsonb_build_object(
+          'categoria', x.categoria, 'monto', x.monto, 'cuantos', x.n) order by x.monto desc)
+        from (select categoria, sum(monto_centavos) as monto, count(*)::int as n
+                from g group by categoria) x), '[]'::jsonb)
+    ),
+
+    -- --- CAJA -------------------------------------------------------
+    -- Salen de los movimientos REALES, no se reconstruyen. Un movimiento
+    -- reconstruido a partir de las ventas se perderia los ingresos y retiros
+    -- capturados a mano, que son justo los que descuadran un corte.
+    'caja', jsonb_build_object(
+      'ventas', (select coalesce(sum(mc.monto_centavos), 0) from movimiento_caja mc, rango r
+                  where mc.negocio_id = p_negocio and mc.origen in ('venta', 'pago')
+                    and mc.tipo = 'ingreso' and mc.fecha between r.desde and r.hasta),
+      'ingresosManuales', (select coalesce(sum(mc.monto_centavos), 0) from movimiento_caja mc, rango r
+                            where mc.negocio_id = p_negocio and mc.origen = 'ajuste'
+                              and mc.tipo = 'ingreso' and mc.fecha between r.desde and r.hasta),
+      'retiros', (select coalesce(sum(mc.monto_centavos), 0) from movimiento_caja mc, rango r
+                   where mc.negocio_id = p_negocio and mc.origen = 'ajuste'
+                     and mc.tipo = 'egreso' and mc.fecha between r.desde and r.hasta),
+      'gastosDeCaja', (select coalesce(sum(mc.monto_centavos), 0) from movimiento_caja mc, rango r
+                        where mc.negocio_id = p_negocio and mc.origen = 'gasto'
+                          and mc.fecha between r.desde and r.hasta),
+      'movimientos', (select count(*)::int from movimiento_caja mc, rango r
+                       where mc.negocio_id = p_negocio and mc.fecha between r.desde and r.hasta),
+      -- Los cortes YA FIRMADOS del periodo. No se recalculan: se leen tal cual
+      -- se congelaron al cerrar, que es lo que los hace auditables.
+      'cortes', coalesce((select jsonb_agg(jsonb_build_object(
+          'id', s.id, 'nombre', s.nombre, 'cerradaEn', s.cerrada_en,
+          'saldoInicial', s.saldo_inicial_centavos, 'esperado', s.esperado_centavos,
+          'contado', s.contado_centavos, 'diferencia', s.diferencia_centavos)
+          order by s.cerrada_en desc)
+        from sesion_caja s, rango r
+        where s.negocio_id = p_negocio and s.estado = 'cerrada'
+          and s.cerrada_en::date between r.desde and r.hasta), '[]'::jsonb),
+      'descuadre', (select coalesce(sum(s.diferencia_centavos), 0) from sesion_caja s, rango r
+                     where s.negocio_id = p_negocio and s.estado = 'cerrada'
+                       and s.cerrada_en::date between r.desde and r.hasta)
+    )
+  );
+$$;
+
+grant execute on function public.reporte_del_periodo(text, date, date, text, text, uuid) to authenticated;
+
+comment on function public.reporte_del_periodo is
+  'TODO el reporte en UNA llamada, contado en el momento desde las tablas de cada modulo. No hay '
+  'tabla de reportes ni totales guardados: un total guardado se desincroniza a la primera venta '
+  'cancelada. Una sola llamada garantiza que las ocho pestañas hablen del mismo periodo.';
+
+-- =====================================================================
+-- REPORTES GUARDADOS
+-- =====================================================================
+--
+-- LO QUE SE GUARDA ES LA PREGUNTA, NO LA RESPUESTA. Un reporte guardado no
+-- conserva cifras: conserva el periodo y los filtros con los que se hizo. Al
+-- reabrirlo se vuelve a calcular.
+--
+-- Es a proposito y es lo unico correcto: si guardara las cifras, un reporte de
+-- junio abierto en agosto seguiria enseñando lo que decia en junio aunque desde
+-- entonces se hubiera cancelado una venta de ese mes. Diria un numero que ya no
+-- es verdad, con fecha y firma.
+create table if not exists reporte_guardado (
+  id             uuid primary key default gen_random_uuid(),
+  negocio_id     text not null references negocio(id) on delete cascade,
+  nombre         text not null,
+  -- Que pestaña se estaba viendo: resumen, ventas, servicios…
+  tipo           text not null default 'resumen',
+  desde          date not null,
+  hasta          date not null,
+  -- Los filtros tal cual, para poder reconstruir la pantalla exacta.
+  filtros        jsonb not null default '{}'::jsonb,
+  creado_por     uuid,
+  creado_por_nombre text,
+  creado_en      timestamptz not null default now(),
+  eliminado      boolean not null default false
+);
+
+comment on table reporte_guardado is
+  'Guarda la PREGUNTA (periodo y filtros), nunca la respuesta. Un reporte con cifras congeladas '
+  'seguiria afirmando un total que dejo de ser verdad en cuanto se cancelara una venta de ese mes.';
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'reporte_guardado_negocio_id_unico') then
+    alter table reporte_guardado add constraint reporte_guardado_negocio_id_unico unique (negocio_id, id);
+  end if;
+end $$;
+
+create index if not exists reporte_guardado_negocio_idx
+  on reporte_guardado (negocio_id, creado_en desc) where not eliminado;
+
+alter table reporte_guardado enable row level security;
+alter table reporte_guardado force row level security;
+
+drop policy if exists reporte_guardado_ver on reporte_guardado;
+create policy reporte_guardado_ver on reporte_guardado
+  for select using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'verFinanzas'));
+
+drop policy if exists reporte_guardado_escribir on reporte_guardado;
+create policy reporte_guardado_escribir on reporte_guardado
+  for insert with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'verFinanzas'));
+
+drop policy if exists reporte_guardado_cambiar on reporte_guardado;
+create policy reporte_guardado_cambiar on reporte_guardado
+  for update using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'verFinanzas'))
+  with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'verFinanzas'));
+
+create or replace function public.guardar_reporte(
+  p_negocio text,
+  p_nombre  text,
+  p_tipo    text,
+  p_desde   date,
+  p_hasta   date,
+  p_filtros jsonb default '{}'::jsonb
+)
+returns uuid
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+  v_id    uuid;
+  v_quien membresia;
+begin
+  if btrim(coalesce(p_nombre, '')) = '' then
+    raise exception 'El reporte necesita un nombre para poder encontrarlo despues.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  select * into v_quien from membresia
+   where negocio_id = p_negocio and usuario_id = auth.uid() limit 1;
+
+  insert into reporte_guardado (negocio_id, nombre, tipo, desde, hasta, filtros,
+                                creado_por, creado_por_nombre)
+  values (p_negocio, btrim(p_nombre), coalesce(p_tipo, 'resumen'), p_desde, p_hasta,
+          coalesce(p_filtros, '{}'::jsonb), auth.uid(), coalesce(v_quien.nombre, 'desconocido'))
+  returning id into v_id;
+
+  return v_id;
+end;
+$$;
+
+grant execute on function public.guardar_reporte(text, text, text, date, date, jsonb) to authenticated;
+
+create or replace function public.reportes_guardados(p_negocio text)
+returns jsonb
 language sql
 stable
 security invoker
@@ -7700,3 +8205,24 @@ set search_path = public, pg_temp
 as $$
   select count(*) from gasto where categoria_id = p_categoria and not eliminado;
 $$;
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', r.id, 'nombre', r.nombre, 'tipo', r.tipo,
+      'desde', r.desde, 'hasta', r.hasta, 'filtros', r.filtros,
+      'creadoEn', r.creado_en, 'creadoPor', r.creado_por_nombre)
+      order by r.creado_en desc), '[]'::jsonb)
+  from reporte_guardado r
+  where r.negocio_id = p_negocio and not r.eliminado;
+$$;
+
+grant execute on function public.reportes_guardados(text) to authenticated;
+
+create or replace function public.borrar_reporte(p_reporte uuid)
+returns void
+language sql
+security invoker
+set search_path = public, pg_temp
+as $$
+  update reporte_guardado set eliminado = true where id = p_reporte;
+$$;
+
+grant execute on function public.borrar_reporte(uuid) to authenticated;
