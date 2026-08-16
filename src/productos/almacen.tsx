@@ -13,7 +13,8 @@
  */
 
 import { tomarIntencion, useNavegacion } from '@neron/base/marco';
-import { Boton, Campo, Confirmacion, Modal } from '@neron/base/ui';
+import { Boton, Campo, Confirmacion } from '@neron/base/ui';
+import { Modal } from '../ui/modal.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Categoria } from '../datos/categorias.js';
 import {

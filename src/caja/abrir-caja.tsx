@@ -10,7 +10,8 @@
  * cliente enfrente y el billete en la mano es el peor momento.
  */
 
-import { Boton, Campo, Modal } from '@neron/base/ui';
+import { Boton, Campo } from '@neron/base/ui';
+import { Modal } from '../ui/modal.js';
 import { formatearMoneda } from '@neron/base/utils';
 import { useState } from 'react';
 import { centavosDeLoEscrito, type LoQueAbreUnaCaja } from '../datos/caja.js';

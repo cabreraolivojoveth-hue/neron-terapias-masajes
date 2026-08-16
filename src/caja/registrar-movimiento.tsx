@@ -15,7 +15,8 @@
  * pantalla lo dice para que nadie lo busque en el corte.
  */
 
-import { Boton, Campo, Modal } from '@neron/base/ui';
+import { Boton, Campo } from '@neron/base/ui';
+import { Modal } from '../ui/modal.js';
 import { formatearMoneda } from '@neron/base/utils';
 import { useState } from 'react';
 import type { LoQueSeMueve, MetodoDeCaja } from '../datos/caja.js';

@@ -16,7 +16,8 @@
  * financiero tiene que hacer imposible.
  */
 
-import { Boton, Campo, Modal } from '@neron/base/ui';
+import { Boton, Campo } from '@neron/base/ui';
+import { Modal } from '../ui/modal.js';
 import { formatearMoneda } from '@neron/base/utils';
 import { useState } from 'react';
 import type { CajaAbierta } from '../datos/caja.js';

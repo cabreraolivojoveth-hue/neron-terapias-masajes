@@ -15,7 +15,8 @@
  * decision en informada.
  */
 
-import { Boton, Campo, Confirmacion, Modal } from '@neron/base/ui';
+import { Boton, Campo, Confirmacion } from '@neron/base/ui';
+import { Modal } from './modal.js';
 import { useState } from 'react';
 import type { Categoria, DatosDeCategoria } from '../datos/categorias.js';
 import { COLOR_POR_OMISION } from '../marca.js';

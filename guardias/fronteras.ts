@@ -590,6 +590,61 @@ function guardiaElVeloSeVisteUnaSolaVez(): void {
 }
 
 /* ------------------------------------------------------------------ */
+/* 15 — El Modal entra por el envoltorio, nunca directo de la base     */
+/* ------------------------------------------------------------------ */
+/**
+ * EL FALLO QUE ESTA GUARDIA IMPIDE ES EL PEOR DE TODOS LOS QUE HA HABIDO:
+ * no revienta, no sale en la consola, y hace imposible capturar.
+ *
+ * QUE SE SENTIA: estabas escribiendo el telefono de un cliente nuevo y el
+ * cursor SALTABA SOLO al campo de arriba. Sin tocar nada. Las letras se iban al
+ * campo equivocado. Pasaba en todos los campos y en todos los formularios.
+ *
+ * QUE PASABA: el `Modal` de la base enfoca su primer control al abrirse
+ * —correcto: quien navega con teclado tiene que entrar al dialogo— pero ese
+ * efecto depende de `onCerrar`:
+ *
+ *     const cerrarSiSePuede = useCallback(..., [bloqueado, onCerrar]);
+ *     useEffect(() => { ...enfocarAdentro()... }, [abierto, cerrarSiSePuede]);
+ *
+ * Y las pantallas le pasan una flecha escrita en linea —`onCerrar={() =>
+ * setFicha(null)}`—, que es una funcion NUEVA en cada render del padre. Asi que
+ * cada repintado del padre, por cualquier motivo, volvia a enfocar el primer
+ * campo con la persona escribiendo en el tercero.
+ *
+ * POR QUE UNA GUARDIA Y NO SOLO EL ARREGLO: `src/ui/modal.tsx` le entrega a la
+ * base una funcion de identidad estable, asi que el efecto solo depende de
+ * `abierto`. Pero el arreglo vive en el envoltorio, y la pantalla numero trece
+ * la va a escribir alguien que importa `Modal` de donde vienen `Boton` y
+ * `Campo` —que es lo natural— y el fallo vuelve solo en esa pantalla. Nadie lo
+ * atribuye al import.
+ *
+ * `Confirmacion` NO tiene el fallo (su efecto depende solo de `[abierto]`) y
+ * por eso puede seguir viniendo de la base.
+ */
+function guardiaElModalEntraPorElEnvoltorio(): void {
+  const ENVOLTORIO = join('ui', 'modal.tsx');
+
+  for (const archivo of FUENTE) {
+    if (archivo.endsWith(ENVOLTORIO)) continue; // es el unico que puede
+    const limpio = sinComentarios(readFileSync(archivo, 'utf8'));
+
+    for (const m of limpio.matchAll(/import\s*\{([^}]*)\}\s*from\s*'@neron\/base\/ui'/g)) {
+      const nombres = (m[1] ?? '').split(',').map((n) => n.trim().split(/\s+as\s+/)[0]!.trim());
+      if (!nombres.includes('Modal')) continue;
+
+      fallar(archivo, 'importa `Modal` directo de @neron/base/ui',
+        'El Modal del producto es src/ui/modal.tsx, que le amarra el foco. El de la base vuelve a ' +
+        'enfocar su primer campo CADA VEZ que se repinta la pantalla de atras, porque su efecto ' +
+        'depende de `onCerrar` y todas las pantallas le pasan una flecha en linea, que es una ' +
+        'funcion nueva en cada render. Se siente asi: escribes en el tercer campo y el cursor salta ' +
+        'solo al primero. No falla, no avisa y no sale en la consola — solo hace imposible capturar. ' +
+        "Cambia el import a '../ui/modal.js' y deja a `Confirmacion` en la base, que si esta bien.");
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
 
 const GUARDIAS = [
   { nombre: 'ni un dato de ejemplo', correr: guardiaSinDatosDeEjemplo },
@@ -609,6 +664,10 @@ const GUARDIAS = [
     correr: guardiaSinAnimacionesQueSeQuedanEnEfecto,
   },
   { nombre: 'lo que flota se viste una sola vez', correr: guardiaElVeloSeVisteUnaSolaVez },
+  {
+    nombre: 'el Modal entra por el envoltorio que amarra el foco',
+    correr: guardiaElModalEntraPorElEnvoltorio,
+  },
 ];
 
 for (const g of GUARDIAS) g.correr();

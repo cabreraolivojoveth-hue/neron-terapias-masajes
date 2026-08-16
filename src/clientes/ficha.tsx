@@ -16,7 +16,8 @@
  * hay hermanas con el mismo apellido.
  */
 
-import { AreaDeTexto, Boton, Campo, Modal, Seleccion } from '@neron/base/ui';
+import { AreaDeTexto, Boton, Campo, Seleccion } from '@neron/base/ui';
+import { Modal } from '../ui/modal.js';
 import { Plegable } from '../ui/plegable.js';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ProfesionalBreve } from '../datos/citas.js';

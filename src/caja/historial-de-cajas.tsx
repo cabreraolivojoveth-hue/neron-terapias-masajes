@@ -10,7 +10,7 @@
  * vez de pintar un cero que se leería como "cuadró".
  */
 
-import { Modal } from '@neron/base/ui';
+import { Modal } from '../ui/modal.js';
 import { formatearMoneda } from '@neron/base/utils';
 import type { CajaDelHistorial, ReporteDeCaja } from '../datos/caja.js';
 import {

@@ -18,7 +18,7 @@
  * guardados como un peso, y no se nota hasta el corte.
  */
 
-import { Modal } from '@neron/base/ui';
+import { Modal } from '../ui/modal.js';
 import { formatearMoneda } from '@neron/base/utils';
 import type { Categoria } from '../datos/categorias.js';
 import type { ProveedorEnLista } from '../datos/productos.js';

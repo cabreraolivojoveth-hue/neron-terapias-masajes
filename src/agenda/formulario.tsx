@@ -14,7 +14,8 @@
  *    paciente nuevo conservando servicio, fecha y hora.
  */
 
-import { Boton, Campo, AreaDeTexto, Seleccion, Modal } from '@neron/base/ui';
+import { Boton, Campo, AreaDeTexto, Seleccion } from '@neron/base/ui';
+import { Modal } from '../ui/modal.js';
 import { sumarDias, type Fecha } from '@neron/base/utils';
 import { useMemo, useState, type FormEvent } from 'react';
 import type { ClienteBreve, ProfesionalBreve, ServicioBreve } from '../datos/citas.js';

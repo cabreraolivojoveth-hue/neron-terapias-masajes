@@ -15,7 +15,8 @@
  * nadie encuentra.
  */
 
-import { AreaDeTexto, Boton, Campo, Modal, Seleccion } from '@neron/base/ui';
+import { AreaDeTexto, Boton, Campo, Seleccion } from '@neron/base/ui';
+import { Modal } from '../ui/modal.js';
 import { aCentavos, aPesos } from '@neron/base/utils';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Categoria, DatosDeServicio } from '../datos/servicios.js';
