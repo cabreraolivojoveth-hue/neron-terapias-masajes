@@ -200,10 +200,38 @@ en lugar de entregarlo.
 - **El correo para ENTRAR a la aplicacion es otro:** `cabreraolivojoveth@gmail.com`.
   Vive en Authentication -> Users del proyecto, y no tiene nada que ver con el
   correo dueño de la cuenta de Supabase.
-- **Proyecto viejo, perdido:** `cxldnxdfhxipckvduzpk` — quedo en una cuenta sin
-  acceso. Sigue vivo pero es inalcanzable; no volver a apuntar nada ahi. Lo que
-  tenia rescatado esta en el volcado del 13/08/2026 (solo datos de ensayo).
-  El proyecto `zykqzykjlrjqsbrwpucc` es solo para probar la base — no se usa.
+- **HAY TRES PROYECTOS Y DOS SE LLAMAN CASI IGUAL. Antes de correr un SQL,
+  MIRA EL REF EN LA BARRA DE DIRECCIONES.**
+
+  | Ref | Se llama | Cuenta / organizacion | Que es |
+  |---|---|---|---|
+  | `hgypobbanvkwnqmepqim` | `neron-terapias` | neroncenterserv@gmail.com · `Neron Terapias` | **EL DEL PRODUCTO.** Aqui van todos los SQL. |
+  | `cxldnxdfhxipckvduzpk` | `Neron-terapias` | cabreraolivojoveth@gmail.com · `Neron Platform` | El viejo. NO es el del producto. |
+  | `zykqzykjlrjqsbrwpucc` | — | — | Solo para probar la base. No se usa. |
+
+  ESTO COSTO UNA MAÑANA EL 16/08/2026, y el fallo se veia asi: se pegaba
+  `ACTUALIZAR-BASE.sql`, salia **sin un solo error**, y la pantalla de Reportes
+  seguia diciendo "no se pudo calcular el reporte". Se busco en el cache de
+  PostgREST, en los permisos y en la firma de la funcion. Todo estaba bien: el
+  SQL se habia aplicado entero — en `cxldnxdfhxipckvduzpk`.
+
+  Lo que lo hace tan facil de repetir: el segundo proyecto TAMBIEN se llama
+  "Neron-terapias", y es el que sale al entrar con el correo de todos los dias.
+  El nombre en el selector de arriba no distingue nada; el ref de la barra si.
+
+  Nota vieja que era FALSA y por eso engaño: aqui decia que
+  `cxldnxdfhxipckvduzpk` "quedo en una cuenta sin acceso" y era "inalcanzable".
+  No lo es — se entra con `cabreraolivojoveth@gmail.com` sin pedir nada. Dar por
+  perdido algo que sigue abierto es peor que no apuntarlo: se descarta como
+  sospechoso justo cuando es el culpable.
+
+  **Como comprobarlo sin fiarse de nadie**, incluida esta tabla — es lo que de
+  verdad usa el sitio publicado, leido de lo que hay publicado:
+
+  ```bash
+  curl -s https://neron-terapias-masajes-neon.vercel.app/ | grep -oE 'assets/[^"]+\.js'
+  curl -s https://neron-terapias-masajes-neon.vercel.app/assets/ESE-ARCHIVO.js | grep -oE '[a-z0-9]{20}\.supabase\.co'
+  ```
 - **El limite de 2 proyectos gratis de Supabase es POR CUENTA, no por
   organizacion.** Crear una organizacion nueva no lo esquiva: hay que pausar,
   borrar o pagar. Por eso el producto vive en una cuenta aparte.
