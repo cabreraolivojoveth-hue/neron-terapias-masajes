@@ -87,6 +87,7 @@ const LO_QUE_SE_REVISA: readonly {
   },
   { modulo: 'gastos', abre: ['Nuevo gasto'] },
   { modulo: 'reportes', abre: ['Guardar reporte actual'] },
+  { modulo: 'mensajes', abre: ['Plantillas', 'Nuevo mensaje'] },
 ];
 
 interface Falla { donde: string; que: string }

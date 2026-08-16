@@ -26,6 +26,13 @@ export const CAPACIDADES_DE_TERAPIAS = [
   // El costo y el margen no son para todo el mundo. Va aparte de `verFinanzas`
   // porque quien administra el almacen necesita ver costos sin ver la caja.
   'verCostos',
+  /*
+   * Los mensajes son informacion privada de un paciente: lo que pregunto, lo
+   * que le duele, lo que se le contesto. Va con su propia capacidad y no con
+   * `gestionarClientes` porque son dos trabajos distintos — quien captura
+   * fichas en recepcion no tiene por que leer conversaciones.
+   */
+  'gestionarMensajes',
 ] as const;
 
 export type CapacidadDeTerapias = (typeof CAPACIDADES_DE_TERAPIAS)[number];
@@ -162,7 +169,7 @@ export const MODULOS: readonly ModuloDelProducto[] = [
     id: 'mensajes',
     etiqueta: 'Mensajes',
     icono: 'mensaje',
-    capacidad: null,
+    capacidad: 'gestionarMensajes',
     bloque: 11,
     promesa:
       'Las conversaciones con los pacientes: recordatorios de cita, confirmaciones y avisos.',

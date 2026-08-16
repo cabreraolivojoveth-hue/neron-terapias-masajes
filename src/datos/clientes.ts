@@ -60,6 +60,15 @@ export interface ClienteEnLista {
   readonly visitas: number;
   readonly ultimaVisita: Fecha | null;
   readonly estado: EstadoDeCliente;
+  /**
+   * Si se le pueden mandar difusiones promocionales.
+   *
+   * `undefined` es una base que todavia no tiene la columna, y cuenta como que
+   * SI acepta: si contara como que no, una base sin actualizar dejaria a todo
+   * el mundo fuera de cualquier difusion sin decir por que. Quien pida dejar de
+   * recibirlas se apaga desde su ficha.
+   */
+  readonly aceptaPromociones?: boolean;
 }
 
 export interface PaginaDeClientes {
@@ -235,6 +244,9 @@ export function ordenarFila(crudo: unknown): ClienteEnLista {
     visitas: numero(c['visitas']),
     ultimaVisita: fechaOpcional(c['ultimaVisita']),
     estado: (texto(c['estado']) || 'inactivo') as EstadoDeCliente,
+    ...(typeof c['aceptaPromociones'] === 'boolean'
+      ? { aceptaPromociones: c['aceptaPromociones'] }
+      : {}),
   };
 }
 

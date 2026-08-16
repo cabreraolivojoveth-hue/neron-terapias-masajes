@@ -77,6 +77,7 @@ const LO_QUE_SE_ABRE: readonly {
   /* Reportes solo abre uno: guardar la pregunta. Todo lo demas de la pantalla
      vive en la pantalla, que es lo que se pretendia. */
   { modulo: 'reportes', botones: ['Guardar reporte actual'] },
+  { modulo: 'mensajes', botones: ['Plantillas', 'Configuración de mensajes', 'Nuevo mensaje'] },
 ];
 
 /** Lo mas oscuro que se le permite a un velo. Mas que esto borra lo de atras. */

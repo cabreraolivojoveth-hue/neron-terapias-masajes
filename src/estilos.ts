@@ -2817,5 +2817,233 @@ function loQueTodaviaEsDeUnModulo(): string {
 }
 .rep-campo:focus-visible { outline: 2px solid ${v('foco')}; outline-offset: 1px; }
 
+
+/* ================================================================ */
+/* MENSAJES — la capa de comunicacion                               */
+/* ================================================================ */
+
+/* TRES COLUMNAS: la lista, el hilo y el costado. Se desarma por partes y no de
+   golpe — primero cae el costado, que es apoyo, y solo en telefono la lista se
+   pone encima del hilo. Desarmarlo todo a la vez deja el chat en una franja de
+   trescientos pixeles con la lista arriba comiendose la pantalla. */
+.msj-cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: ${v('espacio-4')};
+  align-items: start;
+  min-width: 0;
+}
+@media (min-width: 1100px) {
+  .msj-cuerpo { grid-template-columns: 340px minmax(0, 1fr); }
+}
+@media (min-width: 1400px) {
+  .msj-cuerpo { grid-template-columns: 320px minmax(0, 1fr) 300px; }
+}
+
+.msj-lista { display: flex; flex-direction: column; gap: ${v('espacio-3')}; min-width: 0; }
+.msj-costado { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
+/* APILADOS. Lado a lado en una columna de trescientos cuarenta pixeles, el
+   buscador se quedaba en ciento cincuenta y el marcador de posición salía
+   cortado a media palabra ("Buscar conversaci"). */
+.msj-filtros { display: flex; flex-direction: column; gap: ${v('espacio-2')}; min-width: 0; }
+.msj-filtros .pz-buscador { width: 100%; min-width: 0; }
+.msj-filtros .pz-campo { width: 100%; }
+
+.msj-hilos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+
+/* Un hilo de la lista. El boton ocupa el renglon ENTERO: un blanco de doce
+   pixeles de alto es imposible de tocar en una tableta. */
+.msj-hilo {
+  width: 100%;
+  display: flex; align-items: flex-start; gap: ${v('espacio-3')};
+  padding: ${v('espacio-3')};
+  border: 0; border-radius: ${c('radio-control')};
+  background: transparent; color: inherit; font: inherit; text-align: left;
+  cursor: pointer; min-width: 0;
+  transition: background ${v('movimiento-curva')} ${v('movimiento-instantaneo')};
+}
+.msj-hilo:hover { background: ${v('superficie-tenue')}; }
+.msj-hilo:focus-visible { outline: 2px solid ${v('foco')}; outline-offset: -2px; }
+/* El escogido se distingue por FONDO y por barra, no solo por color: quien no
+   distingue el verde tiene que poder ver cual esta abierto. */
+.msj-hilo--puesto {
+  background: ${v('marca-tenue')};
+  box-shadow: inset 3px 0 0 ${v('marca')};
+}
+
+.msj-hilo__cuerpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.msj-hilo__arriba { display: flex; align-items: baseline; gap: ${v('espacio-2')}; min-width: 0; }
+.msj-hilo__arriba .pz-renglon__titulo {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.msj-hilo__cuando { flex: none; font-size: ${v('texto-micro')}; color: ${v('texto-tenue')}; }
+.msj-hilo__abajo { display: flex; align-items: center; gap: ${v('espacio-2')}; min-width: 0; }
+/* Una linea y con puntos suspensivos: el ultimo mensaje es una pista, no el
+   mensaje. Dejarlo envolver hace que un parrafo largo se coma la lista. */
+.msj-hilo__ultimo {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: ${v('texto-chico')}; color: ${v('texto-suave')};
+}
+.msj-hilo__marcas { display: flex; flex-wrap: wrap; gap: ${v('espacio-1')}; align-items: center; }
+.msj-hilo__canal { font-size: ${v('texto-micro')}; color: ${v('texto-tenue')}; }
+
+.msj-sin-leer {
+  flex: none; min-width: 20px; height: 20px; padding: 0 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: ${c('radio-pastilla')};
+  background: ${v('marca')}; color: ${v('sobre-marca')};
+  font-size: ${v('texto-micro')}; font-weight: ${v('peso-fuerte')};
+  font-variant-numeric: ${v('cifra-numeros')};
+}
+
+/* ---------------------------------------------------------------- */
+/* El hilo abierto                                                   */
+/* ---------------------------------------------------------------- */
+/* ALTURA MAXIMA Y DESPLAZAMIENTO POR DENTRO. Sin el maximo, un hilo de
+   trescientos mensajes estira la tarjeta hasta que el cuadro de escribir queda
+   a diez pantallas del principio — y responder obliga a bajar todo. */
+.msj-hilo-abierto {
+  display: flex; flex-direction: column; gap: ${v('espacio-3')};
+  min-height: 420px;
+  max-height: calc(100dvh - ${v('espacio-8')});
+}
+.msj-cabeza {
+  display: flex; align-items: center; gap: ${v('espacio-3')}; min-width: 0;
+  padding-bottom: ${v('espacio-3')};
+  border-bottom: 1px solid ${c('borde-tenue')};
+}
+.msj-cabeza__quien { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.msj-mensajes {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: ${v('espacio-2')};
+  padding-right: ${v('espacio-2')};
+}
+.msj-dia {
+  margin: ${v('espacio-3')} 0 ${v('espacio-2')};
+  text-align: center;
+  font-size: ${v('texto-micro')}; color: ${v('texto-tenue')};
+}
+
+/* LO QUE ENTRA A LA IZQUIERDA Y LO QUE SALE A LA DERECHA. El sitio dice quien
+   hablo sin depender del color, que es lo que hace falta para quien no
+   distingue los tonos. */
+.msj-globo {
+  max-width: 74%;
+  padding: ${v('espacio-3')};
+  border-radius: ${c('radio-tarjeta')};
+  background: ${v('superficie-tenue')};
+  font-size: ${v('texto-chico')};
+}
+.msj-globo--entrante { align-self: flex-start; border-bottom-left-radius: 4px; }
+.msj-globo--saliente {
+  align-self: flex-end;
+  background: ${v('marca-tenue')};
+  border-bottom-right-radius: 4px;
+}
+.msj-globo--fallido { background: ${v('peligro-tenue')}; }
+.msj-globo__texto { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msj-globo__pie {
+  margin: ${v('espacio-1')} 0 0;
+  display: flex; gap: ${v('espacio-2')}; align-items: center; flex-wrap: wrap;
+  font-size: ${v('texto-micro')}; color: ${v('texto-tenue')};
+}
+.msj-globo__error { margin: ${v('espacio-1')} 0 0; font-size: ${v('texto-micro')}; color: ${v('peligro')}; }
+
+/* El estado se lee CON PALABRAS. Una palomita gris y una azul son el mismo
+   dibujo para media humanidad. */
+.msj-estado--pendiente { color: ${v('texto-tenue')}; }
+.msj-estado--enviando  { color: ${v('texto-tenue')}; }
+.msj-estado--enviado   { color: ${v('texto-suave')}; }
+.msj-estado--entregado { color: ${v('texto-suave')}; }
+.msj-estado--leido     { color: ${v('exito')}; }
+.msj-estado--fallido   { color: ${v('peligro')}; font-weight: ${v('peso-medio')}; }
+
+/* ---------------------------------------------------------------- */
+/* El cuadro de escribir                                             */
+/* ---------------------------------------------------------------- */
+.msj-escribir {
+  position: relative;
+  display: flex; align-items: flex-end; gap: ${v('espacio-2')};
+  padding-top: ${v('espacio-3')};
+  border-top: 1px solid ${c('borde-tenue')};
+}
+.msj-campo { flex: 1; min-width: 0; display: block; }
+.msj-campo__texto {
+  width: 100%; min-height: 44px; max-height: 160px;
+  padding: ${v('espacio-3')};
+  border: 1px solid ${c('borde-tarjeta')};
+  border-radius: ${c('radio-control')};
+  background: ${v('superficie')}; color: ${v('texto')};
+  font: inherit; font-size: ${v('texto-chico')};
+  resize: vertical;
+}
+.msj-campo__texto--alto { min-height: 120px; }
+.msj-campo__texto:focus-visible { outline: 2px solid ${v('foco')}; outline-offset: 1px; }
+.msj-campo__linea {
+  width: 100%;
+  padding: ${v('espacio-2')} ${v('espacio-3')};
+  border: 1px solid ${c('borde-tarjeta')};
+  border-radius: ${c('radio-control')};
+  background: ${v('superficie')}; color: ${v('texto')};
+  font: inherit;
+}
+.msj-campo__linea:focus-visible { outline: 2px solid ${v('foco')}; outline-offset: 1px; }
+
+/* El selector de emojis flota ENCIMA y no empuja: si empujara, el cuadro de
+   texto saltaria hacia arriba justo mientras se escribe. */
+.msj-emojis {
+  position: absolute; right: 0; bottom: 100%;
+  display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px;
+  margin-bottom: ${v('espacio-2')}; padding: ${v('espacio-2')};
+  border: 1px solid ${c('borde-tarjeta')};
+  border-radius: ${c('radio-control')};
+  background: ${v('superficie-elevada')};
+  box-shadow: ${c('sombra-alta')};
+  z-index: 20;
+}
+.msj-emoji {
+  width: 32px; height: 32px;
+  border: 0; border-radius: ${c('radio-control')};
+  background: transparent; cursor: pointer; font-size: 18px; line-height: 1;
+}
+.msj-emoji:hover { background: ${v('superficie-tenue')}; }
+
+/* ---------------------------------------------------------------- */
+/* Plantillas, difusiones y atajos                                   */
+/* ---------------------------------------------------------------- */
+/* UNA COLUMNA, NO DOS. En dos, "Mensajes automáticos" no cabía en la mitad de
+   una columna de trescientos pixeles y salía cortado a media palabra. Cuatro
+   botones apilados se leen; cuatro cortados, no. */
+.msj-atajos { display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
+.msj-atajos .pz-boton { width: 100%; justify-content: flex-start; }
+
+.msj-variables { display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
+.msj-variables__lista { display: flex; flex-wrap: wrap; gap: ${v('espacio-1')}; }
+.msj-variable { cursor: pointer; border: 1px dashed ${c('borde-tarjeta')}; }
+
+.msj-plantilla { display: flex; align-items: flex-start; gap: ${v('espacio-3')}; min-width: 0; }
+/* Dos lineas del texto y basta: la lista sirve para reconocerla, no para
+   leerla entera. */
+.msj-plantilla__texto {
+  font-size: ${v('texto-micro')}; color: ${v('texto-suave')};
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.msj-destinatarios { max-height: 260px; overflow-y: auto; overscroll-behavior: contain; }
+.msj-destinatario {
+  display: flex; align-items: center; gap: ${v('espacio-3')};
+  padding: ${v('espacio-2')}; cursor: pointer; min-width: 0;
+}
+.msj-destinatario:hover { background: ${v('superficie-tenue')}; }
+.msj-vista-previa {
+  padding: ${v('espacio-3')};
+  border-left: 3px solid ${v('marca')};
+  border-radius: ${c('radio-control')};
+  background: ${v('superficie-tenue')};
+  white-space: pre-wrap;
+}
+
 `;
 }

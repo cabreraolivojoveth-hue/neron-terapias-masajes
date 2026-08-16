@@ -174,13 +174,13 @@ describe('ya dentro', () => {
      * Se abre desde el menu uno de los que todavia no llegan —Mensajes— y
      * tiene que decir la verdad en vez de enseñar una tabla de mentiras.
      *
-     * ANTES ERA REPORTES, y se cambio el dia que Reportes se construyo. Vale la
-     * pena dejarlo escrito: esta prueba vigila el modulo PENDIENTE, no uno en
-     * concreto, asi que cuando el ultimo se construya se borra — no se busca
-     * otro con que rellenarla.
+     * ANTES ERA REPORTES, despues MENSAJES, y cada vez que uno se construye hay
+     * que mover esta prueba al siguiente. Vale la pena dejarlo escrito: vigila
+     * el modulo PENDIENTE, no uno en concreto, asi que cuando el ultimo se
+     * construya se borra — no se busca otro con que rellenarla.
      */
     const { container } = conEstado('listo', ACCESO_DUENA);
-    await userEvent.click(screen.getByRole('button', { name: 'Mensajes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Recordatorios' }));
     expect(screen.getByText(/vacía a propósito/i)).toBeDefined();
     expect(container.textContent).not.toContain('$4,850');
   });

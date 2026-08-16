@@ -1925,3 +1925,1233 @@ as $$
 $$;
 
 grant execute on function public.borrar_reporte(uuid) to authenticated;
+
+-- =====================================================================
+-- MENSAJES — la capa de comunicacion con los clientes
+-- =====================================================================
+--
+-- MENSAJES NO ES UNA SEGUNDA BASE DE DATOS DEL SISTEMA, y esa es toda su
+-- arquitectura. No guarda el nombre del cliente, ni su telefono, ni su saldo,
+-- ni la fecha de su cita: guarda `cliente_id` y lo demas se resuelve al leer.
+-- El dia que alguien cambie de apellido, todas las conversaciones viejas lo
+-- dicen al dia sin tocar nada — y no hay forma de que existan dos versiones de
+-- la misma persona.
+--
+-- LAS CUATRO CAPAS, y por que estan separadas:
+--
+--   mensaje  ->  conversacion  ->  canal  ->  proveedor
+--
+-- El proveedor (WhatsApp, SMS, correo) es lo unico que cambia entre canales, y
+-- vive FUERA de estas tablas. Si el modulo hablara de WhatsApp directamente,
+-- agregar SMS obligaria a reescribirlo entero; asi, un canal nuevo es un
+-- renglon en `canal_de_mensajes` y un adaptador nuevo del lado del servidor.
+--
+-- AQUI NO HAY NI UNA CREDENCIAL, Y ES A PROPOSITO. Estas tablas las lee el
+-- navegador a traves de las reglas de fila: cualquier cosa guardada aqui es
+-- cualquier cosa que se puede leer desde la consola del navegador. Los tokens
+-- del proveedor van en las variables de entorno del servidor que los use, y
+-- ese servidor todavia no existe — ver `canal_de_mensajes`.
+
+-- ---------------------------------------------------------------------
+-- 1. LAS ETIQUETAS SE SUMAN A LAS CATEGORIAS QUE YA HABIA
+-- ---------------------------------------------------------------------
+--
+-- No se crea una tabla de etiquetas. `categoria` ya sirve a servicios, cursos,
+-- productos y gastos con su `ambito`, ya tiene color, ya tiene su pantalla de
+-- administracion y sus reglas de fila. Una tabla paralela seria el mismo
+-- concepto con dos nombres, y el dia que se renombre una etiqueta habria que
+-- acordarse de cual de las dos.
+alter table categoria drop constraint if exists categoria_ambito_check;
+alter table categoria add constraint categoria_ambito_check
+  check (ambito in ('servicio', 'curso', 'producto', 'gasto', 'conversacion'));
+
+-- ---------------------------------------------------------------------
+-- 2. LOS CANALES
+-- ---------------------------------------------------------------------
+--
+-- UN CANAL NO SE PUEDE DECLARAR "CONECTADO" DESDE EL NAVEGADOR. El estado
+-- arranca en 'sin_conectar' y solo lo mueve quien de verdad hablo con el
+-- proveedor, que es el servidor. Dejar que la pantalla lo pusiera en
+-- 'conectado' seria pintar un candado cerrado en una puerta abierta: se
+-- intentaria enviar, fallaria cada vez, y la culpa pareceria del mensaje.
+--
+-- `configuracion` guarda lo que NO es secreto: el numero visible, el nombre de
+-- la cuenta, el identificador publico. Los tokens NO van aqui — ver la cabeza
+-- de este bloque.
+create table if not exists canal_de_mensajes (
+  id             uuid primary key default gen_random_uuid(),
+  negocio_id     text not null references negocio(id) on delete cascade,
+  tipo           text not null check (tipo in ('whatsapp', 'sms', 'correo', 'manual')),
+  nombre         text not null,
+  -- El numero o la cuenta que ve el cliente. Nulo mientras no se conecte.
+  identificador  text,
+  estado         text not null default 'sin_conectar'
+                 check (estado in ('sin_conectar', 'conectado', 'error')),
+  detalle_error  text,
+  ultima_sincronizacion timestamptz,
+  configuracion  jsonb not null default '{}'::jsonb,
+  activo         boolean not null default true,
+  eliminado      boolean not null default false,
+  creado_en      timestamptz not null default now()
+);
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'canal_de_mensajes_negocio_id_unico') then
+    alter table canal_de_mensajes add constraint canal_de_mensajes_negocio_id_unico
+      unique (negocio_id, id);
+  end if;
+end $$;
+
+create index if not exists canal_de_mensajes_negocio_idx
+  on canal_de_mensajes (negocio_id) where not eliminado;
+
+alter table canal_de_mensajes enable row level security;
+alter table canal_de_mensajes force row level security;
+
+drop policy if exists canal_de_mensajes_ver on canal_de_mensajes;
+create policy canal_de_mensajes_ver on canal_de_mensajes
+  for select using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+drop policy if exists canal_de_mensajes_escribir on canal_de_mensajes;
+create policy canal_de_mensajes_escribir on canal_de_mensajes
+  for insert with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+drop policy if exists canal_de_mensajes_cambiar on canal_de_mensajes;
+create policy canal_de_mensajes_cambiar on canal_de_mensajes
+  for update using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'))
+  with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+comment on table canal_de_mensajes is
+  'Por donde se habla con el cliente. El estado solo lo mueve el servidor que de verdad hablo con el '
+  'proveedor: declararse conectado desde el navegador haria fallar cada envio culpando al mensaje. '
+  'NUNCA guardar tokens aqui — el navegador lee esta tabla.';
+
+-- ---------------------------------------------------------------------
+-- 3. LA CONVERSACION
+-- ---------------------------------------------------------------------
+--
+-- `cliente_id` PUEDE SER NULO y es la decision que sostiene el modulo: llega un
+-- mensaje de un numero que no esta en Clientes y hay que poder guardarlo. Lo
+-- que NO se hace es inventar un cliente para tener a quien colgarlo — eso
+-- llenaria el directorio de fantasmas con nombre de telefono. La conversacion
+-- vive suelta hasta que alguien la identifica.
+--
+-- `contacto` es el identificador EN EL CANAL (el numero de WhatsApp, el correo).
+-- Es lo unico que llega en un mensaje entrante, y es por lo que se busca al
+-- cliente. No sustituye al telefono de la ficha: es por donde entro.
+--
+-- `atendida_en` es lo que deja marcar una conversacion como resuelta a mano.
+-- Sin ella, "pendiente de respuesta" seria solo "el ultimo mensaje es del
+-- cliente", y un "gracias!" al final de una conversacion cerrada la dejaria
+-- pendiente para siempre.
+create table if not exists conversacion (
+  id             uuid primary key default gen_random_uuid(),
+  negocio_id     text not null references negocio(id) on delete cascade,
+  canal_id       uuid,
+  cliente_id     uuid,
+  contacto       text not null,
+  estado         text not null default 'abierta'
+                 check (estado in ('abierta', 'cerrada', 'archivada')),
+  favorita       boolean not null default false,
+  asignada_a     uuid,
+  atendida_en    timestamptz,
+  ultimo_en      timestamptz not null default now(),
+  creado_en      timestamptz not null default now(),
+  eliminado      boolean not null default false
+);
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'conversacion_negocio_id_unico') then
+    alter table conversacion add constraint conversacion_negocio_id_unico unique (negocio_id, id);
+  end if;
+  -- TODA RELACION VA POR LLAVE COMPUESTA. Una llave simple dejaria colgar una
+  -- conversacion del cliente de otro centro: las llaves foraneas no obedecen
+  -- las reglas de fila.
+  if not exists (select 1 from pg_constraint where conname = 'conversacion_cliente_fk') then
+    alter table conversacion add constraint conversacion_cliente_fk
+      foreign key (negocio_id, cliente_id) references cliente (negocio_id, id)
+      on delete set null (cliente_id);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'conversacion_canal_fk') then
+    alter table conversacion add constraint conversacion_canal_fk
+      foreign key (negocio_id, canal_id) references canal_de_mensajes (negocio_id, id)
+      on delete set null (canal_id);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'conversacion_asignada_fk') then
+    alter table conversacion add constraint conversacion_asignada_fk
+      foreign key (negocio_id, asignada_a) references membresia (negocio_id, id)
+      on delete set null (asignada_a);
+  end if;
+end $$;
+
+-- UNA CONVERSACION POR CONTACTO Y CANAL. Es lo que impide que el mismo numero
+-- abra un hilo nuevo cada vez que escribe: sin esto, el historial de alguien
+-- quedaria repartido en veinte conversaciones de un mensaje.
+create unique index if not exists conversacion_contacto_unica
+  on conversacion (negocio_id, canal_id, lower(contacto)) where not eliminado;
+
+create index if not exists conversacion_reciente_idx
+  on conversacion (negocio_id, ultimo_en desc) where not eliminado;
+create index if not exists conversacion_cliente_idx
+  on conversacion (negocio_id, cliente_id) where not eliminado;
+
+alter table conversacion enable row level security;
+alter table conversacion force row level security;
+
+drop policy if exists conversacion_ver on conversacion;
+create policy conversacion_ver on conversacion
+  for select using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+drop policy if exists conversacion_escribir on conversacion;
+create policy conversacion_escribir on conversacion
+  for insert with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+drop policy if exists conversacion_cambiar on conversacion;
+create policy conversacion_cambiar on conversacion
+  for update using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'))
+  with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+comment on table conversacion is
+  'Un hilo con un contacto en un canal. NO guarda el nombre ni el telefono del cliente: guarda '
+  'cliente_id y lo demas se resuelve al leer. cliente_id puede ser nulo — llega un mensaje de un '
+  'numero desconocido y hay que guardarlo sin inventar una ficha.';
+
+-- ---------------------------------------------------------------------
+-- 4. EL MENSAJE
+-- ---------------------------------------------------------------------
+--
+-- `estado` SOLO VALE PARA LO QUE SALE. Un mensaje entrante ya llego: no tiene
+-- sentido decir que esta "entregado". Y de lo que sale, solo se guarda lo que
+-- el proveedor de verdad confirma — inventar un "leido" que nadie reporto es
+-- peor que no tenerlo, porque se toma por cierto.
+--
+-- `leido_en` es lo del NEGOCIO leyendo al cliente, no al reves. De ahi salen
+-- los no leidos de la lista.
+create table if not exists mensaje (
+  id             uuid primary key default gen_random_uuid(),
+  negocio_id     text not null references negocio(id) on delete cascade,
+  conversacion_id uuid not null,
+  direccion      text not null check (direccion in ('entrante', 'saliente')),
+  cuerpo         text not null,
+  -- 'pendiente' = guardado y todavia sin mandar a ningun proveedor. Es el
+  -- estado en el que se queda todo mientras no haya un canal conectado, y se
+  -- dice tal cual en la pantalla en vez de pintar una palomita falsa.
+  estado         text not null default 'pendiente'
+                 check (estado in ('pendiente', 'enviando', 'enviado', 'entregado', 'leido', 'fallido')),
+  error          text,
+  -- El id que le dio el proveedor, para poder casar sus avisos de estado.
+  externo_id     text,
+  adjunto_url    text,
+  adjunto_tipo   text,
+  enviado_por    uuid,
+  difusion_id    uuid,
+  leido_en       timestamptz,
+  creado_en      timestamptz not null default now()
+);
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'mensaje_negocio_id_unico') then
+    alter table mensaje add constraint mensaje_negocio_id_unico unique (negocio_id, id);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'mensaje_conversacion_fk') then
+    alter table mensaje add constraint mensaje_conversacion_fk
+      foreign key (negocio_id, conversacion_id) references conversacion (negocio_id, id)
+      on delete cascade;
+  end if;
+end $$;
+
+create index if not exists mensaje_hilo_idx on mensaje (negocio_id, conversacion_id, creado_en desc);
+create index if not exists mensaje_sin_leer_idx on mensaje (negocio_id, conversacion_id)
+  where direccion = 'entrante' and leido_en is null;
+-- El buscador de conversaciones mira dentro del texto.
+create index if not exists mensaje_cuerpo_idx on mensaje using gin (to_tsvector('spanish', cuerpo));
+
+alter table mensaje enable row level security;
+alter table mensaje force row level security;
+
+drop policy if exists mensaje_ver on mensaje;
+create policy mensaje_ver on mensaje
+  for select using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+drop policy if exists mensaje_escribir on mensaje;
+create policy mensaje_escribir on mensaje
+  for insert with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+drop policy if exists mensaje_cambiar on mensaje;
+create policy mensaje_cambiar on mensaje
+  for update using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'))
+  with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+comment on table mensaje is
+  'Un mensaje de un hilo. El estado solo vale para lo saliente y solo se mueve con lo que el '
+  'proveedor confirma: un "leido" inventado se toma por cierto y es peor que no tenerlo.';
+
+-- ---------------------------------------------------------------------
+-- 5. LAS ETIQUETAS DE UNA CONVERSACION
+-- ---------------------------------------------------------------------
+create table if not exists conversacion_etiqueta (
+  negocio_id      text not null references negocio(id) on delete cascade,
+  conversacion_id uuid not null,
+  categoria_id    uuid not null,
+  primary key (conversacion_id, categoria_id)
+);
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'conversacion_etiqueta_conv_fk') then
+    alter table conversacion_etiqueta add constraint conversacion_etiqueta_conv_fk
+      foreign key (negocio_id, conversacion_id) references conversacion (negocio_id, id)
+      on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'conversacion_etiqueta_cat_fk') then
+    alter table conversacion_etiqueta add constraint conversacion_etiqueta_cat_fk
+      foreign key (negocio_id, categoria_id) references categoria (negocio_id, id)
+      on delete cascade;
+  end if;
+end $$;
+
+alter table conversacion_etiqueta enable row level security;
+alter table conversacion_etiqueta force row level security;
+
+drop policy if exists conversacion_etiqueta_ver on conversacion_etiqueta;
+create policy conversacion_etiqueta_ver on conversacion_etiqueta
+  for select using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+drop policy if exists conversacion_etiqueta_escribir on conversacion_etiqueta;
+create policy conversacion_etiqueta_escribir on conversacion_etiqueta
+  for insert with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+drop policy if exists conversacion_etiqueta_borrar on conversacion_etiqueta;
+create policy conversacion_etiqueta_borrar on conversacion_etiqueta
+  for delete using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+-- ---------------------------------------------------------------------
+-- 6. LAS PLANTILLAS
+-- ---------------------------------------------------------------------
+--
+-- Las variables van escritas en el cuerpo como {{cliente.nombre}} y se
+-- rellenan AL USAR la plantilla, contra el cliente y la cita de verdad. Lo que
+-- no se hace nunca es guardar el texto ya rellenado: eso seria una copia del
+-- nombre de alguien que envejece sola.
+create table if not exists plantilla_de_mensaje (
+  id           uuid primary key default gen_random_uuid(),
+  negocio_id   text not null references negocio(id) on delete cascade,
+  nombre       text not null,
+  categoria    text not null default 'general',
+  cuerpo       text not null,
+  canal_tipo   text check (canal_tipo in ('whatsapp', 'sms', 'correo', 'manual')),
+  activa       boolean not null default true,
+  eliminado    boolean not null default false,
+  creado_en    timestamptz not null default now()
+);
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'plantilla_de_mensaje_negocio_id_unico') then
+    alter table plantilla_de_mensaje add constraint plantilla_de_mensaje_negocio_id_unico
+      unique (negocio_id, id);
+  end if;
+end $$;
+
+create index if not exists plantilla_de_mensaje_negocio_idx
+  on plantilla_de_mensaje (negocio_id, nombre) where not eliminado;
+
+alter table plantilla_de_mensaje enable row level security;
+alter table plantilla_de_mensaje force row level security;
+
+drop policy if exists plantilla_ver on plantilla_de_mensaje;
+create policy plantilla_ver on plantilla_de_mensaje
+  for select using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+drop policy if exists plantilla_escribir on plantilla_de_mensaje;
+create policy plantilla_escribir on plantilla_de_mensaje
+  for insert with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+drop policy if exists plantilla_cambiar on plantilla_de_mensaje;
+create policy plantilla_cambiar on plantilla_de_mensaje
+  for update using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'))
+  with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+-- ---------------------------------------------------------------------
+-- 7. LAS AUTOMATIZACIONES
+-- ---------------------------------------------------------------------
+--
+-- NACEN APAGADAS, SIEMPRE. `activa` es false por omision y no hay forma de
+-- crear una encendida: mandar mensajes solo a los clientes de alguien sin que
+-- esa persona lo haya pedido explicitamente es de las pocas cosas de este
+-- sistema que no se pueden deshacer.
+--
+-- Y no corren solas todavia: hace falta un servidor que escuche los eventos.
+-- Mientras tanto quedan declaradas, y la pantalla dice que estan a la espera
+-- en vez de fingir que disparan.
+create table if not exists automatizacion_de_mensajes (
+  id           uuid primary key default gen_random_uuid(),
+  negocio_id   text not null references negocio(id) on delete cascade,
+  evento       text not null check (evento in (
+                 'cita_nueva', 'cita_confirmada', 'cita_cancelada', 'cita_reagendada',
+                 'cita_recordatorio', 'inscripcion_nueva', 'pago_registrado',
+                 'seguimiento', 'cliente_inactivo')),
+  plantilla_id uuid,
+  canal_id     uuid,
+  activa       boolean not null default false,
+  condiciones  jsonb not null default '{}'::jsonb,
+  eliminado    boolean not null default false,
+  creado_en    timestamptz not null default now()
+);
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'automatizacion_negocio_id_unico') then
+    alter table automatizacion_de_mensajes add constraint automatizacion_negocio_id_unico
+      unique (negocio_id, id);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'automatizacion_plantilla_fk') then
+    alter table automatizacion_de_mensajes add constraint automatizacion_plantilla_fk
+      foreign key (negocio_id, plantilla_id) references plantilla_de_mensaje (negocio_id, id)
+      on delete set null (plantilla_id);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'automatizacion_canal_fk') then
+    alter table automatizacion_de_mensajes add constraint automatizacion_canal_fk
+      foreign key (negocio_id, canal_id) references canal_de_mensajes (negocio_id, id)
+      on delete set null (canal_id);
+  end if;
+end $$;
+
+alter table automatizacion_de_mensajes enable row level security;
+alter table automatizacion_de_mensajes force row level security;
+
+drop policy if exists automatizacion_ver on automatizacion_de_mensajes;
+create policy automatizacion_ver on automatizacion_de_mensajes
+  for select using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+drop policy if exists automatizacion_escribir on automatizacion_de_mensajes;
+create policy automatizacion_escribir on automatizacion_de_mensajes
+  for insert with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+drop policy if exists automatizacion_cambiar on automatizacion_de_mensajes;
+create policy automatizacion_cambiar on automatizacion_de_mensajes
+  for update using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'))
+  with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+-- ---------------------------------------------------------------------
+-- 8. LAS DIFUSIONES
+-- ---------------------------------------------------------------------
+--
+-- Se guarda A QUIENES se mando y cuantos fallaron, no el texto repetido: cada
+-- destinatario recibe un `mensaje` normal con su `difusion_id`, asi que la
+-- difusion aparece en el hilo de cada persona como cualquier otro mensaje. Una
+-- bandeja de difusiones aparte seria un segundo historial que se separa del
+-- primero.
+create table if not exists difusion (
+  id           uuid primary key default gen_random_uuid(),
+  negocio_id   text not null references negocio(id) on delete cascade,
+  nombre       text not null,
+  cuerpo       text not null,
+  canal_id     uuid,
+  destinatarios int not null default 0,
+  fallidos     int not null default 0,
+  creado_por   uuid,
+  creado_en    timestamptz not null default now()
+);
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'difusion_negocio_id_unico') then
+    alter table difusion add constraint difusion_negocio_id_unico unique (negocio_id, id);
+  end if;
+end $$;
+
+alter table difusion enable row level security;
+alter table difusion force row level security;
+
+drop policy if exists difusion_ver on difusion;
+create policy difusion_ver on difusion
+  for select using (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+drop policy if exists difusion_escribir on difusion;
+create policy difusion_escribir on difusion
+  for insert with check (app.es_miembro(negocio_id) and app.tiene_permiso(negocio_id, 'gestionarMensajes'));
+
+-- ---------------------------------------------------------------------
+-- 9. QUIEN ESTA PENDIENTE DE RESPUESTA
+-- ---------------------------------------------------------------------
+--
+-- NO ES "EL ULTIMO MENSAJE ES DEL CLIENTE", y la diferencia importa: con esa
+-- regla, un "gracias!" al final de una conversacion resuelta la deja pendiente
+-- para siempre y la cifra de arriba deja de significar nada.
+--
+-- Es: hay algo del cliente DESPUES de lo ultimo que hicimos nosotros —
+-- responder o marcarla atendida a mano.
+create or replace function app.conversacion_pendiente(p_conversacion uuid, p_atendida timestamptz)
+returns boolean
+language sql
+stable
+as $$
+  select exists (
+    select 1 from mensaje m
+     where m.conversacion_id = p_conversacion
+       and m.direccion = 'entrante'
+       and m.creado_en > greatest(
+             coalesce(p_atendida, '-infinity'::timestamptz),
+             coalesce((select max(s.creado_en) from mensaje s
+                        where s.conversacion_id = p_conversacion
+                          and s.direccion = 'saliente'
+                          and s.estado <> 'fallido'), '-infinity'::timestamptz))
+  );
+$$;
+
+-- ---------------------------------------------------------------------
+-- 10. LA LISTA DE CONVERSACIONES
+-- ---------------------------------------------------------------------
+--
+-- SE PAGINA EN EL SERVIDOR. Un centro con dos años de operacion tiene miles de
+-- hilos; bajarlos todos para enseñar ocho es lento hoy e imposible despues.
+--
+-- El ultimo mensaje se resuelve al leer con un `lateral`, no se copia a la
+-- conversacion: un texto copiado se queda viejo en cuanto se borre o se corrija
+-- el mensaje, y nadie se entera.
+create or replace function public.conversaciones_del_centro(
+  p_negocio    text,
+  p_bandeja    text default 'todas',
+  p_busqueda   text default null,
+  p_etiqueta   uuid default null,
+  p_pagina     int default 1,
+  p_por_pagina int default 20
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  with base as (
+    select c.*,
+      (select cl.nombre from cliente cl where cl.id = c.cliente_id) as cliente,
+      (select ca.tipo from canal_de_mensajes ca where ca.id = c.canal_id) as canal_tipo,
+      (select ca.nombre from canal_de_mensajes ca where ca.id = c.canal_id) as canal,
+      (select m.nombre from membresia m where m.id = c.asignada_a) as asignada,
+      (select count(*)::int from mensaje m
+        where m.conversacion_id = c.id and m.direccion = 'entrante' and m.leido_en is null) as sin_leer,
+      app.conversacion_pendiente(c.id, c.atendida_en) as pendiente,
+      (select jsonb_build_object('cuerpo', m.cuerpo, 'direccion', m.direccion,
+                                 'estado', m.estado, 'creadoEn', m.creado_en)
+         from mensaje m where m.conversacion_id = c.id
+        order by m.creado_en desc limit 1) as ultimo
+    from conversacion c
+    where c.negocio_id = p_negocio and not c.eliminado
+      and (p_etiqueta is null or exists (
+            select 1 from conversacion_etiqueta e
+             where e.conversacion_id = c.id and e.categoria_id = p_etiqueta))
+      -- SE BUSCA POR LAS CUATRO COSAS QUE ALGUIEN RECUERDA DE UN HILO: por
+      -- quien es, por su contacto, por lo que se dijo, y por como se etiqueto.
+      and (p_busqueda is null or (
+            c.contacto ilike '%' || p_busqueda || '%'
+         or exists (select 1 from cliente cl where cl.id = c.cliente_id
+                     and (cl.nombre ilike '%' || p_busqueda || '%'
+                       or coalesce(cl.telefono, '') ilike '%' || p_busqueda || '%'
+                       or coalesce(cl.correo, '') ilike '%' || p_busqueda || '%'))
+         or exists (select 1 from mensaje m where m.conversacion_id = c.id
+                     and m.cuerpo ilike '%' || p_busqueda || '%')
+         or exists (select 1 from conversacion_etiqueta e
+                    join categoria ca on ca.id = e.categoria_id
+                     where e.conversacion_id = c.id and ca.nombre ilike '%' || p_busqueda || '%')))
+  ),
+  -- LAS BANDEJAS SE FILTRAN DESPUES de calcular, no antes: "no leidos" y
+  -- "pendientes" son cuentas de los mensajes, no columnas de la conversacion.
+  filtrada as (
+    select * from base b
+     where case p_bandeja
+             when 'no_leidas'  then b.sin_leer > 0 and b.estado <> 'archivada'
+             when 'pendientes' then b.pendiente and b.estado <> 'archivada'
+             when 'archivadas' then b.estado = 'archivada'
+             -- "Todas" NO incluye las archivadas: archivar sirve justamente
+             -- para sacarlas de la vista de todos los dias.
+             else b.estado <> 'archivada'
+           end
+  )
+  select jsonb_build_object(
+    'total', (select count(*) from filtrada),
+    -- Los contadores de las cuatro pestañas salen de la MISMA consulta: pedirlos
+    -- aparte deja que una diga 3 y la pestaña de al lado 4.
+    'cuentas', jsonb_build_object(
+      'todas',      (select count(*)::int from base where estado <> 'archivada'),
+      'noLeidas',   (select count(*)::int from base where sin_leer > 0 and estado <> 'archivada'),
+      'pendientes', (select count(*)::int from base where pendiente and estado <> 'archivada'),
+      'archivadas', (select count(*)::int from base where estado = 'archivada')
+    ),
+    'filas', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', f.id, 'clienteId', f.cliente_id, 'cliente', f.cliente,
+        'contacto', f.contacto, 'canalId', f.canal_id, 'canal', f.canal,
+        'canalTipo', f.canal_tipo, 'estado', f.estado, 'favorita', f.favorita,
+        'asignadaA', f.asignada_a, 'asignada', f.asignada,
+        'sinLeer', f.sin_leer, 'pendiente', f.pendiente,
+        'ultimoEn', f.ultimo_en, 'ultimo', f.ultimo,
+        'etiquetas', coalesce((
+          select jsonb_agg(jsonb_build_object('id', ca.id, 'nombre', ca.nombre, 'color', ca.color)
+                 order by ca.nombre)
+            from conversacion_etiqueta e join categoria ca on ca.id = e.categoria_id
+           where e.conversacion_id = f.id), '[]'::jsonb))
+        order by f.ultimo_en desc)
+      from (select * from filtrada order by ultimo_en desc
+             limit greatest(p_por_pagina, 1)
+            offset greatest(p_pagina - 1, 0) * greatest(p_por_pagina, 1)) f
+    ), '[]'::jsonb)
+  );
+$$;
+
+grant execute on function public.conversaciones_del_centro(text, text, text, uuid, int, int) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 11. EL HILO DE UNA CONVERSACION
+-- ---------------------------------------------------------------------
+--
+-- SE PIDE HACIA ATRAS, de lo mas nuevo a lo mas viejo, con un tope. Un hilo de
+-- dos años son miles de mensajes y bajarlos de golpe cuelga la pestaña; se
+-- traen los ultimos y la pantalla pide mas al subir.
+create or replace function public.mensajes_de_la_conversacion(
+  p_conversacion uuid,
+  p_antes_de     timestamptz default null,
+  p_limite       int default 30
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select coalesce(jsonb_agg(x order by x->>'creadoEn'), '[]'::jsonb)
+  from (
+    select jsonb_build_object(
+      'id', m.id, 'direccion', m.direccion, 'cuerpo', m.cuerpo,
+      'estado', m.estado, 'error', m.error,
+      'adjuntoUrl', m.adjunto_url, 'adjuntoTipo', m.adjunto_tipo,
+      'quien', (select mb.nombre from membresia mb where mb.id = m.enviado_por),
+      'difusionId', m.difusion_id,
+      'leidoEn', m.leido_en, 'creadoEn', m.creado_en) as x
+      from mensaje m
+     where m.conversacion_id = p_conversacion
+       and (p_antes_de is null or m.creado_en < p_antes_de)
+     order by m.creado_en desc
+     limit greatest(p_limite, 1)
+  ) t;
+$$;
+
+grant execute on function public.mensajes_de_la_conversacion(uuid, timestamptz, int) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 12. EL RESUMEN DEL PERIODO
+-- ---------------------------------------------------------------------
+--
+-- Mismas reglas que en Reportes, y por lo mismo: sin periodo anterior con
+-- actividad NO hay porcentaje, y una tasa sin denominador es `null` y no cero.
+-- "0% de respuesta" afirma que no se contesto a nadie; sin conversaciones que
+-- respondieran, lo cierto es que no habia a quien.
+create or replace function public.resumen_de_mensajes(
+  p_negocio text,
+  p_desde   date,
+  p_hasta   date
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  with rango as (
+    select p_desde as desde, p_hasta as hasta,
+           (p_desde - (p_hasta - p_desde + 1))::date as desde_ant,
+           (p_desde - 1)::date as hasta_ant
+  ),
+  m as (
+    select ms.* from mensaje ms, rango r
+     where ms.negocio_id = p_negocio and ms.creado_en::date between r.desde and r.hasta
+  ),
+  m_ant as (
+    select ms.* from mensaje ms, rango r
+     where ms.negocio_id = p_negocio and ms.creado_en::date between r.desde_ant and r.hasta_ant
+  ),
+  conv as (
+    select c.*, app.conversacion_pendiente(c.id, c.atendida_en) as pendiente
+      from conversacion c
+     where c.negocio_id = p_negocio and not c.eliminado
+  ),
+  -- Las que PEDIAN respuesta en el periodo: llego algo del cliente.
+  pedian as (
+    select distinct conversacion_id from m where direccion = 'entrante'
+  ),
+  respondidas as (
+    select count(*)::int as n from pedian p
+     where exists (select 1 from mensaje s
+                    where s.conversacion_id = p.conversacion_id
+                      and s.direccion = 'saliente' and s.estado <> 'fallido'
+                      and s.creado_en > (select min(e.creado_en) from m e
+                                          where e.conversacion_id = p.conversacion_id
+                                            and e.direccion = 'entrante'))
+  )
+  select jsonb_build_object(
+    'activas', (select count(*)::int from conv where estado = 'abierta'),
+    'clientesEnConversacion',
+      (select count(distinct cliente_id)::int from conv
+        where estado = 'abierta' and cliente_id is not null),
+    'enviados',      (select count(*)::int from m where direccion = 'saliente'),
+    'enviadosAntes', (select count(*)::int from m_ant where direccion = 'saliente'),
+    'recibidos',      (select count(*)::int from m where direccion = 'entrante'),
+    'recibidosAntes', (select count(*)::int from m_ant where direccion = 'entrante'),
+    'pendientes', (select count(*)::int from conv where pendiente and estado <> 'archivada'),
+    'hayComparacion', (select count(*) from m_ant) > 0,
+    'pedianRespuesta', (select count(*)::int from pedian),
+    'respondidas', (select n from respondidas),
+    -- Sin nadie a quien responder, la tasa es `null`. Un 0% afirmaria que se
+    -- dejo a todo el mundo sin contestar.
+    'tasaRespuesta', case when (select count(*) from pedian) = 0 then null
+                     else round(((select n from respondidas)::numeric
+                                 / (select count(*) from pedian)) * 100, 1) end,
+    -- El tiempo de respuesta solo sale si hay pares de verdad. Sin datos se
+    -- dice que no hay, en vez de enseñar un cero que se lee como "al instante".
+    'minutosDeRespuesta', (
+      select round(avg(extract(epoch from (s.creado_en - e.creado_en)) / 60))
+        from m e
+        join lateral (
+          select min(x.creado_en) as creado_en from mensaje x
+           where x.conversacion_id = e.conversacion_id
+             and x.direccion = 'saliente' and x.estado <> 'fallido'
+             and x.creado_en > e.creado_en
+        ) s on s.creado_en is not null
+       where e.direccion = 'entrante')
+  );
+$$;
+
+grant execute on function public.resumen_de_mensajes(text, date, date) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 13. ABRIR (O ENCONTRAR) LA CONVERSACION DE UN CONTACTO
+-- ---------------------------------------------------------------------
+--
+-- LA REGLA DE ORO DEL MODULO: si ya existe un cliente con ese telefono, la
+-- conversacion se cuelga de EL. No se crea otro y no se deja suelta. Buscar por
+-- los ultimos diez digitos es lo que hace que "+52 646 123 4567",
+-- "6461234567" y "646-123-4567" sean la misma persona — que es como los
+-- telefonos se capturan de verdad.
+create or replace function public.abrir_conversacion(
+  p_negocio  text,
+  p_contacto text,
+  p_canal    uuid default null,
+  p_cliente  uuid default null
+)
+returns uuid
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+  v_id      uuid;
+  v_cliente uuid := p_cliente;
+  v_digitos text := right(regexp_replace(coalesce(p_contacto, ''), '[^0-9]', '', 'g'), 10);
+begin
+  if btrim(coalesce(p_contacto, '')) = '' then
+    raise exception 'Una conversacion necesita un contacto: un numero o un correo.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  -- Se busca al cliente ANTES de crear nada.
+  if v_cliente is null and length(v_digitos) >= 10 then
+    select c.id into v_cliente from cliente c
+     where c.negocio_id = p_negocio and not c.eliminado
+       and right(regexp_replace(coalesce(c.telefono, ''), '[^0-9]', '', 'g'), 10) = v_digitos
+     limit 1;
+  end if;
+  if v_cliente is null and p_contacto like '%@%' then
+    select c.id into v_cliente from cliente c
+     where c.negocio_id = p_negocio and not c.eliminado
+       and lower(coalesce(c.correo, '')) = lower(p_contacto)
+     limit 1;
+  end if;
+
+  select c.id into v_id from conversacion c
+   where c.negocio_id = p_negocio and not c.eliminado
+     and lower(c.contacto) = lower(p_contacto)
+     and c.canal_id is not distinct from p_canal
+   limit 1;
+
+  if v_id is not null then
+    -- Si el hilo existia suelto y ahora ya se sabe de quien es, se ata. Al
+    -- reves no: nunca se le quita el cliente a una conversacion identificada.
+    update conversacion
+       set cliente_id = coalesce(cliente_id, v_cliente),
+           estado = case when estado = 'archivada' then 'abierta' else estado end
+     where id = v_id;
+    return v_id;
+  end if;
+
+  insert into conversacion (negocio_id, canal_id, cliente_id, contacto)
+  values (p_negocio, p_canal, v_cliente, btrim(p_contacto))
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+
+grant execute on function public.abrir_conversacion(text, text, uuid, uuid) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 14. GUARDAR UN MENSAJE
+-- ---------------------------------------------------------------------
+--
+-- SE GUARDA COMO 'pendiente', NUNCA COMO 'enviado'. Guardar y enviar son dos
+-- cosas distintas y solo la primera pasa aqui: el envio lo hace el servidor que
+-- habla con el proveedor, y es el quien mueve el estado. Marcarlo enviado aqui
+-- seria decir que el cliente lo recibio cuando no ha salido de la base.
+create or replace function public.guardar_mensaje(
+  p_negocio      text,
+  p_conversacion uuid,
+  p_direccion    text,
+  p_cuerpo       text,
+  p_adjunto_url  text default null,
+  p_adjunto_tipo text default null,
+  p_externo_id   text default null,
+  p_difusion     uuid default null
+)
+returns uuid
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+  v_id    uuid;
+  v_quien uuid;
+begin
+  if btrim(coalesce(p_cuerpo, '')) = '' and p_adjunto_url is null then
+    raise exception 'Un mensaje vacio no se manda.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  select m.id into v_quien from membresia m
+   where m.negocio_id = p_negocio and m.usuario_id = auth.uid() limit 1;
+
+  insert into mensaje (negocio_id, conversacion_id, direccion, cuerpo, estado,
+                       adjunto_url, adjunto_tipo, externo_id, difusion_id, enviado_por,
+                       -- Lo que ESCRIBE el negocio ya esta leido por el negocio.
+                       leido_en)
+  values (p_negocio, p_conversacion, p_direccion, btrim(coalesce(p_cuerpo, '')),
+          case when p_direccion = 'entrante' then 'entregado' else 'pendiente' end,
+          p_adjunto_url, p_adjunto_tipo, p_externo_id, p_difusion,
+          case when p_direccion = 'saliente' then v_quien end,
+          case when p_direccion = 'saliente' then now() end)
+  returning id into v_id;
+
+  -- La conversacion sube a lo mas reciente. Es lo que ordena la lista.
+  update conversacion set ultimo_en = now(),
+         estado = case when estado = 'archivada' and p_direccion = 'entrante'
+                       then 'abierta' else estado end
+   where id = p_conversacion;
+
+  return v_id;
+end;
+$$;
+
+grant execute on function public.guardar_mensaje(text, uuid, text, text, text, text, text, uuid) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 15. MOVER EL ESTADO DE UN MENSAJE
+-- ---------------------------------------------------------------------
+--
+-- Lo llama quien de verdad hablo con el proveedor. Un fallo guarda su motivo:
+-- "no se pudo enviar" sin decir por que obliga a adivinar entre el numero mal
+-- escrito, el canal caido y la plantilla no aprobada.
+create or replace function public.marcar_estado_de_mensaje(
+  p_mensaje uuid,
+  p_estado  text,
+  p_error   text default null,
+  p_externo text default null
+)
+returns void
+language sql
+security invoker
+set search_path = public, pg_temp
+as $$
+  update mensaje
+     set estado = p_estado,
+         error = case when p_estado = 'fallido' then p_error end,
+         externo_id = coalesce(p_externo, externo_id)
+   where id = p_mensaje;
+$$;
+
+grant execute on function public.marcar_estado_de_mensaje(uuid, text, text, text) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 16. LAS ACCIONES SOBRE UNA CONVERSACION
+-- ---------------------------------------------------------------------
+--
+-- ARCHIVAR NO BORRA. La conversacion sale de la vista de todos los dias y
+-- sigue entera en "Archivadas": el historial de lo que se le dijo a alguien es
+-- justo lo que no se puede perder.
+create or replace function public.marcar_conversacion(
+  p_conversacion uuid,
+  p_accion       text
+)
+returns void
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+begin
+  if p_accion = 'leida' then
+    update mensaje set leido_en = now()
+     where conversacion_id = p_conversacion and direccion = 'entrante' and leido_en is null;
+  elsif p_accion = 'no_leida' then
+    -- Se desmarca SOLO el ultimo entrante, no el hilo entero: lo que se quiere
+    -- es "vuelve a recordarmelo", no reabrir dos años de mensajes.
+    update mensaje set leido_en = null
+     where id = (select m.id from mensaje m
+                  where m.conversacion_id = p_conversacion and m.direccion = 'entrante'
+                  order by m.creado_en desc limit 1);
+  elsif p_accion = 'archivar' then
+    update conversacion set estado = 'archivada' where id = p_conversacion;
+  elsif p_accion = 'desarchivar' then
+    update conversacion set estado = 'abierta' where id = p_conversacion;
+  elsif p_accion = 'cerrar' then
+    update conversacion set estado = 'cerrada', atendida_en = now() where id = p_conversacion;
+  elsif p_accion = 'reabrir' then
+    update conversacion set estado = 'abierta' where id = p_conversacion;
+  elsif p_accion = 'atendida' then
+    update conversacion set atendida_en = now() where id = p_conversacion;
+  elsif p_accion = 'favorita' then
+    update conversacion set favorita = not favorita where id = p_conversacion;
+  else
+    raise exception 'Accion desconocida sobre la conversacion: %', p_accion
+      using errcode = 'invalid_parameter_value';
+  end if;
+end;
+$$;
+
+grant execute on function public.marcar_conversacion(uuid, text) to authenticated;
+
+create or replace function public.asignar_conversacion(p_conversacion uuid, p_membresia uuid)
+returns void
+language sql
+security invoker
+set search_path = public, pg_temp
+as $$
+  update conversacion set asignada_a = p_membresia where id = p_conversacion;
+$$;
+
+grant execute on function public.asignar_conversacion(uuid, uuid) to authenticated;
+
+create or replace function public.ligar_cliente_a_conversacion(p_conversacion uuid, p_cliente uuid)
+returns void
+language sql
+security invoker
+set search_path = public, pg_temp
+as $$
+  update conversacion set cliente_id = p_cliente where id = p_conversacion;
+$$;
+
+grant execute on function public.ligar_cliente_a_conversacion(uuid, uuid) to authenticated;
+
+-- Las etiquetas de un hilo se guardan de una vez: llega la lista completa y se
+-- sustituye. Ir de una en una deja estados a medias si falla la tercera.
+create or replace function public.etiquetar_conversacion(
+  p_negocio      text,
+  p_conversacion uuid,
+  p_etiquetas    uuid[]
+)
+returns void
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+begin
+  delete from conversacion_etiqueta where conversacion_id = p_conversacion;
+  if p_etiquetas is not null and array_length(p_etiquetas, 1) > 0 then
+    insert into conversacion_etiqueta (negocio_id, conversacion_id, categoria_id)
+    select p_negocio, p_conversacion, unnest(p_etiquetas)
+    on conflict do nothing;
+  end if;
+end;
+$$;
+
+grant execute on function public.etiquetar_conversacion(text, uuid, uuid[]) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 17. PLANTILLAS, CANALES Y AUTOMATIZACIONES
+-- ---------------------------------------------------------------------
+create or replace function public.plantillas_del_centro(p_negocio text)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', p.id, 'nombre', p.nombre, 'categoria', p.categoria, 'cuerpo', p.cuerpo,
+      'canalTipo', p.canal_tipo, 'activa', p.activa) order by p.nombre), '[]'::jsonb)
+    from plantilla_de_mensaje p
+   where p.negocio_id = p_negocio and not p.eliminado;
+$$;
+
+grant execute on function public.plantillas_del_centro(text) to authenticated;
+
+create or replace function public.guardar_plantilla(
+  p_negocio   text,
+  p_id        uuid,
+  p_nombre    text,
+  p_categoria text,
+  p_cuerpo    text,
+  p_canal     text default null,
+  p_activa    boolean default true
+)
+returns uuid
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare v_id uuid;
+begin
+  if btrim(coalesce(p_nombre, '')) = '' then
+    raise exception 'La plantilla necesita un nombre para poder encontrarla.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+  if btrim(coalesce(p_cuerpo, '')) = '' then
+    raise exception 'Una plantilla sin texto no sirve de nada.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  if p_id is null then
+    insert into plantilla_de_mensaje (negocio_id, nombre, categoria, cuerpo, canal_tipo, activa)
+    values (p_negocio, btrim(p_nombre), coalesce(nullif(btrim(p_categoria), ''), 'general'),
+            p_cuerpo, p_canal, coalesce(p_activa, true))
+    returning id into v_id;
+  else
+    update plantilla_de_mensaje
+       set nombre = btrim(p_nombre),
+           categoria = coalesce(nullif(btrim(p_categoria), ''), 'general'),
+           cuerpo = p_cuerpo, canal_tipo = p_canal, activa = coalesce(p_activa, true)
+     where id = p_id and negocio_id = p_negocio
+    returning id into v_id;
+  end if;
+  return v_id;
+end;
+$$;
+
+grant execute on function public.guardar_plantilla(text, uuid, text, text, text, text, boolean) to authenticated;
+
+create or replace function public.borrar_plantilla(p_plantilla uuid)
+returns void
+language sql
+security invoker
+set search_path = public, pg_temp
+as $$
+  update plantilla_de_mensaje set eliminado = true where id = p_plantilla;
+$$;
+
+grant execute on function public.borrar_plantilla(uuid) to authenticated;
+
+create or replace function public.canales_del_centro(p_negocio text)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', c.id, 'tipo', c.tipo, 'nombre', c.nombre, 'identificador', c.identificador,
+      'estado', c.estado, 'detalleError', c.detalle_error,
+      'ultimaSincronizacion', c.ultima_sincronizacion, 'activo', c.activo)
+      order by c.creado_en), '[]'::jsonb)
+    from canal_de_mensajes c
+   where c.negocio_id = p_negocio and not c.eliminado;
+$$;
+
+grant execute on function public.canales_del_centro(text) to authenticated;
+
+-- EL ESTADO NO ES UN PARAMETRO. Se declara el canal —que existe, como se llama,
+-- que numero enseña— y nace 'sin_conectar'. Conectarlo de verdad es hablar con
+-- el proveedor, y eso no pasa aqui.
+create or replace function public.guardar_canal(
+  p_negocio       text,
+  p_id            uuid,
+  p_tipo          text,
+  p_nombre        text,
+  p_identificador text default null,
+  p_activo        boolean default true
+)
+returns uuid
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare v_id uuid;
+begin
+  if btrim(coalesce(p_nombre, '')) = '' then
+    raise exception 'El canal necesita un nombre.' using errcode = 'invalid_parameter_value';
+  end if;
+  if p_id is null then
+    insert into canal_de_mensajes (negocio_id, tipo, nombre, identificador, activo)
+    values (p_negocio, p_tipo, btrim(p_nombre), nullif(btrim(coalesce(p_identificador, '')), ''),
+            coalesce(p_activo, true))
+    returning id into v_id;
+  else
+    update canal_de_mensajes
+       set tipo = p_tipo, nombre = btrim(p_nombre),
+           identificador = nullif(btrim(coalesce(p_identificador, '')), ''),
+           activo = coalesce(p_activo, true)
+     where id = p_id and negocio_id = p_negocio
+    returning id into v_id;
+  end if;
+  return v_id;
+end;
+$$;
+
+grant execute on function public.guardar_canal(text, uuid, text, text, text, boolean) to authenticated;
+
+create or replace function public.automatizaciones_del_centro(p_negocio text)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', a.id, 'evento', a.evento, 'plantillaId', a.plantilla_id,
+      'plantilla', (select p.nombre from plantilla_de_mensaje p where p.id = a.plantilla_id),
+      'canalId', a.canal_id,
+      'canal', (select c.nombre from canal_de_mensajes c where c.id = a.canal_id),
+      'activa', a.activa) order by a.evento), '[]'::jsonb)
+    from automatizacion_de_mensajes a
+   where a.negocio_id = p_negocio and not a.eliminado;
+$$;
+
+grant execute on function public.automatizaciones_del_centro(text) to authenticated;
+
+create or replace function public.guardar_automatizacion(
+  p_negocio   text,
+  p_id        uuid,
+  p_evento    text,
+  p_plantilla uuid default null,
+  p_canal     uuid default null,
+  p_activa    boolean default false
+)
+returns uuid
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare v_id uuid;
+begin
+  -- NO SE ENCIENDE SIN PLANTILLA Y SIN CANAL. Una automatizacion activa sin
+  -- que mandar y por donde no es una automatizacion: es un fallo silencioso
+  -- que se descubre el dia que alguien pregunta por que no llego su recordatorio.
+  if coalesce(p_activa, false) and (p_plantilla is null or p_canal is null) then
+    raise exception 'Para encender una automatizacion hacen falta una plantilla y un canal.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  if p_id is null then
+    insert into automatizacion_de_mensajes (negocio_id, evento, plantilla_id, canal_id, activa)
+    values (p_negocio, p_evento, p_plantilla, p_canal, coalesce(p_activa, false))
+    returning id into v_id;
+  else
+    update automatizacion_de_mensajes
+       set evento = p_evento, plantilla_id = p_plantilla, canal_id = p_canal,
+           activa = coalesce(p_activa, false)
+     where id = p_id and negocio_id = p_negocio
+    returning id into v_id;
+  end if;
+  return v_id;
+end;
+$$;
+
+grant execute on function public.guardar_automatizacion(text, uuid, text, uuid, uuid, boolean) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 18. UNA DIFUSION
+-- ---------------------------------------------------------------------
+--
+-- SOLO A QUIEN SE ESCOGIO. La lista de destinatarios llega entera desde la
+-- pantalla, ya revisada, y aqui no se amplia por ningun motivo: una difusion
+-- que "mejora" el conjunto por su cuenta es como se le escribe a alguien que
+-- habia pedido que no.
+--
+-- Cada destinatario recibe un mensaje NORMAL en su hilo, con el id de la
+-- difusion. Asi la difusion se lee en la conversacion de cada persona en vez
+-- de vivir en una bandeja aparte que se separa del historial.
+create or replace function public.registrar_difusion(
+  p_negocio  text,
+  p_nombre   text,
+  p_cuerpo   text,
+  p_canal    uuid,
+  p_clientes uuid[]
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+  v_difusion uuid;
+  v_quien    uuid;
+  v_cliente  uuid;
+  v_conv     uuid;
+  v_contacto text;
+  v_puestos  int := 0;
+  v_fallidos int := 0;
+begin
+  if p_clientes is null or array_length(p_clientes, 1) is null then
+    raise exception 'Una difusion sin destinatarios no se manda.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  select m.id into v_quien from membresia m
+   where m.negocio_id = p_negocio and m.usuario_id = auth.uid() limit 1;
+
+  insert into difusion (negocio_id, nombre, cuerpo, canal_id, creado_por)
+  values (p_negocio, btrim(p_nombre), p_cuerpo, p_canal, v_quien)
+  returning id into v_difusion;
+
+  foreach v_cliente in array p_clientes loop
+    select c.telefono into v_contacto from cliente c
+     where c.id = v_cliente and c.negocio_id = p_negocio and not c.eliminado;
+
+    -- SIN POR DONDE ESCRIBIRLE, SE CUENTA COMO FALLIDO Y SE DICE. Saltarlo en
+    -- silencio deja creyendo que llego a todo el mundo.
+    if v_contacto is null or btrim(v_contacto) = '' then
+      v_fallidos := v_fallidos + 1;
+      continue;
+    end if;
+
+    v_conv := public.abrir_conversacion(p_negocio, v_contacto, p_canal, v_cliente);
+    perform public.guardar_mensaje(p_negocio, v_conv, 'saliente', p_cuerpo,
+                                   null, null, null, v_difusion);
+    v_puestos := v_puestos + 1;
+  end loop;
+
+  update difusion set destinatarios = v_puestos, fallidos = v_fallidos where id = v_difusion;
+
+  return jsonb_build_object('id', v_difusion, 'destinatarios', v_puestos, 'fallidos', v_fallidos);
+end;
+$$;
+
+grant execute on function public.registrar_difusion(text, text, text, uuid, uuid[]) to authenticated;
+
+comment on function public.registrar_difusion is
+  'Manda SOLO a la lista que llega, ya revisada en la pantalla. Cada destinatario recibe un mensaje '
+  'normal en su hilo con el id de la difusion: asi se lee en su conversacion y no en una bandeja '
+  'aparte que se separa del historial. Quien no tiene telefono cuenta como fallido y se dice.';
+
+-- ---------------------------------------------------------------------
+-- 19. QUIEN NO QUIERE PROMOCIONES
+-- ---------------------------------------------------------------------
+--
+-- Una difusion promocional NO se le manda a quien pidio que no. Es lo unico de
+-- este modulo que no se puede deshacer —el mensaje ya llego— y por eso el dato
+-- vive en la ficha del cliente y no en una lista aparte de Mensajes: la fuente
+-- de verdad de lo que alguien pidio es su expediente.
+--
+-- ARRANCA EN "SI ACEPTA" a proposito. Ponerlo en "no" dejaria a todos los
+-- clientes que ya existen fuera de cualquier difusion sin que nadie lo hubiera
+-- pedido, y la primera difusion del centro no le llegaria a nadie sin decir por
+-- que. Quien pida dejar de recibirlas se apaga desde su ficha.
+--
+-- NO afecta a los mensajes de siempre: confirmar una cita o avisar de un cambio
+-- no es promocion, y eso se sigue pudiendo escribir a cualquiera.
+alter table cliente add column if not exists acepta_promociones boolean not null default true;
+
+comment on column cliente.acepta_promociones is
+  'Si se le pueden mandar difusiones promocionales. Lo apaga quien lo pida, desde su ficha. No '
+  'afecta a los mensajes de servicio: confirmar una cita no es promocion.';

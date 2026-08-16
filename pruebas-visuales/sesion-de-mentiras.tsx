@@ -20,7 +20,7 @@ const ACCESO = {
     gestionarClientes: true, gestionarAgenda: true, gestionarCatalogo: true,
     gestionarInventario: true, cobrar: true, verFinanzas: true, verExpediente: true,
     verCostos: true, gestionarUsuarios: true, gestionarConfiguracion: true,
-    verAuditoria: true, exportarDatos: true,
+    verAuditoria: true, exportarDatos: true, gestionarMensajes: true,
   } as Readonly<Record<string, boolean>>,
   modulos: [] as readonly string[],
   esDueno: true,
