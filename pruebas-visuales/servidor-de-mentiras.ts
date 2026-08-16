@@ -296,7 +296,21 @@ const RESPUESTAS: Readonly<Record<string, unknown>> = {
       estado: 'cobrada', creadoEn: `${iso(hoy)}T1${i}:15:00`,
     })),
   },
-  catalogo_vendible: SERVICIOS.map((s, i) => ({
+  /**
+   * EL CATALOGO TRAE OCHO, y no cinco, a proposito.
+   *
+   * `npm run alcance` llena el carrito tocando esta lista para comprobar que
+   * con una venta larga se sigue llegando al boton de Cobrar — que es el fallo
+   * que tuvo la pantalla. Con cinco renglones el carrito no crecia lo bastante
+   * como para que apareciera, y el chequeo salia en verde sin haber probado
+   * nada. Un chequeo que no revisa nada es peor que no tenerlo.
+   */
+  catalogo_vendible: [
+    ...SERVICIOS,
+    { nombre: 'Ventosas y Movimiento', detalle: 'Sesión de 60 minutos' },
+    { nombre: 'Reflexología Podal', detalle: 'Sesión de 45 minutos' },
+    { nombre: 'Baño de Sonido Grupal', detalle: 'Sesión colectiva' },
+  ].map((s, i) => ({
     tipo: ['servicio', 'producto', 'curso'][i % 3],
     id: uuid(300 + i), nombre: s.nombre, detalle: s.detalle,
     precioCentavos: 80000 + i * 15000,

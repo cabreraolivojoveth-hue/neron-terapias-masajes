@@ -39,13 +39,17 @@ describe('las pestañas se filtran por permiso, no se apagan', () => {
     expect(claves).toEqual(['cobrar', 'dia', 'historial', 'cotizaciones']);
   });
 
-  it('quien lleva las cuentas sin atender el mostrador ve el cajón y el corte', () => {
+  it('quien lleva las cuentas sin atender el mostrador ve el corte', () => {
+    // "El cajón" dejo de ser una pestaña aparte: su contenido —el efectivo,
+    // los metodos y los movimientos— es lo que hay que leer para cortar, asi
+    // que vive dentro de "Corte de caja". Se fue la entrada del menu, no la
+    // cuenta.
     const claves = pestanasQuePuedeVer(FINANZAS).map((p) => p.clave);
-    expect(claves).toEqual(['cajon', 'corte']);
+    expect(claves).toEqual(['corte']);
   });
 
-  it('la dueña ve las seis', () => {
-    expect(pestanasQuePuedeVer(TODO)).toHaveLength(6);
+  it('la dueña ve las cinco', () => {
+    expect(pestanasQuePuedeVer(TODO)).toHaveLength(5);
   });
 
   it('quien no puede ninguna de las dos cosas no ve ninguna', () => {
@@ -82,11 +86,14 @@ describe('a donde cae el recado de cada modulo', () => {
     expect(pestanaDelRecado({ modulo: 'ventas', accion: 'cotizar' })).toBe('cotizaciones');
   });
 
-  it('cerrar la caja cae en el CORTE, y lo demas del cajón en el cajón', () => {
+  it('TODO lo de caja cae en el corte, que es donde vive el cajón', () => {
+    // Los recados conservan su nombre —`caja:ingreso`, `caja:movimientos`—
+    // porque el nombre dice QUIEN los consume, no de que pestaña salieron.
+    // Cambiarlos habria obligado a tocar los cinco modulos que navegan aqui.
     expect(pestanaDelRecado({ modulo: 'caja', accion: 'cerrar' })).toBe('corte');
     expect(pestanaDelRecado({ modulo: 'caja', accion: 'corte' })).toBe('corte');
-    expect(pestanaDelRecado({ modulo: 'caja', accion: 'ingreso' })).toBe('cajon');
-    expect(pestanaDelRecado({ modulo: 'caja', accion: 'historial' })).toBe('cajon');
+    expect(pestanaDelRecado({ modulo: 'caja', accion: 'ingreso' })).toBe('corte');
+    expect(pestanaDelRecado({ modulo: 'caja', accion: 'historial' })).toBe('corte');
   });
 
   it('un recado de otro modulo no mueve nada', () => {

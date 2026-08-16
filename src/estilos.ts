@@ -2036,7 +2036,47 @@ function loQueTodaviaEsDeUnModulo(): string {
 /* ---------------------------------------------------------------- */
 /* Totales, metodos y cambio                                         */
 /* ---------------------------------------------------------------- */
-.vta-cobro { position: sticky; top: ${v('espacio-4')}; }
+/*
+ * LA COLUMNA DEL COBRO SE QUEDA A LA VISTA, Y SE PUEDE RECORRER POR DENTRO.
+ *
+ * QUE PASABA, Y ES EL PEOR FALLO DE USO QUE HA TENIDO EL PRODUCTO: la tarjeta
+ * del cobro llevaba "position: sticky" ella sola. Un elemento pegajoso se pega
+ * dentro de SU contenedor, y el contenedor —la columna de la derecha— es mas
+ * corto que el carrito. Al meter productos, el carrito crecia, la pagina se
+ * alargaba, y al bajar a buscar el boton de Cobrar la columna entera ya se
+ * habia quedado arriba. Se veia como si la pantalla se hubiera comido el boton.
+ *
+ * Y ADEMAS, cuando la propia tarjeta de cobro era mas alta que la pantalla
+ * —varios pagos, el desglose, el cambio— su parte de abajo no habia forma de
+ * alcanzarla: lo pegajoso se mueve CON la pagina, asi que desplazarse no la
+ * sube. El boton estaba ahi, pintado, y no se podia tocar.
+ *
+ * EL ARREGLO son dos reglas y las dos hacen falta:
+ *
+ *   · lo pegajoso es la COLUMNA, no una tarjeta suelta, para que acompañe al
+ *     carrito entero mientras crece;
+ *   · con "max-height" de la ventana y "overflow-y: auto", si lo de dentro no
+ *     cabe se recorre DENTRO de la columna — con la rueda, con el dedo y con
+ *     la barra. Sin el "max-height" el pegajoso simplemente se sale.
+ *
+ * SOLO EN LA REJILLA DE DOS COLUMNAS. Debajo de 1180 el cobro va apilado bajo
+ * el carrito y la pagina entera se desplaza: dejarlo pegajoso ahi lo clavaria a
+ * media pantalla tapando el carrito, que es justo lo contrario de lo que hace
+ * falta en un telefono.
+ */
+@media (min-width: 1180px) {
+  .vta-lateral {
+    position: sticky;
+    top: ${v('espacio-4')};
+    max-height: calc(100dvh - ${v('espacio-8')});
+    overflow-y: auto;
+    /* Al llegar al final de la columna, la rueda NO sigue moviendo la pagina de
+       atras: se estaba cobrando y la lista de productos se iba sola. */
+    overscroll-behavior: contain;
+    /* Un dedo tiene que poder arrastrar aqui dentro, no solo la rueda. */
+    -webkit-overflow-scrolling: touch;
+  }
+}
 
 .vta-totales { margin: 0; display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
 .vta-totales > div {

@@ -79,7 +79,7 @@ import { useSesion } from '../identidad/sesion.js';
 import { Icono } from '../ui/iconos.js';
 import { Carrito } from './carrito.js';
 import { AplicarDescuento, Cobro } from './cobro.js';
-import { EstadisticasDelDia, UltimasDelDia } from './cifras-del-dia.js';
+import { EstadisticasDelDia } from './cifras-del-dia.js';
 import { DetalleDeVenta } from './detalle-de-venta.js';
 import { Cotizaciones, Historial } from './historial.js';
 import { InformacionDelCliente, QuienCompra } from './quien-compra.js';
@@ -241,7 +241,24 @@ export function PuntoDeVenta({
   const [busquedaEnLista, setBusquedaEnLista] = useState('');
   const [estado, setEstado] = useState('');
   const [pagina, setPagina] = useState(1);
-  const porPagina = 10;
+
+  /**
+   * CUANTAS SE VEN DE GOLPE EN "VENTAS DEL DIA".
+   *
+   * Arranca en CUATRO y crece de cuatro en cuatro. Un dia normal son treinta o
+   * cuarenta ventas: soltarlas todas al entrar convierte la pestaña en un muro
+   * de renglones donde no se distingue nada, y lo que casi siempre se busca es
+   * "la de hace un rato" — que esta arriba.
+   *
+   * El buscador NO depende de esto: filtra sobre el dia completo en el
+   * servidor, no sobre las cuatro que se ven. Filtrar sobre lo visible seria
+   * decirle a alguien que su venta no existe porque estaba en la quinta fila.
+   *
+   * El HISTORIAL conserva sus diez por pagina: ahi se busca entre un año y
+   * paginar de cuatro en cuatro seria interminable.
+   */
+  const [cuantasDelDia, setCuantasDelDia] = useState(4);
+  const porPagina = pestana === 'dia' ? cuantasDelDia : 10;
 
   useEffect(() => {
     const t = setTimeout(() => setBusqueda(escrito.trim()), ESPERA_MS);
@@ -274,6 +291,22 @@ export function PuntoDeVenta({
     () => traerClientes(negocio, { busqueda: busquedaCliente }, 1, 6),
   );
 
+  /**
+   * LOS ULTIMOS CLIENTES, para que el buscador no arranque en blanco.
+   *
+   * Es la misma consulta de siempre SIN texto: los que devuelve `clientes_del_centro`
+   * por omision, que vienen del propio centro. Un centro recien abierto no
+   * tiene ninguno y entonces no se enseña nada — no se rellena con nadie.
+   *
+   * Se piden TRES, que es lo que cabe sin tapar el resto del formulario, y solo
+   * mientras no hay cliente escogido: con uno puesto la lista no se pinta y
+   * pedirla seria un viaje al servidor por algo que nadie va a ver.
+   */
+  const recientes = useConsulta<PaginaDeClientes>(
+    negocio && !clienteId ? llaveDeClientes(negocio, {}, 1, 3) : null,
+    () => traerClientes(negocio, {}, 1, 3),
+  );
+
   const vendedores = useConsulta<ProfesionalBreve[]>(
     negocio ? `profesionales:${negocio}` : null,
     () => traerProfesionales(negocio),
@@ -287,11 +320,6 @@ export function PuntoDeVenta({
   const resumen = useConsulta<ResumenDeVentas>(
     negocio ? llaveDelResumenDeVentas(negocio, dia) : null,
     () => traerResumenDeVentas(negocio, dia),
-  );
-
-  const delDia = useConsulta<PaginaDeVentas>(
-    negocio ? llaveDeVentas(negocio, dia, dia, { estado: '' }, 1, 25) : null,
-    () => traerVentas(negocio, dia, dia, { estado: '' }, 1, 25),
   );
 
   const desdeHistorial = useMemo(() => diasAntes(dia, DIAS_DE_HISTORIAL), [dia]);
@@ -575,6 +603,7 @@ export function PuntoDeVenta({
               clienteNombre={clienteNombre}
               busqueda={escritoCliente}
               encontrados={clientes.datos?.filas ?? []}
+              recientes={recientes.datos?.filas ?? []}
               buscando={clientes.estado === 'cargando' && clientes.datos === null}
               fecha={fecha}
               vendedorId={vendedorId}
@@ -626,20 +655,30 @@ export function PuntoDeVenta({
               onAbrirNota={() => setNotaAbierta(true)}
             />
 
-            <div className="vta-dos">
-              <UltimasDelDia
-                ventas={delDia.datos?.filas ?? []}
-                cargando={delDia.estado === 'cargando' && delDia.datos === null}
-                onAbrir={(id) => {
-                  setPestana('historial');
-                  setAbierta(id);
-                }}
-              />
-              <EstadisticasDelDia
-                resumen={resumen.datos}
-                onVerReporte={() => ir('reportes')}
-              />
-            </div>
+            {/*
+              AQUI YA NO SE REPITEN LAS VENTAS DEL DIA.
+
+              Habia una tarjeta de "Ultimas ventas del dia" justo debajo del
+              carrito, y una pestaña entera llamada "Ventas del dia" al lado.
+              Las dos leian lo mismo y ninguna era la buena: la de aqui enseñaba
+              cinco sin buscador, la otra todas. Con dos listas de lo mismo en
+              la misma pantalla, la pregunta "¿cuantas llevo hoy?" tiene dos
+              respuestas que no coinciden en cuanto una se queda sin recargar.
+
+              Se queda el RESUMEN, que no es la misma informacion: cuatro cifras
+              del dia, no una lista. Para ver las ventas esta su pestaña.
+            */}
+            <EstadisticasDelDia
+              resumen={resumen.datos}
+              onVerReporte={() => ir('reportes')}
+            />
+            <button
+              type="button"
+              className="pz-boton"
+              onClick={() => setPestana('dia')}
+            >
+              <Icono nombre="renglones" lado={16} /> Ver las ventas del día
+            </button>
           </div>
 
           <div className="vta-lateral">
@@ -717,6 +756,16 @@ export function PuntoDeVenta({
             onPagina={setPagina}
             onAbrir={setAbierta}
             onReintentar={listaDeLaPestana.recargar}
+            {...(pestana === 'dia' &&
+            (listaDeLaPestana.datos?.total ?? 0) > cuantasDelDia
+              ? {
+                  /* SE CRECE LA LISTA, no se pagina. En el dia lo que se busca
+                     es "la de hace un rato": partirla en paginas obliga a
+                     acordarse de en cual estaba. En el Historial es al reves y
+                     por eso alli si pagina. */
+                  onVerMas: () => setCuantasDelDia((n) => n + 4),
+                }
+              : {})}
           />
           <DetalleDeVenta
             venta={abierta ? ficha.datos : null}

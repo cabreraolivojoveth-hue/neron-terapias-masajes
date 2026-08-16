@@ -9,9 +9,23 @@
  *    vuelve a crear, y el foco se pierde despues de cada letra. Es
  *    exactamente la queja de "escribo Ana y tengo que volver a hacer clic".
  *
- * 2. CREAR UN PACIENTE NO BORRA LO YA ESCRITO. El alta rapida guarda en la
- *    tabla de CLIENTES —la de verdad— y al volver deja seleccionado al
- *    paciente nuevo conservando servicio, fecha y hora.
+ * 2. CREAR UN PACIENTE NO BORRA LO YA ESCRITO. El alta guarda en la tabla de
+ *    CLIENTES —la de verdad— y al volver deja seleccionado al paciente nuevo
+ *    conservando servicio, fecha y hora.
+ *
+ * 3. NUEVO PACIENTE ES NUEVO CLIENTE, Y ES LITERALMENTE EL MISMO FORMULARIO.
+ *    Aqui habia un alta "rapida" propia con tres campos —nombre, telefono,
+ *    correo—, mientras que Clientes pedia veinte, incluida la ficha de salud.
+ *    O sea: dar de alta a alguien desde la Agenda creaba una persona SIN
+ *    padecimientos, sin alergias y sin contraindicaciones, que son justo lo que
+ *    hay que saber antes de darle una sesion. Y el aviso de duplicados
+ *    tampoco corria, asi que la misma persona se podia crear dos veces desde
+ *    aqui sin que nadie avisara.
+ *
+ *    Ahora se monta `FichaDeCliente`, la de Clientes, tal cual — la misma que
+ *    ya usa el punto de venta. El boton sigue diciendo "Nuevo paciente" porque
+ *    es como se le llama en la Agenda; lo que hay detras es un solo formulario
+ *    y un solo registro.
  */
 
 import { Boton, Campo, AreaDeTexto, Seleccion } from '@neron/base/ui';
@@ -19,6 +33,8 @@ import { Modal } from '../ui/modal.js';
 import { sumarDias, type Fecha } from '@neron/base/utils';
 import { useMemo, useState, type FormEvent } from 'react';
 import type { ClienteBreve, ProfesionalBreve, ServicioBreve } from '../datos/citas.js';
+import type { DatosDeCliente, PosibleDuplicado } from '../datos/clientes.js';
+import { FICHA_VACIA, FichaDeCliente } from '../clientes/ficha.js';
 import { comoHora, minutosDe } from './disposicion.js';
 
 export interface ValoresDeCita {
@@ -42,7 +58,11 @@ export interface PropiedadesDelFormulario {
   /** Solo se puede mover fecha, hora y terapeuta. Es el modo reagendar. */
   readonly soloHorario?: boolean;
   onGuardar(valores: ValoresDeCita): void;
-  onCrearCliente(datos: { nombre: string; telefono: string; correo: string }): Promise<ClienteBreve | null>;
+  /** La ficha COMPLETA, la misma que manda Clientes. Ver el punto 3 de arriba. */
+  onCrearCliente(datos: DatosDeCliente): Promise<ClienteBreve | null>;
+  /** El aviso de "puede que ya exista", con la misma consulta que Clientes. */
+  onBuscarDuplicado(telefono: string, correo: string): Promise<PosibleDuplicado | null>;
+  onAbrirDuplicado(clienteId: string): void;
   onCerrar(): void;
 }
 
@@ -58,12 +78,13 @@ export function FormularioDeCita({
   soloHorario = false,
   onGuardar,
   onCrearCliente,
+  onBuscarDuplicado,
+  onAbrirDuplicado,
   onCerrar,
 }: PropiedadesDelFormulario) {
   const [v, setV] = useState<ValoresDeCita>(inicial);
   const [buscado, setBuscado] = useState('');
   const [altaAbierta, setAltaAbierta] = useState(false);
-  const [nuevo, setNuevo] = useState({ nombre: '', telefono: '', correo: '' });
   const [faltan, setFaltan] = useState<string[]>([]);
 
   // Al abrir con otros valores —otra cita, otro hueco— el formulario se
@@ -116,15 +137,13 @@ export function FormularioDeCita({
     onGuardar(v);
   }
 
-  async function guardarNuevoCliente(): Promise<void> {
-    if (!nuevo.nombre.trim()) return;
-    const creado = await onCrearCliente(nuevo);
+  async function guardarNuevoCliente(datos: DatosDeCliente): Promise<void> {
+    const creado = await onCrearCliente(datos);
     if (!creado) return;
     // Se selecciona el paciente nuevo Y SE CONSERVA todo lo demas.
     poner('clienteId', creado.id);
     setBuscado(creado.nombre);
     setAltaAbierta(false);
-    setNuevo({ nombre: '', telefono: '', correo: '' });
   }
 
   if (!abierto) return null;
@@ -258,44 +277,23 @@ export function FormularioDeCita({
         </div>
       </form>
 
-      {/* El alta rápida va en su propio modal ENCIMA, para que el formulario
-          de la cita siga vivo detrás y no se pierda nada de lo escrito. */}
+      {/* LA FICHA DE CLIENTES, tal cual, ENCIMA del formulario de la cita: el
+          de abajo sigue vivo detrás y no se pierde nada de lo escrito. Es el
+          mismo componente que monta el punto de venta — un solo formulario y
+          un solo registro, como dice el punto 3 de arriba. */}
       {altaAbierta ? (
-        <Modal abierto titulo="Nuevo paciente" onCerrar={() => setAltaAbierta(false)}>
-          <div className="agenda-form">
-            <Campo
-              etiqueta="Nombre"
-              value={nuevo.nombre}
-              onChange={(e) => setNuevo((a) => ({ ...a, nombre: e.target.value }))}
-              obligatorio
-            />
-            <Campo
-              etiqueta="Teléfono"
-              type="tel"
-              value={nuevo.telefono}
-              onChange={(e) => setNuevo((a) => ({ ...a, telefono: e.target.value }))}
-            />
-            <Campo
-              etiqueta="Correo"
-              type="email"
-              value={nuevo.correo}
-              onChange={(e) => setNuevo((a) => ({ ...a, correo: e.target.value }))}
-            />
-            <div className="agenda-form__pie">
-              <Boton tono="contorno" type="button" onClick={() => setAltaAbierta(false)}>
-                Cancelar
-              </Boton>
-              <Boton
-                tono="principal"
-                type="button"
-                disabled={!nuevo.nombre.trim()}
-                onClick={() => void guardarNuevoCliente()}
-              >
-                Guardar y usar
-              </Boton>
-            </div>
-          </div>
-        </Modal>
+        <FichaDeCliente
+          abierta
+          titulo="Nuevo paciente"
+          inicial={FICHA_VACIA}
+          profesionales={profesionales}
+          trabajando={trabajando}
+          error={error}
+          onGuardar={(d) => void guardarNuevoCliente(d)}
+          onBuscarDuplicado={onBuscarDuplicado}
+          onAbrirDuplicado={onAbrirDuplicado}
+          onCerrar={() => setAltaAbierta(false)}
+        />
       ) : null}
     </Modal>
   );

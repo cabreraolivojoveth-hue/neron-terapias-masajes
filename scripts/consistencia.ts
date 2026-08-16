@@ -30,6 +30,22 @@ const PASOS = [
    * bateria y el unico que habria cachado ese fallo.
    */
   { titulo: 'Velos', porque: 'que todo lo que se abre encima tape la pantalla y no la tache', orden: 'npx tsx scripts/velos.ts' },
+  /**
+   * EL SEGUNDO PASO QUE MIRA, y vigila lo contrario que los velos: no lo que se
+   * abre encima, sino lo que se queda debajo.
+   *
+   * La queja fue "meto productos y la zona de cobrar se va de la pantalla y no
+   * puedo bajar". Los tipos no miran; las guardias leen texto; las pruebas de
+   * componentes corren en un DOM sin diseño, donde `position: sticky` no
+   * existe y todo mide cero, asi que encuentran el boton y lo tocan tan
+   * campantes; y la captura retrata la pantalla VACIA, que es justo cuando el
+   * fallo no aparece.
+   *
+   * Esto abre cada modulo en cuatro tamaños —telefono, tablet, escritorio y un
+   * portatil bajo—, LLENA el carrito, y comprueba que a cada boton se llega
+   * desplazando.
+   */
+  { titulo: 'Alcance', porque: 'que nada quede fuera de alcance al crecer el contenido', orden: 'npx tsx scripts/alcance.ts' },
   { titulo: 'Compilacion', porque: 'que lo que se va a publicar de verdad compile', orden: 'npx vite build' },
   { titulo: 'Ataques', porque: 'que las reglas de acceso de verdad muerdan', orden: 'npx tsx pruebas-bd/ataques.ts' },
 ];

@@ -34,7 +34,7 @@ import {
   type ProfesionalBreve,
   type ServicioBreve,
 } from '../datos/citas.js';
-import { DATOS_VACIOS, crearCliente } from '../datos/clientes.js';
+import { buscarPosibleDuplicado, crearCliente } from '../datos/clientes.js';
 import { useSesion } from '../identidad/sesion.js';
 import { ControlesDeAgenda } from './controles.js';
 import { ventanaDelDia } from './disposicion.js';
@@ -412,20 +412,22 @@ export function Agenda() {
           onGuardar={(v) => void alGuardar(v)}
           onCrearCliente={(datos) =>
             /**
-             * El alta rapida guarda en CLIENTES, la tabla de verdad, con la
-             * misma funcion que usa el modulo Clientes — no hay un "cliente de
-             * agenda". Lo que aqui no se pregunta va vacio: cumpleaños, notas
-             * y terapeuta asignado se completan despues en su expediente.
+             * UNA PERSONA, UN REGISTRO. Guarda en CLIENTES con la misma funcion
+             * que usa el modulo Clientes: no hay un "paciente de agenda". Lo
+             * que se capture aqui —incluida la ficha de salud— aparece en
+             * Clientes al instante, y al reves igual.
+             *
+             * Ya no se rellena con `DATOS_VACIOS`: la ficha que llega es la
+             * COMPLETA, porque es el mismo formulario. Mezclarla con el vacio
+             * era lo que hacia falta cuando aqui solo se preguntaban tres
+             * campos.
              */
-            altaCliente.ejecutar(negocio, {
-              /* Se parte del vacio canonico: el alta rapida solo pregunta el
-                 nombre y el contacto, y lo clinico se completa despues en su
-                 expediente. Escribir los campos a mano aqui obligaria a volver
-                 cada vez que se agregue uno. */
-              ...DATOS_VACIOS,
-              ...datos,
-            })
+            altaCliente.ejecutar(negocio, datos)
           }
+          onBuscarDuplicado={(telefono, correo) =>
+            buscarPosibleDuplicado(negocio, telefono, correo)
+          }
+          onAbrirDuplicado={(id) => ir('clientes', { intencion: `clientes:abrir:${id}` })}
           onCerrar={() => setFormulario(null)}
         />
       ) : null}

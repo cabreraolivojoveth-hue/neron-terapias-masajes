@@ -36,6 +36,87 @@
 -- INSTALAR-EN-TERAPIAS.sql. No se edita a mano: se corre el guion.
 
 -- =====================================================================
+-- CORRECCIONES A LO QUE YA HABIAS CORRIDO
+-- =====================================================================
+--
+-- Son `create or replace`: se pueden correr encima de las que ya existen.
+
+create or replace function public.ventas_del_rango(
+  p_negocio text,
+  p_desde date,
+  p_hasta date,
+  p_busqueda text default null,
+  p_estado text default null,
+  p_vendedor uuid default null,
+  p_cliente uuid default null,
+  p_metodo text default null,
+  p_pagina int default 1,
+  p_por_pagina int default 25
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  with base as (
+    select v.*,
+      (select c.nombre from cliente c where c.id = v.cliente_id) as cliente,
+      (select m.nombre from membresia m where m.id = v.vendedor_id) as vendedor,
+      -- Los metodos se juntan al leer. Guardar "mixto" en la venta perderia el
+      -- detalle que el corte de caja necesita.
+      (select string_agg(distinct p.metodo, ', ') from pago p where p.venta_id = v.id) as metodos,
+      (select count(*) from venta_item i where i.venta_id = v.id) as renglones
+    from venta v
+    where v.negocio_id = p_negocio
+      and not v.eliminado
+      and v.fecha between p_desde and p_hasta
+      and (p_estado is null or v.estado = p_estado)
+      and (p_vendedor is null or v.vendedor_id = p_vendedor)
+      and (p_cliente is null or v.cliente_id = p_cliente)
+      and (p_metodo is null or exists (
+            select 1 from pago p where p.venta_id = v.id and p.metodo = p_metodo))
+      -- SE BUSCA POR LAS CUATRO COSAS QUE ALGUIEN RECUERDA DE UNA VENTA: el
+      -- folio, a quien se le vendio, QUE se vendio y QUIEN la hizo. El vendedor
+      -- faltaba, y era el que mas se pedia en "Ventas del dia": quien cierra el
+      -- turno pregunta "¿cuanto vendio fulano hoy?" y escribir su nombre no
+      -- devolvia nada — sin error, con cara de que ese dia no vendio.
+      and (p_busqueda is null or (
+            v.folio ilike '%' || p_busqueda || '%'
+         or exists (select 1 from cliente c where c.id = v.cliente_id
+                     and c.nombre ilike '%' || p_busqueda || '%')
+         or exists (select 1 from membresia m where m.id = v.vendedor_id
+                     and m.nombre ilike '%' || p_busqueda || '%')
+         or exists (select 1 from venta_item i where i.venta_id = v.id
+                     and i.descripcion ilike '%' || p_busqueda || '%')))
+  )
+  select jsonb_build_object(
+    'total', (select count(*) from base),
+    'filas', coalesce((
+      select jsonb_agg(t.x order by t.orden desc)
+      from (
+        select jsonb_build_object(
+          'id', b.id, 'folio', b.folio, 'fecha', b.fecha,
+          'clienteId', b.cliente_id, 'cliente', b.cliente,
+          'vendedor', b.vendedor,
+          'renglones', b.renglones,
+          'subtotalCentavos', b.subtotal_centavos,
+          'descuentoCentavos', b.descuento_centavos,
+          'totalCentavos', b.total_centavos,
+          'metodos', b.metodos,
+          'estado', b.estado,
+          'creadoEn', b.creado_en
+        ) as x, b.creado_en as orden
+        from base b
+        order by b.creado_en desc
+        limit greatest(p_por_pagina, 1)
+        offset greatest(p_pagina - 1, 0) * greatest(p_por_pagina, 1)
+      ) t
+    ), '[]'::jsonb)
+  );
+$$;
+
+-- =====================================================================
 -- ELIMINAR UN PRODUCTO — y por que no es lo mismo que desactivarlo
 -- =====================================================================
 --

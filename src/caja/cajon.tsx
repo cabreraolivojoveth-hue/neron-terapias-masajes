@@ -97,14 +97,9 @@ export interface PropiedadesDelCajon {
    * saldrian dos titulos "Caja", uno debajo del otro.
    */
   readonly sinEncabezado?: boolean;
-  /**
-   * Que enseñar. "corte" abre el cierre en cuanto se entra a esa pestaña: es lo
-   * que se va a hacer ahi y no tiene sentido pedir otro toque para llegar.
-   */
-  readonly vista?: 'cajon' | 'corte';
 }
 
-export function Cajon({ sinEncabezado = false, vista = 'cajon' }: PropiedadesDelCajon = {}) {
+export function Cajon({ sinEncabezado = false }: PropiedadesDelCajon = {}) {
   const { acceso } = useSesion();
   const { ir } = useNavegacion();
 
@@ -204,18 +199,21 @@ export function Cajon({ sinEncabezado = false, vista = 'cajon' }: PropiedadesDel
     else if (recado.accion === 'corte' || recado.accion === 'cerrar') setCortando(true);
   }, []);
 
-  /**
-   * LA PESTAÑA "CORTE" ABRE EL CIERRE SOLA.
+  /*
+   * ENTRAR A "CORTE DE CAJA" NO ABRE EL CIERRE, Y ANTES SI LO HACIA.
    *
-   * Es lo unico que se hace ahi. Pedir un toque mas —entrar a la pestaña y
-   * despues buscar "Cerrar caja"— es un paso de mas justo en el momento del dia
-   * en que la persona tiene mas prisa por irse.
+   * La pestaña montaba el dialogo sola —"es lo unico que se hace ahi"— y eso
+   * resulto ser falso y ademas incomodo: tocar una opcion del menu abria de
+   * golpe una operacion, con su velo encima, antes de haber visto un solo
+   * numero. Se sentia como haber apretado algo por error, y para mirar cuanto
+   * habia en el cajon habia que cerrar el dialogo primero.
    *
-   * Solo cuando ya llego la caja: sin ella el dialogo no tiene que cuadrar.
+   * Ahora la pestaña ES el modulo: el efectivo esperado, los metodos de pago,
+   * los movimientos del turno y el historial. El corte se abre desde el boton
+   * "Cerrar caja", que es una decision de quien lo lee. El recado
+   * `caja:corte` SI lo sigue abriendo derecho — quien navega hasta aqui
+   * pidiendo el corte ya decidio.
    */
-  useEffect(() => {
-    if (vista === 'corte' && caja.datos) setCortando(true);
-  }, [vista, caja.datos]);
 
   const cargandoCaja = caja.estado === 'cargando' && caja.datos === null;
   const laCaja = caja.datos;

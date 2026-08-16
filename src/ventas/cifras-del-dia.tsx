@@ -140,52 +140,19 @@ export function EstadisticasDelDia({
 
 /* ------------------------------------------------------------------ */
 
-export function UltimasDelDia({
-  ventas,
-  cargando,
-  onAbrir,
-}: {
-  readonly ventas: readonly VentaEnLista[];
-  readonly cargando: boolean;
-  onAbrir(ventaId: string): void;
-}) {
-  return (
-    <section className="pz-tarjeta" aria-labelledby="vta-ultimas-titulo">
-      <h3 className="tt-tarjeta" id="vta-ultimas-titulo">
-        Últimas ventas del día
-      </h3>
-
-      {cargando ? (
-        <div className="pz-cargando" aria-busy="true">
-          <span className="neron-solo-lectores">Cargando las ventas de hoy</span>
-          {[0, 1].map((i) => (
-            <div key={i} className="pz-silueta" />
-          ))}
-        </div>
-      ) : ventas.length === 0 ? (
-        <p className="pz-vacio__texto">No hay ventas registradas hoy.</p>
-      ) : (
-        <ul className="vta-ultimas mv-escalonado">
-          {ventas.slice(0, 5).map((v) => (
-            <li key={v.id} className="vta-ultima">
-              <button type="button" className="vta-ultima__abrir" onClick={() => onAbrir(v.id)}>
-                <span className="vta-ultima__hora">{horaDeLaVenta(v.creadoEn)}</span>
-                <span className="vta-ultima__quien">
-                  {v.cliente ?? <span className="tt-falta">Mostrador</span>}
-                </span>
-                <span className="vta-ultima__folio">{v.folio}</span>
-                <span className="vta-ultima__total">{formatearMoneda(v.totalCentavos)}</span>
-                <span className={`pz-pastilla vta-estado--${v.estado}`}>
-                  {COMO_SE_DICE_LA_VENTA[v.estado] ?? v.estado}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
+/**
+ * AQUI VIVIA "ULTIMAS VENTAS DEL DIA", Y SE FUE A PROPOSITO.
+ *
+ * Era una tarjeta debajo del carrito con las cinco ultimas ventas — y al lado,
+ * en la barra de pestañas, habia una pestaña entera llamada "Ventas del dia".
+ * Las dos leian lo mismo con dos consultas distintas, asi que en cuanto una se
+ * quedaba sin recargar la misma pantalla contestaba dos cosas a la pregunta
+ * "¿cuantas llevo hoy?". Ninguna de las dos avisaba de nada.
+ *
+ * Se quedo la pestaña, que es la que puede buscar y crecer. Lo que sigue aqui
+ * son las CIFRAS del dia, que no son una lista: cuatro numeros que dicen como
+ * va la jornada sin obligar a leer renglon por renglon.
+ */
 
 /**
  * La hora de una venta, en local.

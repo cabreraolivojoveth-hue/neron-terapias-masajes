@@ -164,6 +164,22 @@ describe('con caja abierta', () => {
     expect(screen.queryByRole('button', { name: /abrir nueva caja/i })).toBeNull();
   });
 
+  it('ENTRAR NO ABRE EL CORTE: primero se lee, despues se decide', async () => {
+    /**
+     * Antes, la pestaña "Corte de caja" montaba el dialogo del cierre sola —"es
+     * lo unico que se hace ahi"—. Tocar una opcion del menu abria de golpe una
+     * operacion, con su velo encima, antes de haber visto un solo numero: se
+     * sentia como haber apretado algo por error, y para mirar cuanto habia en
+     * el cajon habia que cerrar el dialogo primero.
+     */
+    render(<Cajon />);
+    await screen.findByRole('heading', { name: 'Resumen del turno' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // Y lo que hay que leer para cortar SI esta a la vista.
+    expect(screen.getAllByText('Efectivo en el cajón').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /cerrar caja/i })).toBeTruthy();
+  });
+
   it('un retiro viaja con su tipo y su metodo', async () => {
     render(<Cajon />);
     await screen.findByRole('heading', { name: 'Resumen del turno' });

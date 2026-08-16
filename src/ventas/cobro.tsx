@@ -241,8 +241,11 @@ export function Cobro({
   const cambio = cambioDe(enEfectivo, recibido);
   const listo = sePuedeCobrar(renglones, descuentoCentavos, pagos);
 
+  // YA NO LLEVA CLASE PROPIA: lo pegajoso es la columna entera, en
+  // `estilos.ts`. Pegada ella sola, la tarjeta se quedaba arriba en cuanto el
+  // carrito crecia y el boton de Cobrar dejaba de alcanzarse.
   return (
-    <aside className="pz-tarjeta vta-cobro" aria-labelledby="vta-resumen-titulo">
+    <aside className="pz-tarjeta" aria-labelledby="vta-resumen-titulo">
       <h3 className="tt-tarjeta" id="vta-resumen-titulo">
         Resumen de la venta
       </h3>

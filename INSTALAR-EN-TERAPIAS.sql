@@ -4468,10 +4468,17 @@ as $$
       and (p_cliente is null or v.cliente_id = p_cliente)
       and (p_metodo is null or exists (
             select 1 from pago p where p.venta_id = v.id and p.metodo = p_metodo))
+      -- SE BUSCA POR LAS CUATRO COSAS QUE ALGUIEN RECUERDA DE UNA VENTA: el
+      -- folio, a quien se le vendio, QUE se vendio y QUIEN la hizo. El vendedor
+      -- faltaba, y era el que mas se pedia en "Ventas del dia": quien cierra el
+      -- turno pregunta "¿cuanto vendio fulano hoy?" y escribir su nombre no
+      -- devolvia nada — sin error, con cara de que ese dia no vendio.
       and (p_busqueda is null or (
             v.folio ilike '%' || p_busqueda || '%'
          or exists (select 1 from cliente c where c.id = v.cliente_id
                      and c.nombre ilike '%' || p_busqueda || '%')
+         or exists (select 1 from membresia m where m.id = v.vendedor_id
+                     and m.nombre ilike '%' || p_busqueda || '%')
          or exists (select 1 from venta_item i where i.venta_id = v.id
                      and i.descripcion ilike '%' || p_busqueda || '%')))
   )

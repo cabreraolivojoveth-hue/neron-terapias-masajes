@@ -54,7 +54,20 @@ export const PESTANAS_DEL_MOSTRADOR: readonly {
     clave: 'cotizaciones', etiqueta: 'Cotizaciones', capacidad: 'cobrar',
     de: 'venta', dentro: 'cotizaciones',
   },
-  { clave: 'cajon', etiqueta: 'El cajón', capacidad: 'verFinanzas', de: 'cajon', dentro: 'cajon' },
+  /*
+   * "EL CAJON" DEJO DE SER UNA PESTAÑA APARTE, y se fue solo la pestaña.
+   *
+   * Eran dos entradas para una sola cuenta: el cajon enseñaba el efectivo, los
+   * metodos de pago y los movimientos, y el corte volvia a pedir exactamente
+   * eso para cuadrar. Quien cierra el turno tenia que ir a una, mirar, y pasar
+   * a la otra a escribir lo que acababa de leer.
+   *
+   * Ahora "Corte de caja" ES esa pantalla: el efectivo esperado, los metodos,
+   * los movimientos del turno y, desde ahi, el boton de cerrar. NO SE QUITO NI
+   * UNA CUENTA — el saldo esperado, el fondo inicial, los movimientos y el
+   * historial siguen calculandose igual, en `cajon.tsx`. Se quito una entrada
+   * del menu, no una funcion.
+   */
   {
     clave: 'corte', etiqueta: 'Corte de caja', capacidad: 'verFinanzas',
     de: 'cajon', dentro: 'corte',
@@ -82,10 +95,14 @@ export function pestanaDelRecado(recado: Intencion): string | null {
     if (recado.accion === 'cotizar') return 'cotizaciones';
     return null;
   }
-  if (recado.modulo === 'caja') {
-    if (recado.accion === 'corte' || recado.accion === 'cerrar') return 'corte';
-    return 'cajon';
-  }
+  /*
+   * TODO LO DE CAJA CAE EN "CORTE DE CAJA" desde que el cajon dejo de ser una
+   * pestaña. Los recados siguen llamandose igual —`caja:movimientos`,
+   * `caja:ingreso`, `caja:abrir`— porque el nombre dice QUIEN los consume, no
+   * de que pestaña salieron: cambiarlos habria obligado a tocar a los cinco
+   * modulos que navegan hasta aqui.
+   */
+  if (recado.modulo === 'caja') return 'corte';
   return null;
 }
 
@@ -195,7 +212,7 @@ export function Mostrador() {
       */}
       <div className="mos-cuerpo mv-cambia" key={actual?.de ?? 'venta'} role="tabpanel">
         {actual?.de === 'cajon' ? (
-          <Cajon sinEncabezado vista={actual.dentro === 'corte' ? 'corte' : 'cajon'} />
+          <Cajon sinEncabezado />
         ) : (
           <PuntoDeVenta
             sinEncabezado

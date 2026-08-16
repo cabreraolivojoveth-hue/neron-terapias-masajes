@@ -8,7 +8,6 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   EstadisticasDelDia,
-  UltimasDelDia,
   cifrasDelDia,
   horaDeLaVenta,
 } from '../../src/ventas/cifras-del-dia.js';
@@ -71,29 +70,6 @@ describe('el ticket promedio', () => {
   });
 });
 
-describe('las ultimas ventas del dia', () => {
-  it('sin ventas lo dice con la frase del diseño', () => {
-    render(<UltimasDelDia ventas={[]} cargando={false} onAbrir={() => {}} />);
-    expect(screen.getByText('No hay ventas registradas hoy.')).toBeTruthy();
-  });
-
-  it('cargando NO se ve igual que vacio', () => {
-    render(<UltimasDelDia ventas={[]} cargando onAbrir={() => {}} />);
-    expect(screen.queryByText('No hay ventas registradas hoy.')).toBeNull();
-  });
-
-  it('una venta sin cliente dice Mostrador', () => {
-    render(<UltimasDelDia ventas={[VENTA]} cargando={false} onAbrir={() => {}} />);
-    expect(screen.getByText('Mostrador')).toBeTruthy();
-  });
-
-  it('abrir avisa con el id', async () => {
-    const abiertas: string[] = [];
-    render(<UltimasDelDia ventas={[VENTA]} cargando={false} onAbrir={(id) => abiertas.push(id)} />);
-    await userEvent.click(screen.getByRole('button', { name: /V-00001/ }));
-    expect(abiertas).toEqual(['v1']);
-  });
-});
 
 describe('la hora de una venta', () => {
   it('sale en dos cifras y dos cifras', () => {

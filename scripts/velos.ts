@@ -71,7 +71,7 @@ const LO_QUE_SE_ABRE: readonly {
    */
   { modulo: 'caja', botones: ['Nuevo cliente'] },
   {
-    modulo: 'caja', pestana: 'El cajón',
+    modulo: 'caja', pestana: 'Corte de caja',
     botones: ['Registrar ingreso', 'Registrar retiro', 'Cerrar caja'],
   },
   /* Reportes solo abre uno: guardar la pregunta. Todo lo demas de la pantalla

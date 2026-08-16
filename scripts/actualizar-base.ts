@@ -38,6 +38,19 @@ const RAIZ = join(import.meta.dirname, '..');
  */
 const DESDE = '-- ELIMINAR UN PRODUCTO — y por que no es lo mismo que desactivarlo';
 
+/**
+ * FUNCIONES QUE VIVEN ANTES DE LA FRONTERA Y AUN ASI CAMBIARON.
+ *
+ * Pasa cuando se corrige algo de un bloque que el usuario YA corrio: la
+ * correccion no entra por la frontera y el archivo sale sin ella. Se sacan por
+ * nombre y se pegan al principio; son `create or replace`, asi que volver a
+ * correrlas encima de las que ya estan no hace nada raro.
+ *
+ * Lo que NO se hace es moverlas al final del instalador para que entren solas:
+ * eso desordena el archivo y es como se partio la seccion de Reportes en dos.
+ */
+const ADEMAS = ['public.ventas_del_rango'];
+
 const CABECERA = `-- =====================================================================
 -- ACTUALIZAR-BASE.sql — SOLO LO NUEVO
 -- =====================================================================
@@ -92,8 +105,34 @@ if (iTitulo < 0) {
 // ella el bloque empieza a media caja de comentario.
 const desde = lineas[iTitulo - 1]?.startsWith('-- ===') ? iTitulo - 1 : iTitulo;
 
-const salida = [...CABECERA.split('\n'), ...lineas.slice(desde)];
+/** Saca una funcion entera del instalador, de su `create` a su `$$;`. */
+function funcionSuelta(nombre: string): string[] {
+  const arranque = lineas.findIndex((l) => l.startsWith(`create or replace function ${nombre}`));
+  if (arranque < 0) {
+    console.error(`  No se encontro la funcion "${nombre}" en el instalador.`);
+    process.exit(1);
+  }
+  const cierre = lineas.findIndex((l, i) => i > arranque && l.startsWith('$$;'));
+  if (cierre < 0) {
+    console.error(`  La funcion "${nombre}" no cierra. Lo dice tambien la guardia 16.`);
+    process.exit(1);
+  }
+  return lineas.slice(arranque, cierre + 1);
+}
+
+const extras = ADEMAS.length === 0 ? [] : [
+  '-- =====================================================================',
+  '-- CORRECCIONES A LO QUE YA HABIAS CORRIDO',
+  '-- =====================================================================',
+  '--',
+  '-- Son `create or replace`: se pueden correr encima de las que ya existen.',
+  '',
+  ...ADEMAS.flatMap((n) => [...funcionSuelta(n), '']),
+];
+
+const salida = [...CABECERA.split('\n'), ...extras, ...lineas.slice(desde)];
 writeFileSync(join(RAIZ, 'ACTUALIZAR-BASE.sql'), salida.join(fin));
 
 console.log(`  ACTUALIZAR-BASE.sql regenerado: ${salida.length} lineas`);
-console.log(`  desde la linea ${desde + 1} del instalador hasta el final.`);
+console.log(`  desde la linea ${desde + 1} del instalador hasta el final`);
+if (ADEMAS.length > 0) console.log(`  mas ${ADEMAS.length} funcion(es) corregidas: ${ADEMAS.join(', ')}`);

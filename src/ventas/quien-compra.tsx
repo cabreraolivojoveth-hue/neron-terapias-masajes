@@ -29,6 +29,14 @@ export interface PropiedadesDeQuienCompra {
   readonly clienteNombre: string;
   readonly busqueda: string;
   readonly encontrados: readonly ClienteEnLista[];
+  /**
+   * Los ultimos que se dieron de alta, para no partir de una lista en blanco.
+   *
+   * SON CLIENTES DE VERDAD, los del propio centro: es la misma consulta de
+   * siempre sin texto de busqueda. Un centro recien abierto no tiene ninguno y
+   * entonces no se enseña nada — no se rellena con nadie inventado.
+   */
+  readonly recientes: readonly ClienteEnLista[];
   readonly buscando: boolean;
   readonly fecha: Fecha;
   readonly vendedorId: string;
@@ -43,11 +51,45 @@ export interface PropiedadesDeQuienCompra {
   onVendedor(id: string): void;
 }
 
+/**
+ * La lista de clientes que se puede tocar.
+ *
+ * Es la MISMA para lo encontrado y para los recientes, a proposito: si fueran
+ * dos, una se quedaria sin el telefono debajo del nombre el dia que se cambie
+ * la otra — y el telefono es justo lo que distingue a dos personas que se
+ * llaman igual.
+ */
+function ListaDeClientesEncontrados({
+  clientes,
+  onEscoger,
+}: {
+  readonly clientes: readonly ClienteEnLista[];
+  onEscoger(c: ClienteEnLista): void;
+}) {
+  return (
+    <ul className="vta-encontrados">
+      {clientes.map((c) => (
+        <li key={c.id}>
+          <button type="button" className="vta-concepto" onClick={() => onEscoger(c)}>
+            <span className="pz-renglon__cuerpo">
+              <span className="pz-renglon__titulo">{c.nombre}</span>
+              <span className="pz-renglon__pie">
+                {c.telefono ?? c.correo ?? 'Sin contacto'}
+              </span>
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function QuienCompra({
   clienteId,
   clienteNombre,
   busqueda,
   encontrados,
+  recientes,
   buscando,
   fecha,
   vendedorId,
@@ -114,25 +156,30 @@ export function QuienCompra({
                     : 'Los pacientes se dan de alta en Clientes.'}
                 </p>
               ) : (
-                <ul className="vta-encontrados">
-                  {encontrados.slice(0, 6).map((c) => (
-                    <li key={c.id}>
-                      <button
-                        type="button"
-                        className="vta-concepto"
-                        onClick={() => onEscogerCliente(c)}
-                      >
-                        <span className="pz-renglon__cuerpo">
-                          <span className="pz-renglon__titulo">{c.nombre}</span>
-                          <span className="pz-renglon__pie">
-                            {c.telefono ?? c.correo ?? 'Sin contacto'}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                <ListaDeClientesEncontrados
+                  clientes={encontrados.slice(0, 6)}
+                  onEscoger={onEscogerCliente}
+                />
               )
+            ) : recientes.length > 0 ? (
+              /*
+               * SIN ESCRIBIR NADA YA HAY A QUIEN TOCAR.
+               *
+               * El buscador arrancaba en blanco, asi que atender a alguien que
+               * acaba de venir obligaba a teclear su nombre entero cada vez.
+               * Con los ultimos a la vista, el caso mas comun —el paciente de
+               * hace un rato, el que se acaba de dar de alta— es un toque.
+               *
+               * Se enseñan TRES. Con mas, la lista tapa el resto del formulario
+               * y deja de ser un atajo para volverse otra cosa que leer.
+               */
+              <>
+                <span className="tt-etiqueta">Clientes recientes</span>
+                <ListaDeClientesEncontrados
+                  clientes={recientes.slice(0, 3)}
+                  onEscoger={onEscogerCliente}
+                />
+              </>
             ) : null}
             {puedeCrearCliente ? (
               <button type="button" className="pz-boton" onClick={onNuevoCliente}>

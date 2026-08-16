@@ -36,7 +36,8 @@ const EXPEDIENTE: ExpedienteDeCliente = {
 
 function pintar(extra: Partial<React.ComponentProps<typeof QuienCompra>> = {}) {
   const props: React.ComponentProps<typeof QuienCompra> = {
-    clienteId: '', clienteNombre: '', busqueda: '', encontrados: [], buscando: false,
+    clienteId: '', clienteNombre: '', busqueda: '', encontrados: [], recientes: [],
+    buscando: false,
     fecha: '15/07/2026', vendedorId: '', vendedores: [],
     puedeCambiarVendedor: true, puedeCrearCliente: true,
     onBuscarCliente: () => {}, onEscogerCliente: () => {}, onQuitarCliente: () => {},
@@ -68,6 +69,45 @@ describe('el cliente', () => {
   it('sin escribir nada NO se baja la lista de clientes', () => {
     pintar({ encontrados: [CLIENTE] });
     expect(screen.queryByText('Paciente Uno')).toBeNull();
+  });
+});
+
+describe('los clientes recientes', () => {
+  const OTRO: ClienteEnLista = { ...CLIENTE, id: 'c2', nombre: 'Paciente Dos' };
+
+  it('sin escribir nada ya hay a quien tocar', () => {
+    /**
+     * El buscador arrancaba en blanco: atender a alguien que acaba de venir
+     * obligaba a teclear su nombre entero cada vez. Con los ultimos a la vista,
+     * el caso mas comun es un toque.
+     */
+    pintar({ recientes: [CLIENTE, OTRO] });
+    expect(screen.getByText('Clientes recientes')).toBeTruthy();
+    expect(screen.getByText('Paciente Uno')).toBeTruthy();
+  });
+
+  it('son clientes de VERDAD: sin ninguno no se enseña nada inventado', () => {
+    // Un centro recien abierto no tiene recientes. Rellenar la lista para que
+    // "se vea completa" es la regla numero uno del producto, al reves.
+    pintar({ recientes: [] });
+    expect(screen.queryByText('Clientes recientes')).toBeNull();
+  });
+
+  it('al escribir se APARTAN y mandan los resultados', () => {
+    // Si se quedaran, la lista mezclaria coincidencias con no-coincidencias y
+    // tocar la de abajo escogeria a quien no se estaba buscando.
+    pintar({ busqueda: 'dos', recientes: [CLIENTE], encontrados: [OTRO] });
+    expect(screen.queryByText('Clientes recientes')).toBeNull();
+    expect(screen.getByText('Paciente Dos')).toBeTruthy();
+    expect(screen.queryByText('Paciente Uno')).toBeNull();
+  });
+
+  it('se enseñan TRES como mucho, para no tapar el formulario', () => {
+    const muchos = Array.from({ length: 8 }, (_, i) => ({
+      ...CLIENTE, id: `c${i}`, nombre: `Paciente ${i}`,
+    }));
+    pintar({ recientes: muchos });
+    expect(screen.getAllByRole('button', { name: /^Paciente \d/ })).toHaveLength(3);
   });
 
   it('escoger avisa con el cliente entero, no con el nombre', async () => {

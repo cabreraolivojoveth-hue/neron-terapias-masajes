@@ -33,6 +33,8 @@ const datos = vi.hoisted(() => ({
   cobros: [] as { llave: string; renglones: number; pagos: unknown[] }[],
   /** Lo que va a contestar el proximo cobro: `null` cobra bien. */
   falla: null as string | null,
+  /** Cuantas ventas pidio cada consulta, para mirar el "ver mas". */
+  pedidos: [] as { porPagina: number }[],
 }));
 
 const navegacion = vi.hoisted(() => ({ ir: (() => {}) as (m: string, o?: unknown) => void }));
@@ -82,7 +84,14 @@ vi.mock('../../src/datos/ventas.js', async () => {
   return {
     ...real,
     traerCatalogoVendible: vi.fn(async () => datos.catalogo),
-    traerVentas: vi.fn(async () => datos.ventas),
+    traerVentas: vi.fn(
+      async (
+        _n: string, _d: string, _h: string, _f: unknown, _p: number, porPagina: number,
+      ) => {
+        datos.pedidos.push({ porPagina });
+        return datos.ventas;
+      },
+    ),
     traerResumenDeVentas: vi.fn(async () => real.ordenarResumenDeVentas(datos.resumen)),
     traerCotizaciones: vi.fn(async () => datos.cotizaciones),
     traerFichaDeVenta: vi.fn(async () => datos.ficha),
@@ -113,6 +122,7 @@ const CONCEPTO: ConceptoVendible = {
 beforeEach(() => {
   olvidarTodo();
   datos.catalogo = [];
+  datos.pedidos = [];
   datos.ventas = { total: 0, filas: [] };
   datos.resumen = null;
   datos.cotizaciones = [];
@@ -173,9 +183,27 @@ describe('restar dias sin que la fecha se mueva', () => {
 
 describe('la pantalla vacia', () => {
   it('arranca en Nueva venta, con el resumen del dia en cero', async () => {
+    /**
+     * Se mira el RESUMEN, no una lista de ventas.
+     *
+     * Aqui habia una tarjeta de "Ultimas ventas del dia" que se fue: leia lo
+     * mismo que la pestaña "Ventas del dia" con otra consulta, asi que la misma
+     * pantalla contestaba dos cosas a "¿cuantas llevo hoy?" en cuanto una se
+     * quedaba sin recargar.
+     */
     render(<PuntoDeVenta />);
     expect(screen.getByRole('heading', { name: 'Ventas' })).toBeTruthy();
-    expect(await screen.findByText('No hay ventas registradas hoy.')).toBeTruthy();
+    expect(await screen.findByText('Estadísticas del día')).toBeTruthy();
+    expect(
+      screen.getByText(/El ticket promedio aparece cuando haya al menos una venta cobrada hoy/),
+    ).toBeTruthy();
+  });
+
+  it('las ventas del dia YA NO se repiten en el cobro', async () => {
+    // Si vuelve la tarjeta, vuelven las dos respuestas a la misma pregunta.
+    render(<PuntoDeVenta />);
+    await screen.findByText('Estadísticas del día');
+    expect(screen.queryByText('Últimas ventas del día')).toBeNull();
   });
 
   it('el vendedor arranca en QUIEN ESTA COBRANDO', async () => {
@@ -309,6 +337,60 @@ describe('las cotizaciones', () => {
     render(<PuntoDeVenta />);
     await userEvent.click(screen.getByRole('tab', { name: 'Cotizaciones' }));
     expect(await screen.findByText(/no mueve inventario ni caja/i)).toBeTruthy();
+  });
+});
+
+describe('ventas del dia', () => {
+  it('arranca pidiendo CUATRO, no la lista entera', async () => {
+    /**
+     * Un dia normal son treinta o cuarenta ventas. Soltarlas todas al entrar
+     * convierte la pestaña en un muro de renglones donde no se distingue nada,
+     * y lo que casi siempre se busca es la de hace un rato, que esta arriba.
+     */
+    render(<PuntoDeVenta />);
+    await userEvent.click(screen.getByRole('tab', { name: 'Ventas del día' }));
+    await waitFor(() => expect(datos.pedidos.length).toBeGreaterThan(0));
+    expect(datos.pedidos[datos.pedidos.length - 1]?.porPagina).toBe(4);
+  });
+
+  it('"Ver más ventas" pide cuatro mas', async () => {
+    datos.ventas = {
+      total: 9,
+      filas: Array.from({ length: 4 }, (_, i) => ({
+        id: `v${i}`, folio: `V-0000${i}`, fecha: '15/07/2026', clienteId: null,
+        cliente: null, vendedor: null, totalCentavos: 10000, estado: 'cobrada',
+        metodos: 'efectivo', renglones: 1, creadoEn: '2026-07-15T10:00:00Z',
+      })),
+    };
+    render(<PuntoDeVenta />);
+    await userEvent.click(screen.getByRole('tab', { name: 'Ventas del día' }));
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Ver más ventas' }));
+    await waitFor(() =>
+      expect(datos.pedidos[datos.pedidos.length - 1]?.porPagina).toBe(8));
+  });
+
+  it('sin mas ventas que enseñar NO se ofrece ver mas', async () => {
+    // Un boton que no hace nada es peor que no tenerlo: se toca, no pasa nada,
+    // y quien lo toco cree que la pantalla se trabo.
+    datos.ventas = { total: 2, filas: [] };
+    render(<PuntoDeVenta />);
+    await userEvent.click(screen.getByRole('tab', { name: 'Ventas del día' }));
+    await waitFor(() => expect(datos.pedidos.length).toBeGreaterThan(0));
+    expect(screen.queryByRole('button', { name: 'Ver más ventas' })).toBeNull();
+  });
+
+  it('el buscador filtra sobre el DIA entero, no sobre las cuatro que se ven', async () => {
+    /**
+     * Filtrar sobre lo visible seria decirle a alguien que su venta no existe
+     * porque estaba en la quinta fila. El texto viaja al servidor.
+     */
+    render(<PuntoDeVenta />);
+    await userEvent.click(screen.getByRole('tab', { name: 'Ventas del día' }));
+    const cuantos = datos.pedidos.length;
+    // El de la tabla, no el del catálogo de arriba: hay dos buscadores vivos.
+    await userEvent.type(screen.getByPlaceholderText('Buscar venta…'), 'aceite');
+    await waitFor(() => expect(datos.pedidos.length).toBeGreaterThan(cuantos), { timeout: 2000 });
   });
 });
 

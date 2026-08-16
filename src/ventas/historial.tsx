@@ -52,6 +52,15 @@ export interface PropiedadesDelHistorial {
   onPagina(pagina: number): void;
   onAbrir(ventaId: string): void;
   onReintentar(): void;
+  /**
+   * Crecer la lista en vez de paginarla. Solo lo manda "Ventas del día".
+   *
+   * Cuando viene, el pie cambia de flechas a un boton: en el dia se busca "la
+   * de hace un rato" y partir treinta ventas en ocho paginas obliga a acordarse
+   * de en cual se estaba. En el Historial, que abarca un año, pasa lo contrario
+   * y por eso alli no se manda.
+   */
+  onVerMas?(): void;
 }
 
 export function Historial({
@@ -70,6 +79,7 @@ export function Historial({
   onPagina,
   onAbrir,
   onReintentar,
+  onVerMas,
 }: PropiedadesDelHistorial) {
   const paginas = Math.max(1, Math.ceil(total / Math.max(porPagina, 1)));
   const desde = total === 0 ? 0 : (pagina - 1) * porPagina + 1;
@@ -175,29 +185,35 @@ export function Historial({
           Mostrando {desde} a {desde === 0 ? 0 : desde + ventas.length - 1} de {total}{' '}
           {total === 1 ? 'venta' : 'ventas'}
         </span>
-        <div className="pz-paginas" role="group" aria-label="Páginas">
-          <button
-            type="button"
-            className="pz-pagina"
-            aria-label="Página anterior"
-            disabled={pagina <= 1}
-            onClick={() => onPagina(pagina - 1)}
-          >
-            ‹
+        {onVerMas ? (
+          <button type="button" className="pz-boton" onClick={onVerMas}>
+            Ver más ventas
           </button>
-          <span className="pz-paginas__actual" aria-live="polite">
-            {pagina} de {paginas}
-          </span>
-          <button
-            type="button"
-            className="pz-pagina"
-            aria-label="Página siguiente"
-            disabled={pagina >= paginas}
-            onClick={() => onPagina(pagina + 1)}
-          >
-            ›
-          </button>
-        </div>
+        ) : (
+          <div className="pz-paginas" role="group" aria-label="Páginas">
+            <button
+              type="button"
+              className="pz-pagina"
+              aria-label="Página anterior"
+              disabled={pagina <= 1}
+              onClick={() => onPagina(pagina - 1)}
+            >
+              ‹
+            </button>
+            <span className="pz-paginas__actual" aria-live="polite">
+              {pagina} de {paginas}
+            </span>
+            <button
+              type="button"
+              className="pz-pagina"
+              aria-label="Página siguiente"
+              disabled={pagina >= paginas}
+              onClick={() => onPagina(pagina + 1)}
+            >
+              ›
+            </button>
+          </div>
+        )}
       </footer>
     </section>
   );

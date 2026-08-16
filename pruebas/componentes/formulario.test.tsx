@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FormularioDeCita, type ValoresDeCita } from '../../src/agenda/formulario.js';
@@ -30,6 +30,7 @@ const pintar = (props: Record<string, unknown> = {}) =>
       clientes={CLIENTES} servicios={SERVICIOS} profesionales={PROFESIONALES}
       trabajando={false} error={null}
       onGuardar={vi.fn()} onCrearCliente={vi.fn()} onCerrar={vi.fn()}
+      onBuscarDuplicado={vi.fn(async () => null)} onAbrirDuplicado={vi.fn()}
       {...props}
     />,
   );
@@ -150,7 +151,7 @@ describe('lo que falta se dice por su nombre', () => {
 });
 
 describe('dar de alta un paciente sin salir de la cita', () => {
-  it('el alta rapida NO borra lo que ya se habia escrito', async () => {
+  it('el alta NO borra lo que ya se habia escrito', async () => {
     /**
      * Es el caso completo: la persona ya escogio servicio y hora, no encuentra
      * al paciente, lo da de alta, y al volver TODO sigue ahi con el paciente
@@ -168,8 +169,11 @@ describe('dar de alta un paciente sin salir de la cita', () => {
     await u.type(screen.getByLabelText('Notas'), 'trae receta');
 
     await u.click(screen.getByRole('button', { name: '+ Nuevo paciente' }));
-    await u.type(screen.getByLabelText('Nombre'), 'Paciente Nuevo');
-    await u.click(screen.getByRole('button', { name: 'Guardar y usar' }));
+    // Se apunta DENTRO del diálogo de la ficha: los dos formularios están vivos
+    // a la vez —el de la cita sigue detrás— y los dos llevan un "Guardar".
+    const ficha = screen.getByRole('dialog', { name: 'Nuevo paciente' });
+    await u.type(within(ficha).getByLabelText(/^Nombre/), 'Paciente Nuevo');
+    await u.click(within(ficha).getByRole('button', { name: 'Guardar' }));
 
     await waitFor(() => expect(onCrearCliente).toHaveBeenCalled());
     await u.click(screen.getByRole('button', { name: 'Guardar' }));
@@ -180,11 +184,34 @@ describe('dar de alta un paciente sin salir de la cita', () => {
     });
   });
 
-  it('sin nombre no se puede guardar el paciente', async () => {
+  it('"Nuevo paciente" abre LA FICHA DE CLIENTES, no un formulario propio', async () => {
+    /**
+     * ES LA PRUEBA DE QUE NO HAY DOS SISTEMAS.
+     *
+     * Aqui habia un alta con tres campos —nombre, telefono, correo— y en
+     * Clientes una con veinte, incluida la ficha de salud. Dar de alta desde la
+     * Agenda creaba una persona SIN padecimientos, sin alergias y sin
+     * contraindicaciones: justo lo que hay que leer antes de darle una sesion.
+     *
+     * Se comprueba por lo que solo trae la ficha de Clientes. Si alguien
+     * escribe otra vez un formulario propio aqui, esto revienta.
+     */
     pintar();
     await userEvent.setup().click(screen.getByRole('button', { name: '+ Nuevo paciente' }));
-    expect((screen.getByRole('button', { name: 'Guardar y usar' }) as HTMLButtonElement).disabled)
-      .toBe(true);
+    expect(screen.getByText('Ficha de salud')).toBeTruthy();
+    expect(screen.getByText('Contacto de emergencia')).toBeTruthy();
+  });
+
+  it('sin nombre no se guarda el paciente', async () => {
+    // La ficha valida al enviar y marca el campo, en vez de apagar el boton:
+    // un boton apagado sin decir por que deja mirando la pantalla.
+    const onCrearCliente = vi.fn();
+    pintar({ onCrearCliente });
+    const u = userEvent.setup();
+    await u.click(screen.getByRole('button', { name: '+ Nuevo paciente' }));
+    const ficha = screen.getByRole('dialog', { name: 'Nuevo paciente' });
+    await u.click(within(ficha).getByRole('button', { name: 'Guardar' }));
+    expect(onCrearCliente).not.toHaveBeenCalled();
   });
 });
 
