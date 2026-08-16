@@ -46,7 +46,9 @@ const TABLAS = ['cliente', 'servicio', 'curso', 'producto', 'cita', 'venta',
   'venta_item', 'pago', 'gasto', 'movimiento_caja', 'inscripcion', 'recordatorio',
   'categoria', 'sesion_curso', 'material_curso',
   'proveedor', 'producto_proveedor', 'movimiento_inventario',
-  'cotizacion', 'cotizacion_item', 'sesion_caja', 'gasto_recurrente'] as const;
+  'cotizacion', 'cotizacion_item', 'sesion_caja', 'gasto_recurrente',
+  'recordatorio_recurrente', 'recordatorio_evento', 'recordatorio_ajustes',
+  'recordatorio_automatizacion'] as const;
 
 const cliente = new pg.Client(CADENA ? { connectionString: CADENA } : {});
 
@@ -287,6 +289,10 @@ async function correr(): Promise<void> {
     ['material_curso', 'el material de los cursos'],
     ['proveedor', 'los proveedores'],
     ['movimiento_inventario', 'los movimientos de inventario'],
+    ['recordatorio_recurrente', 'las repeticiones de recordatorio'],
+    ['recordatorio_evento', 'el historial de los recordatorios'],
+    ['recordatorio_ajustes', 'la configuracion de recordatorios'],
+    ['recordatorio_automatizacion', 'las automatizaciones de recordatorios'],
   ] as const) {
     await como(DUENO_OTRO, async () => {
       const n = await cuantos(`select * from ${tabla} where negocio_id = $1`, [CENTRO]);
@@ -1738,6 +1744,191 @@ async function correr(): Promise<void> {
       `select guardar_gasto_recurrente($1,null,'Ajeno',1000,'efectivo','mensual',current_date)`,
       [OTRO]));
     anotar('ni se configura uno en el centro de al lado', e !== null, e ?? 'lo configuro');
+  });
+
+  grupo('Recordatorios — lo pendiente no se toca desde fuera');
+
+  /**
+   * QUE SE COMPRUEBA AQUI, Y POR QUE.
+   *
+   * Los recordatorios los VE todo el centro a proposito: son la lista de
+   * pendientes del equipo, no el buzon privado de nadie. Lo que si esta acotado
+   * es tocar el de OTRA persona, y eso no lo decide la pantalla sino
+   * `app.puede_tocar_recordatorio`, en el servidor. Un boton escondido es
+   * cortesia; esto es la regla.
+   */
+
+  let recordatorioAjeno = '';
+
+  await como(DUENA, async () => {
+    const r = await cliente.query(
+      `select guardar_recordatorio($1, null, 'Llamar al proveedor', current_date) as id`, [CENTRO]);
+    recordatorioAjeno = r.rows[0].id;
+    anotar('la dueña SI crea un recordatorio', Boolean(recordatorioAjeno));
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select guardar_recordatorio($1, null, 'Infiltrado', current_date)`, [CENTRO]));
+    anotar('NO se puede crear un recordatorio en el centro ajeno', e !== null, e ?? 'lo logro');
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select completar_recordatorio($1, true)`, [recordatorioAjeno]));
+    anotar('NO se puede completar el recordatorio de otro centro', e !== null, e ?? 'lo logro');
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select eliminar_recordatorio($1)`, [recordatorioAjeno]));
+    anotar('NO se puede eliminar el recordatorio de otro centro', e !== null, e ?? 'lo logro');
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select posponer_recordatorio($1, current_date + 7)`, [recordatorioAjeno]));
+    anotar('NO se puede posponer el recordatorio de otro centro', e !== null, e ?? 'lo logro');
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select resumen_de_recordatorios($1, current_date)`, [CENTRO]));
+    anotar('NO se pide el resumen de recordatorios de otro centro', e !== null, e ?? 'se lo dio');
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select recordatorios_del_centro($1, current_date)`, [CENTRO]));
+    anotar('NO se pide la lista de recordatorios de otro centro', e !== null, e ?? 'se lo dio');
+  });
+
+  /*
+   * CONFIGURAR EL MODULO NO ES USARLO. Cambiar la anticipacion de los avisos, o
+   * encender una automatizacion, le cambia el comportamiento —y le crea
+   * recordatorios— a TODO el centro. Por eso pide el mismo permiso que la
+   * configuracion del sistema, y la recepcionista no lo tiene.
+   */
+  await como(RECEPCION, async () => {
+    const e = await rechazado(() =>
+      cliente.query(
+        `select guardar_ajustes_de_recordatorios($1, true, 60, '08:00', true, true, 14, 'fecha')`,
+        [CENTRO]));
+    anotar('quien no administra NO cambia la configuracion del modulo', e !== null, e ?? 'lo logro');
+  });
+
+  await como(RECEPCION, async () => {
+    const e = await rechazado(() =>
+      cliente.query(
+        `select guardar_automatizacion_de_recordatorios($1, 'cita_nueva', true, 'Confirmar')`,
+        [CENTRO]));
+    anotar('quien no administra NO enciende una automatizacion', e !== null, e ?? 'lo logro');
+  });
+
+  /*
+   * EL RASTRO NO SE CORRIGE. `recordatorio_evento` no tiene politica de update
+   * ni de delete, y eso no es un olvido: un historial que se puede editar no
+   * sirve para contestar la unica pregunta que se le hace.
+   */
+  await como(DUENA, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`update recordatorio_evento set accion = 'otra' where negocio_id = $1`,
+        [CENTRO]));
+    anotar('NI LA DUEÑA corrige el historial de un recordatorio', e !== null, e ?? 'lo logro');
+  });
+
+  await como(DUENA, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`delete from recordatorio_evento where negocio_id = $1`, [CENTRO]));
+    anotar('NI LA DUEÑA borra el historial de un recordatorio', e !== null, e ?? 'lo logro');
+  });
+
+  /*
+   * LA REPETICION ES IDEMPOTENTE POR EL INDICE, no por la funcion. Correrla dos
+   * veces seguidas tiene que crear el recordatorio UNA sola vez: si no, dos
+   * pestañas abiertas a la vez duplican la lista.
+   */
+  await como(DUENA, async () => {
+    await cliente.query(
+      `select guardar_recordatorio_recurrente($1, null, 'Corte del lunes', 'semanal', current_date)`,
+      [CENTRO]);
+    const a = await cliente.query(`select generar_recordatorios_recurrentes($1) as n`, [CENTRO]);
+    const b = await cliente.query(`select generar_recordatorios_recurrentes($1) as n`, [CENTRO]);
+    anotar('la repeticion crea su primera ocurrencia', Number(a.rows[0].n) >= 1,
+      `creo ${a.rows[0].n}`);
+    anotar('y correrla otra vez NO la duplica', Number(b.rows[0].n) === 0,
+      `creo ${b.rows[0].n} de mas`);
+  });
+
+  /*
+   * COMPLETAR UNO RECURRENTE PROGRAMA EL SIGUIENTE. Es el requisito que mas
+   * facil se rompe: se marca hecho el del lunes, la regla se apaga con el, y el
+   * lunes siguiente no avisa nadie.
+   */
+  await como(DUENA, async () => {
+    const r = await cliente.query(
+      `select id from recordatorio
+        where negocio_id = $1 and recurrente_id is not null and estado = 'pendiente'
+        order by fecha limit 1`, [CENTRO]);
+    const cual = r.rows[0]?.id;
+    if (!cual) {
+      anotar('completar el recurrente programa el siguiente', false, 'no se creo ninguno');
+      return;
+    }
+    const n = await cliente.query(`select completar_recordatorio($1, true) as siguiente`, [cual]);
+    anotar('completar el recurrente programa el siguiente', Boolean(n.rows[0].siguiente),
+      'no programo ninguno');
+  });
+
+  /*
+   * LAS AUTOMATIZACIONES NO CREAN NADA HASTA QUE SE ENCIENDEN, y una vez
+   * encendidas NO DUPLICAN. Las dos mitades importan: la primera impide
+   * llenarle la lista a quien nunca lo pidio; la segunda impide tres "Reponer
+   * aceites" iguales despues de tres visitas a la pantalla.
+   */
+  await como(DUENA, async () => {
+    const r = await cliente.query(
+      `select generar_recordatorios_automaticos($1, current_date) as n`, [CENTRO]);
+    anotar('sin automatizaciones encendidas NO se crea ni un recordatorio',
+      Number(r.rows[0].n) === 0, `creo ${r.rows[0].n}`);
+  });
+
+  await como(DUENA, async () => {
+    await cliente.query(
+      `select guardar_automatizacion_de_recordatorios($1,'cita_nueva',true,'Confirmar {nombre}')`,
+      [CENTRO]);
+    const a = await cliente.query(
+      `select generar_recordatorios_automaticos($1, current_date) as n`, [CENTRO]);
+    const b = await cliente.query(
+      `select generar_recordatorios_automaticos($1, current_date) as n`, [CENTRO]);
+    anotar('encendida, la automatizacion SI crea el recordatorio de la cita',
+      Number(a.rows[0].n) >= 1, `creo ${a.rows[0].n}`);
+    anotar('y volver a aplicarla NO lo duplica', Number(b.rows[0].n) === 0,
+      `creo ${b.rows[0].n} de mas`);
+  });
+
+  /*
+   * "VENCIDO" SE CALCULA, NO SE GUARDA. Un recordatorio de ayer sigue siendo
+   * `pendiente` en la tabla y llega marcado como vencido al leerlo. Guardarlo
+   * obligaria a que completarlo supiera a que estado volver.
+   */
+  await como(DUENA, async () => {
+    await cliente.query(
+      `select guardar_recordatorio($1, null, 'De ayer', current_date - 1)`, [CENTRO]);
+    const r = await cliente.query(
+      `select recordatorios_del_centro($1, current_date, 'vencidos') as x`, [CENTRO]);
+    const filas = r.rows[0].x.filas ?? [];
+    const vencido = filas.find((f: { titulo: string }) => f.titulo === 'De ayer');
+    anotar('un recordatorio de ayer llega marcado como vencido', vencido?.vencido === true,
+      JSON.stringify(vencido ?? null));
+    anotar('pero su estado guardado sigue siendo pendiente', vencido?.estado === 'pendiente',
+      `es ${vencido?.estado}`);
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const n = await cuantos(
+      `select * from recordatorio_evento where recordatorio_id = $1`, [recordatorioAjeno]);
+    anotar('NO se ve el historial de un recordatorio ajeno', n === 0, `vio ${n}`);
   });
 
   grupo('Controles positivos — que el centro pueda trabajar');

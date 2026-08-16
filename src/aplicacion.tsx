@@ -27,6 +27,7 @@ import { Almacen } from './productos/almacen.js';
 import { LibroDeGastos } from './gastos/libro-de-gastos.js';
 import { Analisis } from './reportes/analisis.js';
 import { Bandeja } from './mensajes/bandeja.js';
+import { CentroDeRecordatorios } from './recordatorios/centro-de-recordatorios.js';
 import { Mostrador } from './caja/mostrador.js';
 import { Pendiente } from './modulos/pendiente.js';
 import { GRUPOS, MODULOS, MODULO_POR_OMISION, modulosVisibles } from './modulos/registro.js';
@@ -186,6 +187,10 @@ function Interior() {
           /* MENSAJES NO ES DUEÑO DE NI UN DATO DEL CLIENTE: guarda el hilo
              contra su ficha y lo demas lo lee de Clientes, Agenda y Ventas. */
           <Bandeja />
+        ) : modulo === 'recordatorios' ? (
+          /* RECORDATORIOS NO ES DUEÑO DE NINGUNA OTRA ENTIDAD: guarda a que
+             cosa se refiere y el nombre lo resuelve la base al leer. */
+          <CentroDeRecordatorios />
         ) : modulo === 'reportes' ? (
           /* REPORTES NO ES UN MODULO MAS: no tiene tabla propia ni escribe una
              cifra. Lee de los otros ocho y los suma en el servidor. */

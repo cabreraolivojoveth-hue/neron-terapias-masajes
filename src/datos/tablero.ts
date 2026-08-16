@@ -76,14 +76,44 @@ export interface ResumenDeInicio {
   readonly ventasAyer: number | null;
   readonly productosBajos: number;
   readonly cursosProximos: number;
+  /**
+   * LO QUE URGE: lo de hoy MAS lo que ya vencio.
+   *
+   * Conserva el nombre y el significado que tenia antes de que existiera el
+   * modulo, porque ya lo leen la campana y la tarjeta. Los dos numeros de abajo
+   * son los que lo desglosan.
+   */
   readonly recordatoriosPendientes: number;
+  readonly recordatoriosHoy: number;
+  /**
+   * Los que ya se pasaron de fecha y siguen sin cerrar.
+   *
+   * VA SEPARADO DE LOS DE HOY a proposito: sumarlos deja a quien mira el
+   * tablero sin saber si tiene que correr o si ya llego tarde.
+   */
+  readonly recordatoriosVencidos: number;
   readonly ingresosSemana: readonly DiaConIngreso[];
   readonly topServicios: readonly ServicioVendido[];
   readonly topProductos: readonly ProductoVendido[];
 }
 
-export type PrioridadDeRecordatorio = 'baja' | 'normal' | 'alta';
-export type EntidadDeRecordatorio = 'cliente' | 'cita' | 'venta' | 'curso' | 'producto';
+/**
+ * LOS TIPOS DE RECORDATORIO SON DE RECORDATORIOS, y aqui solo se reexportan.
+ *
+ * Vivieron un tiempo escritos aqui, cuando el tablero era lo unico que los
+ * leia. Al llegar el modulo, tenerlos dos veces habria significado que agregar
+ * la prioridad "urgente" en un archivo dejaria al otro sin ella — y el sintoma
+ * no seria un error: seria una pastilla sin color en el tablero.
+ *
+ * La reexportacion es SOLO DE TIPOS (`export type`), asi que desaparece al
+ * compilar y no crea un ciclo con `recordatorios.ts`, que si necesita de aqui
+ * el prefijo de cache en tiempo de ejecucion.
+ */
+export type {
+  PrioridadDeRecordatorio,
+  EntidadDeRecordatorio,
+} from './recordatorios.js';
+import type { EntidadDeRecordatorio, PrioridadDeRecordatorio } from './recordatorios.js';
 
 export interface RecordatorioCercano {
   readonly id: string;
@@ -131,6 +161,8 @@ export const RESUMEN_VACIO: ResumenDeInicio = {
   productosBajos: 0,
   cursosProximos: 0,
   recordatoriosPendientes: 0,
+  recordatoriosHoy: 0,
+  recordatoriosVencidos: 0,
   ingresosSemana: [],
   topServicios: [],
   topProductos: [],
@@ -152,6 +184,11 @@ export function ordenarResumen(crudo: unknown): ResumenDeInicio {
     productosBajos: numero(r['productosBajos']),
     cursosProximos: numero(r['cursosProximos']),
     recordatoriosPendientes: numero(r['recordatoriosPendientes']),
+    // Una base sin actualizar todavia no manda estos dos: caen en cero, y cero
+    // es la respuesta honesta —"no se de ninguno"— en vez de un numero copiado
+    // del de al lado que se leeria como si todos vencieran hoy.
+    recordatoriosHoy: numero(r['recordatoriosHoy']),
+    recordatoriosVencidos: numero(r['recordatoriosVencidos']),
     ingresosSemana: lista(r['ingresosSemana']).map((d) => {
       const x = d as Record<string, unknown>;
       return { fecha: deBase(x['fecha']), total: numero(x['total']) };

@@ -27,7 +27,13 @@ const opcional = (v: unknown): string | null =>
 // que cambia es el ambito. Una tabla aparte para las categorias de gasto
 // habria sido el error que costo el sistema de diseño — cuatro parecidas y
 // ninguna igual.
-export type AmbitoDeCategoria = 'servicio' | 'curso' | 'producto' | 'gasto' | 'conversacion';
+export type AmbitoDeCategoria =
+  | 'servicio'
+  | 'curso'
+  | 'producto'
+  | 'gasto'
+  | 'conversacion'
+  | 'recordatorio';
 
 export interface Categoria {
   readonly id: string;

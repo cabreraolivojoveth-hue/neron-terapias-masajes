@@ -26,13 +26,14 @@ import type {
   PorMetodoDePago,
   Reporte,
 } from '../datos/reportes.js';
+import type { CumplimientoDeRecordatorios } from '../datos/recordatorios.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
 import { DonaDeCategorias } from './dona-de-categorias.js';
 import { LineasDeIngresos } from './lineas-de-ingresos.js';
 
 export type PestanaDelReporte =
   | 'resumen' | 'ventas' | 'servicios' | 'clientes'
-  | 'productos' | 'cursos' | 'gastos' | 'caja';
+  | 'productos' | 'cursos' | 'gastos' | 'caja' | 'recordatorios';
 
 export const PESTANAS_DEL_REPORTE: ReadonlyArray<{
   readonly clave: PestanaDelReporte;
@@ -46,6 +47,7 @@ export const PESTANAS_DEL_REPORTE: ReadonlyArray<{
   { clave: 'cursos', etiqueta: 'Cursos' },
   { clave: 'gastos', etiqueta: 'Gastos' },
   { clave: 'caja', etiqueta: 'Caja' },
+  { clave: 'recordatorios', etiqueta: 'Recordatorios' },
 ];
 
 /** A que modulo lleva cada pestaña cuando alguien quiere ver el detalle. */
@@ -58,6 +60,7 @@ export const MODULO_DE_LA_PESTANA: Readonly<Record<PestanaDelReporte, string>> =
   cursos: 'cursos',
   gastos: 'gastos',
   caja: 'caja',
+  recordatorios: 'recordatorios',
 };
 
 /* ------------------------------------------------------------------ */
@@ -172,6 +175,18 @@ export function TarjetaDeRanking({
 export interface PropiedadesDeLaSeccion {
   readonly reporte: Reporte | null;
   readonly cargando: boolean;
+  /**
+   * EL CUMPLIMIENTO DE LOS PENDIENTES, que NO viene de `reporte_del_periodo`.
+   *
+   * Es la unica seccion que consulta aparte, y a proposito: Recordatorios
+   * define que cuenta como vencido y que como cumplido. Si Reportes lo contara
+   * por su cuenta, el dia que alli cambie la definicion —por ejemplo, que los
+   * cancelados dejen de restar— las dos pantallas dirian cifras distintas del
+   * mismo mes y nadie sabria cual creer.
+   *
+   * `null` es "todavia no llega" y se pinta con rayas.
+   */
+  readonly cumplimiento?: CumplimientoDeRecordatorios | null;
   onIr(modulo: string, intencion?: string): void;
 }
 
@@ -626,6 +641,121 @@ function Caja({ reporte, cargando, onIr }: PropiedadesDeLaSeccion) {
 
 /* ------------------------------------------------------------------ */
 
+/**
+ * EL SEGUIMIENTO DE LO PENDIENTE.
+ *
+ * Es la unica seccion que no sale de `reporte_del_periodo`, y esta explicado en
+ * `PropiedadesDeLaSeccion`: la definicion de "vencido" y de "cumplido" vive en
+ * Recordatorios, y contarlo aqui por separado seria la segunda fuente de verdad
+ * que todo el proyecto se molesta en evitar.
+ *
+ * EL CUMPLIMIENTO POR PERSONA NO ES UN RANKING. Se ordena por cuantos le
+ * tocaron y no por porcentaje: una lista de personas ordenada por "quien
+ * cumple menos" convierte una herramienta de trabajo en un tablero de
+ * señalamientos, y lo primero que se aprende entonces es a no aceptar
+ * recordatorios.
+ */
+function SeguimientoDePendientes({ cumplimiento, cargando, onIr }: PropiedadesDeLaSeccion) {
+  const c = cumplimiento ?? null;
+  const raya = '—';
+  const cifra = (n: number | null | undefined): string =>
+    cargando || n === null || n === undefined ? raya : String(n);
+
+  return (
+    <div className="rep-dos">
+      <section className="pz-tarjeta" aria-label="Cumplimiento de los recordatorios">
+        <div className="rep-tarjeta__cabeza">
+          <h3 className="tt-tarjeta">Pendientes del período</h3>
+          <button
+            type="button"
+            className="pz-enlace pz-enlace--pelado"
+            onClick={() => onIr('recordatorios')}
+          >
+            Ver la lista
+          </button>
+        </div>
+        <div className="pz-datos">
+          <Dato etiqueta="Creados" valor={cifra(c?.creados)} fuerte />
+          <Dato etiqueta="Completados" valor={cifra(c?.completados)} />
+          <Dato etiqueta="Siguen pendientes" valor={cifra(c?.pendientes)} />
+          <Dato etiqueta="Vencidos" valor={cifra(c?.vencidos)} />
+          <Dato etiqueta="Cancelados" valor={cifra(c?.cancelados)} />
+          {/* SIN NADA CREADO NO HAY PORCENTAJE. Un "0% de cumplimiento" de un
+              mes sin trabajo es un reproche inventado, no un dato. */}
+          <Dato
+            etiqueta="Cumplimiento"
+            valor={
+              cargando || c === null || c.cumplimiento === null
+                ? raya
+                : `${c.cumplimiento}%`
+            }
+          />
+          <Dato
+            etiqueta="Tiempo hasta cerrarlos"
+            valor={
+              cargando || c === null || c.horasPromedio === null
+                ? raya
+                : `${c.horasPromedio} h`
+            }
+          />
+        </div>
+      </section>
+
+      <section className="pz-tarjeta" aria-label="Cumplimiento por responsable">
+        <h3 className="tt-tarjeta">Por responsable</h3>
+        {cargando ? (
+          <div className="pz-cargando" aria-busy="true">
+            <div className="pz-silueta pz-silueta--linea" />
+            <div className="pz-silueta pz-silueta--linea" />
+          </div>
+        ) : (c?.porResponsable ?? []).length === 0 ? (
+          <Vacio icono="personas" texto="Todavía no hay recordatorios en este período." />
+        ) : (
+          <ul className="pz-lista mv-escalonado">
+            {(c?.porResponsable ?? []).map((m) => (
+              <li key={m.nombre} className="pz-dato pz-dato--renglon">
+                <span className="pz-dato__valor">{m.nombre}</span>
+                <span className="tt-secundario">
+                  {m.hechos} de {m.cuantos} cerrados
+                  {(m.vencidos ?? 0) > 0 ? ` · ${m.vencidos} vencidos` : ''}
+                </span>
+                <strong className="tt-dato">
+                  {m.cuantos === 0 ? raya : `${Math.round((m.hechos / m.cuantos) * 100)}%`}
+                </strong>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="pz-tarjeta" aria-label="Cumplimiento por categoría">
+        <h3 className="tt-tarjeta">Por categoría</h3>
+        {cargando ? (
+          <div className="pz-cargando" aria-busy="true">
+            <div className="pz-silueta pz-silueta--linea" />
+          </div>
+        ) : (c?.porCategoria ?? []).length === 0 ? (
+          <Vacio icono="renglones" texto="Todavía no hay recordatorios agrupados." />
+        ) : (
+          <ul className="pz-lista mv-escalonado">
+            {(c?.porCategoria ?? []).map((g) => (
+              <li key={g.nombre} className="pz-dato pz-dato--renglon">
+                <span className="pz-dato__valor">{g.nombre}</span>
+                <span className="tt-secundario">
+                  {g.cuantos} {g.cuantos === 1 ? 'recordatorio' : 'recordatorios'}
+                </span>
+                <strong className="tt-dato">
+                  {g.cuantos === 0 ? raya : `${Math.round((g.hechos / g.cuantos) * 100)}%`}
+                </strong>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
 export function SeccionDelReporte({
   pestana,
   ...resto
@@ -637,5 +767,6 @@ export function SeccionDelReporte({
   if (pestana === 'cursos') return <Cursos {...resto} />;
   if (pestana === 'gastos') return <Gastos {...resto} />;
   if (pestana === 'caja') return <Caja {...resto} />;
+  if (pestana === 'recordatorios') return <SeguimientoDePendientes {...resto} />;
   return <Resumen {...resto} />;
 }

@@ -63,9 +63,24 @@ Proyectos que ya NO se usan:
 8. Supabase → Authentication → URL Configuration → Site URL = la direccion de
    Vercel.
 
-**Bloques que siguen:** 2 Clientes · 3 Servicios y Cursos · 5 Productos ·
-6 Ventas, Pagos y Caja · 7 Gastos y Recordatorios · **8 Inicio** (el tablero) ·
-9 Reportes · 10 Configuración.
+**Bloques que siguen:** **10 Configuración** es el único que falta. Los demás
+—0, 1, 2 Clientes, 3 Servicios y Cursos, 4 Agenda, 5 Productos, 6 Ventas/Caja,
+7 Gastos y Recordatorios, 8 Inicio, 9 Reportes, 11 Mensajes— ya están.
+
+**Recordatorios, lo que hay que saber para tocarlo:**
+
+- La tabla `recordatorio` es la del bloque 0 y **no se sustituyó, se completó**.
+  Dos disparadores de Agenda ya escribían en ella: `reagendar_cita` mueve sus
+  recordatorios conservando el desfase, y `cambiar_estado_de_cita` los descarta.
+- **"Vencido" no es un estado guardado**: es `fecha < hoy` con `pendiente`, y se
+  calcula al leer. Está explicado en `BLOQUE-0-ARQUITECTURA.md` §8.
+- Las repeticiones y las automatizaciones son **idempotentes por dos índices
+  únicos de la base**, no por el código que las llama. Por eso se ponen al día al
+  abrir la pantalla y da igual cuántas pestañas haya.
+- Las automatizaciones **nacen apagadas**. La tabla arranca vacía a propósito.
+- El aviso del navegador **solo funciona con la pestaña abierta**, y la pantalla
+  de Configuración lo dice con esas palabras. Para avisar con todo cerrado hace
+  falta un servicio que corra solo, y todavía no existe.
 
 **Cómo trabajamos:**
 

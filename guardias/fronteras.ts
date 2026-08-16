@@ -769,7 +769,7 @@ function guardiaLasClasesQueSeEscribenExisten(): void {
    * aqui A PROPOSITO: obliga a decidir si de verdad hace falta otro espacio de
    * nombres, que es la pregunta que evito las ocho tarjetas distintas.
    */
-  const MIOS = /^(pz|tt|arm|mv|ini|agd|cli|srv|cur|prd|vta|caja|gto|rep|terapias)-/;
+  const MIOS = /^(pz|tt|arm|mv|ini|agd|cli|srv|cur|prd|vta|caja|gto|rep|rec|terapias)-/;
 
   const definidas = new Set<string>();
   for (const archivo of HOJAS) {

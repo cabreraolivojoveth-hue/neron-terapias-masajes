@@ -127,6 +127,72 @@ const CITAS = SERVICIOS.slice(0, 5).map((s, i) => ({
   sala: 'Sala 1',
 }));
 
+/**
+ * Los pendientes de la vitrina.
+ *
+ * SIRVEN PARA MEDIR LA PANTALLA, no para contar nada: hay uno vencido, uno de
+ * hoy, uno de mañana y uno cerrado, que son los cuatro estados que se pintan
+ * distinto. Los titulos son largos a proposito — es como se descubre que la
+ * columna se queda corta.
+ */
+const RECORDATORIOS = [
+  {
+    id: uuid(940), titulo: 'Recordar el pago del crédito', detalle: 'Llamar para recordar su pago',
+    notas: null, fecha: enDias(-2), hora: '10:00', prioridad: 'alta', estado: 'pendiente',
+    vencido: true, categoriaId: uuid(620), categoria: 'Créditos', categoriaColor: null,
+    responsableId: uuid(400), responsable: 'Quien administra',
+    entidadTipo: 'cliente', entidadId: uuid(200), entidadNombre: PERSONAS[0],
+    entidadContacto: '6640000000', recurrenteId: null, recurrencia: null,
+    automatizacionId: null, origenTipo: null, anticipacionMin: null, notificadoEn: null,
+    completadoEn: null, completadoPor: null, creadoPor: 'Quien administra',
+    creadoEn: enHoras(-72), actualizadoEn: null,
+  },
+  {
+    id: uuid(941), titulo: 'Confirmar la cita de terapia', detalle: 'Confirmar el masaje terapéutico',
+    notas: null, fecha: iso(hoy), hora: '14:00', prioridad: 'normal', estado: 'pendiente',
+    vencido: false, categoriaId: uuid(621), categoria: 'Agenda', categoriaColor: null,
+    responsableId: uuid(400), responsable: 'Quien administra',
+    entidadTipo: 'cita', entidadId: uuid(100), entidadNombre: PERSONAS[1],
+    entidadContacto: '6640000001', recurrenteId: null, recurrencia: null,
+    automatizacionId: null, origenTipo: null, anticipacionMin: null, notificadoEn: null,
+    completadoEn: null, completadoPor: null, creadoPor: 'Quien administra',
+    creadoEn: enHoras(-20), actualizadoEn: null,
+  },
+  {
+    id: uuid(942), titulo: 'Vencimiento de pago del curso', detalle: 'Pago pendiente de inscripción',
+    notas: null, fecha: enDias(1), hora: '09:00', prioridad: 'urgente', estado: 'pendiente',
+    vencido: false, categoriaId: null, categoria: null, categoriaColor: null,
+    responsableId: uuid(401), responsable: 'Quien atiende',
+    entidadTipo: 'curso', entidadId: uuid(320), entidadNombre: 'Formación en Reiki',
+    entidadContacto: null, recurrenteId: uuid(950), recurrencia: 'semanal',
+    automatizacionId: null, origenTipo: null, anticipacionMin: null, notificadoEn: null,
+    completadoEn: null, completadoPor: null, creadoPor: 'Quien atiende',
+    creadoEn: enHoras(-10), actualizadoEn: null,
+  },
+  {
+    id: uuid(943), titulo: 'Reponer los aceites esenciales', detalle: 'Comprar lavanda y árbol de té',
+    notas: null, fecha: enDias(3), hora: null, prioridad: 'normal', estado: 'pendiente',
+    vencido: false, categoriaId: uuid(622), categoria: 'Inventario', categoriaColor: null,
+    responsableId: null, responsable: null,
+    entidadTipo: 'producto', entidadId: uuid(500), entidadNombre: 'Aceite esencial de romero',
+    entidadContacto: null, recurrenteId: null, recurrencia: null,
+    automatizacionId: uuid(970), origenTipo: 'stock_bajo', anticipacionMin: null,
+    notificadoEn: null, completadoEn: null, completadoPor: null, creadoPor: 'Quien administra',
+    creadoEn: enHoras(-6), actualizadoEn: null,
+  },
+  {
+    id: uuid(944), titulo: 'Enviar el reporte mensual del centro', detalle: null,
+    notas: null, fecha: enDias(-6), hora: '17:00', prioridad: 'baja', estado: 'hecho',
+    vencido: false, categoriaId: uuid(621), categoria: 'Agenda', categoriaColor: null,
+    responsableId: uuid(400), responsable: 'Quien administra',
+    entidadTipo: null, entidadId: null, entidadNombre: null, entidadContacto: null,
+    recurrenteId: null, recurrencia: null, automatizacionId: null, origenTipo: null,
+    anticipacionMin: null, notificadoEn: null, completadoEn: enHoras(-140),
+    completadoPor: 'Quien administra', creadoPor: 'Quien administra',
+    creadoEn: enHoras(-200), actualizadoEn: enHoras(-140),
+  },
+];
+
 const RESPUESTAS: Readonly<Record<string, unknown>> = {
   /* --- Gastos ------------------------------------------------------ */
   gastos_del_rango: [
@@ -228,11 +294,60 @@ const RESPUESTAS: Readonly<Record<string, unknown>> = {
   generar_gastos_recurrentes: 0,
   gastos_de_la_categoria: 0,
 
+  /* --- Recordatorios ---------------------------------------------- */
+  recordatorios_del_centro: { total: RECORDATORIOS.length, pagina: 1, porPagina: 10, filas: RECORDATORIOS },
+  resumen_de_recordatorios: {
+    diasDeProximos: 7,
+    pendientes: 12, hoy: 5, vencidos: 2, proximos: 8, completados: 27, cancelados: 1, total: 40,
+    horasPromedio: 18.4,
+    porCategoria: [
+      { id: uuid(620), nombre: 'Créditos', color: null, cuantos: 4, hechos: 1 },
+      { id: uuid(621), nombre: 'Agenda', color: null, cuantos: 9, hechos: 6 },
+      { id: uuid(622), nombre: 'Inventario', color: null, cuantos: 3, hechos: 2 },
+    ],
+    porResponsable: [
+      { id: uuid(400), nombre: 'Quien administra', cuantos: 24, hechos: 18, vencidos: 1 },
+      { id: uuid(401), nombre: 'Quien atiende', cuantos: 16, hechos: 9, vencidos: 1 },
+    ],
+    proximosRecordatorios: RECORDATORIOS.slice(0, 5).map((r) => ({
+      id: r.id, titulo: r.titulo, fecha: r.fecha, hora: r.hora, prioridad: r.prioridad,
+      entidadTipo: r.entidadTipo, entidadNombre: r.entidadNombre,
+      categoria: r.categoria, vencido: r.vencido,
+    })),
+    consejo: null,
+  },
+  recordatorios_recurrentes_del_centro: [
+    {
+      id: uuid(950), titulo: 'Corte de caja del lunes', detalle: null, notas: null,
+      hora: '20:00', prioridad: 'normal',
+      categoriaId: uuid(621), categoria: 'Agenda',
+      responsableId: uuid(400), responsable: 'Quien administra',
+      entidadTipo: null, entidadId: null,
+      frecuencia: 'semanal', intervalo: 1, diasSemana: [1],
+      fechaInicio: enDias(-30), fechaFin: null, repeticiones: null,
+      generados: 4, proximaFecha: enDias(3), estado: 'activo', anticipacionMin: null,
+    },
+  ],
+  ajustes_de_recordatorios: {
+    avisarEnNavegador: false, anticipacionMin: 30, horaPorOmision: '09:00',
+    avisarAlResponsable: true, avisarAlReasignar: true, diasDeProximos: 7,
+    ordenPorOmision: 'urgencia', consejo: null,
+  },
+  automatizaciones_de_recordatorios: [],
+  historial_del_recordatorio: [
+    { id: uuid(960), accion: 'creado', antes: null, despues: null,
+      usuario: 'Quien administra', creado_en: enHoras(-30) },
+  ],
+  recordatorios_de_la_entidad: [],
+  generar_recordatorios_recurrentes: 0,
+  generar_recordatorios_automaticos: 0,
+
   /* --- Inicio ---------------------------------------------------- */
   resumen_inicio: {
     citasHoy: 6, citasPendientes: 2,
     ventasHoy: 485000, ventasAyer: 432000,
     productosBajos: 3, cursosProximos: 1,
+    recordatoriosPendientes: 7, recordatoriosHoy: 5, recordatoriosVencidos: 2,
     proximaCita: null,
     agendaDeHoy: CITAS,
     ingresosSemana: [
@@ -596,6 +711,9 @@ const TABLAS: Readonly<Record<string, unknown[]>> = {
     { id: uuid(611), nombre: 'Servicios', color: null, ambito: 'gasto', orden: 1, usos: 3 },
     { id: uuid(612), nombre: 'Insumos', color: null, ambito: 'gasto', orden: 2, usos: 2 },
     { id: uuid(613), nombre: 'Mantenimiento', color: null, ambito: 'gasto', orden: 3, usos: 1 },
+    { id: uuid(620), nombre: 'Créditos', color: null, ambito: 'recordatorio', orden: 0, usos: 4 },
+    { id: uuid(621), nombre: 'Agenda', color: null, ambito: 'recordatorio', orden: 1, usos: 9 },
+    { id: uuid(622), nombre: 'Inventario', color: null, ambito: 'recordatorio', orden: 2, usos: 3 },
   ],
   servicio: SERVICIOS.map((s, i) => ({
     id: uuid(300 + i), nombre: s.nombre, duracion_min: 60, precio_centavos: 80000, activo: true,

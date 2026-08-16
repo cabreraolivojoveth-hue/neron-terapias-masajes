@@ -76,7 +76,10 @@ referencia por id y la resuelve al leer.
 | Caja | `movimiento_caja` | **derivada** — nace de un **pago**, un gasto o un ajuste. Del pago y no de la venta: si no, un pago mixto no cabría, y el corte no sabría cuánto entró en efectivo |
 | El cajón | `sesion_caja` | quién abrió, cuándo, con cuánto — y al cerrar, cuánto se esperaba, cuánto se contó y la diferencia. **No guarda saldo: el saldo se suma de los movimientos** |
 | Inscripciones | `inscripcion` | quién va a qué curso, y en qué estado — **el alumno es un `cliente`**, no otra tabla de personas |
-| Pendientes | `recordatorio` | qué falta hacer, y **de qué entidad salió** |
+| Pendientes | `recordatorio` | qué falta hacer, y **de qué entidad salió**. Guarda `entidad_id`, jamás el nombre |
+| Repeticiones | `recordatorio_recurrente` | **la REGLA**, no las ocurrencias: las crea `generar_recordatorios_recurrentes` cuando toca |
+| Rastro de un pendiente | `recordatorio_evento` | quién hizo qué y cuándo. **Solo se agrega** |
+| Reglas que crean pendientes | `recordatorio_automatizacion` | qué evento de otro módulo crea un recordatorio. **Nace vacía: nada está encendido** |
 | Personas del sistema | `membresia` *(de la base)* | quién entra y con qué rol |
 
 **Inicio y Reportes no son dueños de nada.** Consultan y resumen. Si alguna vez
@@ -148,6 +151,10 @@ Aquí es una transacción de la base de datos: **pasa entera o no pasa.**
 | `registrar_movimiento_de_caja(...)` | lo único que se captura a mano: un ingreso o un retiro, sin poder dejar el cajón en negativo |
 | `siguiente_folio()` | un contador con candado por centro: dos cajas simultáneas salen con folios distintos |
 | `resumen_inicio()` | todo el tablero en **un** viaje al servidor |
+| `completar_recordatorio(id)` | cerrar uno recurrente **programa la siguiente vuelta en el mismo acto**: sin eso, cerrar el del lunes mataría la regla |
+| `generar_recordatorios_recurrentes(...)` | crea lo que ya tocaba. Idempotente por el índice `(recurrente_id, fecha)`, no por la función |
+| `generar_recordatorios_automaticos(...)` | aplica las reglas **encendidas**. Sin reglas no crea nada; los duplicados los impide `recordatorio_origen_unico` |
+| `cumplimiento_de_recordatorios(...)` | lo que Reportes le **pregunta** a Recordatorios, para que no cuente por su cuenta |
 
 Y dos disparadores que no hay que acordarse de llamar: **un gasto crea su egreso
 en caja solo**, y **la hora de fin de una cita se calcula** desde la duración del
@@ -202,7 +209,16 @@ descuadre garantizado.
 - **Venta:** `borrador` · `cobrada` · `cancelada` — *solo las cobradas cuentan
   como ingreso*
 - **Curso:** `programado` · `en_curso` · `terminado` · `cancelado`
-- **Recordatorio:** `pendiente` · `hecho` · `descartado`
+- **Recordatorio:** `pendiente` · `hecho` · `descartado` — en pantalla se leen
+  "Pendiente", "Completado" y "Cancelado"
+
+**"Vencido" NO es un cuarto estado del recordatorio.** Es `fecha < hoy` con el
+estado en `pendiente`, y se calcula al leer. Guardarlo obligaría a un proceso de
+medianoche que recorriera la tabla marcando los de ayer; el día que ese proceso
+no corra, la pantalla diría "pendiente" de algo que venció hace una semana. Y
+peor: un vencido guardado como estado propio deja de ser pendiente, así que
+completarlo tendría que saber a cuál de los dos volver. Un vencido sigue
+pudiendo completarse, posponerse y editarse igual que cualquier otro.
 
 `no_asistio` existe aparte de `cancelada` porque no es lo mismo para el negocio:
 una se reagenda, la otra ya costó.
@@ -229,9 +245,10 @@ historial.
 | **4** ✅ | **Agenda** |
 | **5** ✅ | **Productos** |
 | **6** ✅ | **Ventas, Pagos y Caja** |
-| 7 | Gastos y Recordatorios |
+| **7** ✅ | **Gastos y Recordatorios** |
 | **8** ✅ | **Inicio** — el tablero, el buscador global y los avisos |
-| 9 | Reportes · 10 · Configuración · 11 · Mensajes · 12 · Publicación |
+| **9** ✅ | **Reportes** · **11** ✅ **Mensajes** |
+| 10 | Configuración · 12 · Publicación |
 
 Inicio es el bloque 8, no el 1. Cuando llegue, cada tarjeta va a tener una
 fuente real detrás, y las que estén en cero van a estar en cero **porque no hay

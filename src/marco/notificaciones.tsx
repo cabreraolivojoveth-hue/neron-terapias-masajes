@@ -82,7 +82,57 @@ export function avisosDelResumen(
     });
   }
 
-  if (resumen.recordatoriosPendientes > 0) {
+  /*
+   * LO VENCIDO Y LO DE HOY VAN COMO DOS AVISOS, NO COMO UNO.
+   *
+   * Antes se sumaban en "para hoy o antes", que es la unica frase que cabia
+   * cuando la base solo mandaba el total. Juntos no dicen lo que hace falta
+   * saber: tres que vencen hoy son el trabajo del dia, y tres que vencieron la
+   * semana pasada son un problema. Y cada uno lleva su recado, asi que tocarlo
+   * ABRE RECORDATORIOS YA FILTRADO en vez de dejar a alguien buscandolos a mano
+   * entre cuarenta.
+   *
+   * Los numeros salen del MISMO `resumen_inicio` que los de la pantalla de
+   * Recordatorios, con la misma definicion: es la unica forma de que los dos
+   * modulos digan lo mismo.
+   */
+  if (resumen.recordatoriosVencidos > 0) {
+    const n = resumen.recordatoriosVencidos;
+    avisos.push({
+      clave: 'recordatoriosVencidos',
+      texto: `${n} ${n === 1 ? 'recordatorio venció' : 'recordatorios vencieron'}`,
+      detalle: 'Se pasó su fecha y siguen sin cerrar',
+      icono: 'alerta',
+      modulo: 'recordatorios',
+      parametros: { ver: 'vencidos' },
+    });
+  }
+
+  if (resumen.recordatoriosHoy > 0) {
+    const n = resumen.recordatoriosHoy;
+    avisos.push({
+      clave: 'recordatoriosHoy',
+      texto: `${n} ${n === 1 ? 'recordatorio vence' : 'recordatorios vencen'} hoy`,
+      detalle: 'Lo que toca hacer hoy',
+      icono: 'reloj',
+      modulo: 'recordatorios',
+      parametros: { ver: 'hoy' },
+    });
+  }
+
+  /*
+   * SI LA BASE TODAVIA NO MANDA EL DESGLOSE, se cae al total de siempre.
+   *
+   * `recordatoriosHoy` y `recordatoriosVencidos` llegan en cero desde una base
+   * sin actualizar, y sin esta salida el aviso desapareceria por completo — o
+   * sea, la campana se quedaria callada sobre algo que si urge, que es
+   * exactamente el fallo que una campana no puede tener.
+   */
+  if (
+    resumen.recordatoriosPendientes > 0 &&
+    resumen.recordatoriosVencidos === 0 &&
+    resumen.recordatoriosHoy === 0
+  ) {
     const n = resumen.recordatoriosPendientes;
     avisos.push({
       clave: 'recordatorios',

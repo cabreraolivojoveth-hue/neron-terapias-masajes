@@ -171,16 +171,17 @@ describe('ya dentro', () => {
 
   it('los modulos que no llegan lo DICEN, no inventan datos', async () => {
     /**
-     * Se abre desde el menu uno de los que todavia no llegan —Mensajes— y
+     * Se abre desde el menu uno de los que todavia no llegan —Configuración— y
      * tiene que decir la verdad en vez de enseñar una tabla de mentiras.
      *
-     * ANTES ERA REPORTES, despues MENSAJES, y cada vez que uno se construye hay
-     * que mover esta prueba al siguiente. Vale la pena dejarlo escrito: vigila
-     * el modulo PENDIENTE, no uno en concreto, asi que cuando el ultimo se
-     * construya se borra — no se busca otro con que rellenarla.
+     * ANTES ERA REPORTES, despues MENSAJES, despues RECORDATORIOS, y cada vez
+     * que uno se construye hay que mover esta prueba al siguiente. Vale la pena
+     * dejarlo escrito: vigila el modulo PENDIENTE, no uno en concreto, asi que
+     * cuando el ultimo se construya se borra — no se busca otro con que
+     * rellenarla.
      */
     const { container } = conEstado('listo', ACCESO_DUENA);
-    await userEvent.click(screen.getByRole('button', { name: 'Recordatorios' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Configuración' }));
     expect(screen.getByText(/vacía a propósito/i)).toBeDefined();
     expect(container.textContent).not.toContain('$4,850');
   });

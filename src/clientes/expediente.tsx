@@ -177,6 +177,18 @@ export function FichaDeSalud({ e }: { readonly e: ExpedienteDeCliente }) {
 
 export interface PropiedadesDelExpediente {
   readonly expediente: ExpedienteDeCliente | null;
+  /**
+   * LOS RECORDATORIOS DE ESTA PERSONA, montados desde fuera.
+   *
+   * Llegan como contenido y no como datos a proposito: el expediente no sabe
+   * pedir nada y asi se sigue pudiendo probar sin base de datos. Quien lo monta
+   * —el directorio— es quien tiene la sesion y la navegacion.
+   *
+   * ES LA MITAD DE LA CONEXION QUE CASI SIEMPRE FALTA: abrir al paciente desde
+   * el recordatorio es lo facil; ver lo pendiente desde su ficha es lo que hace
+   * que el modulo sirva.
+   */
+  readonly recordatorios?: ReactNode;
   readonly cargando: boolean;
   readonly error: string | null;
   readonly permisos: Readonly<Record<string, boolean>>;
@@ -187,6 +199,7 @@ export interface PropiedadesDelExpediente {
 
 export function Expediente({
   expediente,
+  recordatorios,
   cargando,
   error,
   permisos,
@@ -378,6 +391,8 @@ export function Expediente({
             </section>
 
             <FichaDeSalud e={e} />
+
+            {recordatorios}
 
             <section className="pz-tarjeta pz-tarjeta--apretada">
               <div className="pz-cabecera">

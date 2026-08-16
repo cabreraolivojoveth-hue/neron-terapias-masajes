@@ -61,6 +61,11 @@ import {
   SeccionDelReporte,
   type PestanaDelReporte,
 } from './secciones.js';
+import {
+  llaveDelCumplimiento,
+  traerCumplimiento,
+  type CumplimientoDeRecordatorios,
+} from '../datos/recordatorios.js';
 
 /** Los tipos de ingreso que sabe filtrar la base. Vacio = sin filtrar. */
 const TIPOS = [
@@ -112,6 +117,20 @@ export function Analisis() {
   const reporte = useConsulta<Reporte>(
     negocio ? llaveDelReporte(negocio, desde, hasta, filtros) : null,
     () => traerReporte(negocio, desde, hasta, filtros),
+  );
+
+  /**
+   * EL CUMPLIMIENTO DE LOS PENDIENTES SE PIDE APARTE, Y SOLO EN SU PESTAÑA.
+   *
+   * Aparte, porque la definicion de "vencido" vive en Recordatorios y contarlo
+   * aqui seria una segunda fuente de verdad. Solo en su pestaña, porque es un
+   * viaje mas al servidor que a casi nadie le importa mientras mira ventas.
+   */
+  const cumplimiento = useConsulta<CumplimientoDeRecordatorios>(
+    negocio && pestana === 'recordatorios'
+      ? llaveDelCumplimiento(negocio, desde, hasta)
+      : null,
+    () => traerCumplimiento(negocio, desde, hasta, hoy),
   );
 
   const guardados = useConsulta<ReporteGuardado[]>(
@@ -295,7 +314,8 @@ export function Analisis() {
             <SeccionDelReporte
               pestana={pestana}
               reporte={reporte.datos}
-              cargando={cargando}
+              cumplimiento={cumplimiento.datos}
+              cargando={cargando || (pestana === 'recordatorios' && cumplimiento.datos === null)}
               onIr={(modulo, intencion) =>
                 ir(modulo, intencion ? { intencion } : {})
               }

@@ -3045,5 +3045,271 @@ function loQueTodaviaEsDeUnModulo(): string {
   white-space: pre-wrap;
 }
 
+/* ================================================================ */
+/* RECORDATORIOS                                                    */
+/* ================================================================ */
+/*
+ * Casi todo lo de esta pantalla ya existia: la tarjeta, la cifra, la tabla, la
+ * pastilla, el buscador, el menu de tres puntos y el vacio salen de "piezas".
+ * Aqui solo vive lo que de verdad es propio de este modulo — la urgencia, la
+ * dona, los dias de la semana y el reparto de las tres columnas.
+ *
+ * NI UN COLOR ESCRITO A MANO: todos salen de los tokens, incluidos los cuatro
+ * de categoria que ya usaban las tarjetas de Inicio. La guardia 3 lo vigila.
+ */
+
+.rec { display: flex; flex-direction: column; gap: ${v('espacio-5')}; }
+
+/* El icono al lado del titulo, como en el diseño. */
+.rec-titulo__icono {
+  display: inline-flex; vertical-align: -3px; margin-right: ${v('espacio-2')};
+  color: ${v('marca')};
+}
+
+/* Las cuatro cifras son BOTONES: cada una lleva a su pestaña. Se les quita la
+   pinta de boton para que sigan leyendose como tarjetas. */
+.rec-cifra {
+  border: 0; width: 100%; text-align: left; cursor: pointer; font: inherit;
+}
+
+/* ---- La barra de arriba de la tabla ---- */
+/*
+ * El buscador crece y los dos selectores se quedan. Un "flex: 1 1 220px" en
+ * columna mediria ALTO —la trampa que ya costo una caja de 220 px con un campo
+ * de 42 flotando en medio—, asi que la fila declara su direccion.
+ */
+.rec-barra {
+  display: flex; flex-direction: row; flex-wrap: wrap; align-items: center;
+  gap: ${v('espacio-3')}; padding: ${v('espacio-4')} 0;
+}
+.rec-barra .pz-buscador { flex: 1 1 240px; min-width: 0; }
+
+/* El numerito del boton de filtros y de las pestañas. */
+.rec-cuenta {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 ${v('espacio-1')};
+  margin-left: ${v('espacio-2')};
+  border-radius: 999px;
+  background: ${v('marca-tenue')}; color: ${v('marca')};
+  font-size: ${v('texto-micro')}; font-weight: 600;
+}
+
+/* ---- La tabla ---- */
+/*
+ * ES LA TABLA MAS ANCHA DEL PRODUCTO: nueve columnas, y encima con el costado
+ * de 300 px al lado. Con el aire de las demas pedia 885 px en un marco de 846 y
+ * el marco —que lleva "overflow-x: auto"— RECORTABA las dos ultimas: el estado
+ * y el menu de acciones. Un menu de acciones cortado no se ve roto, se ve
+ * ausente, y quien lo busca concluye que la tabla no deja hacer nada.
+ *
+ * Se aprieta AQUI y no en "piezas": las otras siete tablas tienen menos
+ * columnas y ese aire les sienta bien. Cambiarlo alla las apretaria todas para
+ * arreglar una.
+ */
+.rec-tabla th, .rec-tabla td { padding-left: ${v('espacio-2')}; padding-right: ${v('espacio-2')}; }
+.rec-tabla__marca { width: 36px; text-align: center; padding-left: 0; padding-right: 0; }
+
+.rec-titulo { display: flex; align-items: center; gap: ${v('espacio-3')}; min-width: 0; }
+.rec-titulo__texto { display: flex; flex-direction: column; min-width: 0; }
+
+/*
+ * LA FICHA DEL RENGLON SE TIÑE CON LA URGENCIA, y es la primera señal: el color
+ * se ve antes de leer. La palabra sigue estando en la pastilla de estado para
+ * quien no distinga los tonos.
+ */
+.rec-ficha--vencido { background: ${v('peligro-tenue')};     color: ${v('peligro')}; }
+.rec-ficha--hoy     { background: ${v('advertencia-tenue')}; color: ${v('advertencia')}; }
+.rec-ficha--manana  { background: ${v('advertencia-tenue')}; color: ${v('advertencia')}; }
+.rec-ficha--proximo { background: ${v('marca-tenue')};       color: ${v('marca')}; }
+.rec-ficha--cerrado { background: ${v('superficie-tenue')};  color: ${v('texto-suave')}; }
+
+/* La fecha arriba y la hora debajo: en una linea empuja las dos ultimas
+   columnas fuera del marco, que las recorta. */
+.rec-cuando { display: flex; flex-direction: column; white-space: nowrap; }
+.rec-cuando__dia { font-variant-numeric: tabular-nums; }
+.rec-cuando__hora { font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
+.rec-cuando--urge .rec-cuando__dia { color: ${v('peligro')}; font-weight: 600; }
+.rec-cuando--urge .rec-cuando__hora { color: ${v('peligro')}; }
+
+.rec-persona { display: inline-flex; align-items: center; gap: ${v('espacio-2')}; min-width: 0; }
+
+/* La marca de "se repite", discreta al lado del titulo. */
+.rec-marca { display: inline-flex; color: ${v('texto-suave')}; }
+
+/*
+ * LA PRIORIDAD ES UNA RAYITA A LA IZQUIERDA, no un fondo de color.
+ *
+ * Pintar el renglon entero de rojo por ser urgente hace ilegible el texto y, con
+ * cuatro urgentes seguidos, convierte la tabla en un semaforo donde ya no se
+ * distingue nada. La rayita se ve de reojo y no compite con el contenido. La
+ * pastilla de la columna dice la palabra.
+ */
+.rec-fila--urgente td:first-child { box-shadow: inset 3px 0 0 ${v('peligro')}; }
+.rec-fila--alta td:first-child    { box-shadow: inset 3px 0 0 ${v('advertencia')}; }
+.rec-fila--normal td:first-child  { box-shadow: none; }
+.rec-fila--baja td:first-child    { box-shadow: none; }
+
+.rec-prioridad--urgente { background: ${v('peligro-tenue')};     color: ${v('peligro')}; }
+.rec-prioridad--alta    { background: ${v('advertencia-tenue')}; color: ${v('advertencia')}; }
+.rec-prioridad--normal  { background: ${v('superficie-tenue')};  color: ${v('texto-suave')}; }
+.rec-prioridad--baja    { background: ${v('superficie-tenue')};  color: ${v('texto-suave')}; }
+
+/* ---- El reparto de la pantalla ---- */
+/*
+ * TRES COLUMNAS: la lista, la ficha de lo escogido y el costado.
+ *
+ * La ficha solo ocupa sitio cuando hay algo escogido — se pinta o no se pinta,
+ * no se esconde con CSS —, asi que la rejilla se declara por columnas que
+ * existan y no con huecos reservados.
+ */
+.rec-cuerpo {
+  display: grid; grid-template-columns: minmax(0, 1fr) 300px;
+  gap: ${v('espacio-5')}; align-items: start;
+}
+.rec-principal { display: grid; grid-template-columns: minmax(0, 1fr); gap: ${v('espacio-5')}; }
+.rec-principal:has(.rec-panel) { grid-template-columns: minmax(0, 1fr) 320px; }
+
+.rec-costado { display: flex; flex-direction: column; gap: ${v('espacio-5')}; }
+
+/*
+ * EN EL COSTADO, LA FECHA VA DEBAJO Y NO AL LADO.
+ *
+ * En 320 px de ancho, una fecha con hora al lado del titulo deja al titulo con
+ * ochenta pixeles: se corta en "Recorda…" y el renglon deja de servir para
+ * reconocer nada, que es lo unico que tiene que hacer. Debajo cabe entera y el
+ * titulo se queda con la fila completa.
+ */
+.rec-costado .pz-renglon { flex-wrap: wrap; }
+.rec-costado .pz-renglon__cuerpo { flex: 1 1 100%; min-width: 0; }
+.rec-costado .rec-cuando {
+  flex: 1 1 100%; padding-left: 42px;
+  font-size: ${v('texto-micro')}; color: ${v('texto-suave')};
+}
+
+.rec-panel { display: flex; flex-direction: column; gap: ${v('espacio-4')}; }
+.rec-panel .pz-cabecera { align-items: center; }
+.rec-relacionado, .rec-notas, .rec-historial {
+  display: flex; flex-direction: column; gap: ${v('espacio-2')};
+}
+.rec-acciones { flex-wrap: wrap; }
+
+/* El rastro: una lista de pasos, del mas reciente al mas viejo. */
+.rec-rastro { gap: ${v('espacio-2')}; }
+.rec-rastro__paso {
+  display: flex; flex-direction: column;
+  padding-left: ${v('espacio-3')};
+  border-left: 2px solid ${c('borde-tarjeta')};
+}
+.rec-rastro__que { font-size: ${v('texto-micro')}; }
+.rec-rastro__quien { font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
+
+/* ---- La dona ---- */
+.rec-resumen { display: flex; align-items: center; gap: ${v('espacio-4')}; }
+.rec-dona { width: 110px; height: 110px; flex: 0 0 auto; }
+/* La transicion del arco es de forma, no de sitio: no mueve nada que se este
+   leyendo. Y no lleva relleno, asi que no encierra lo que flota (§7). */
+.rec-dona__arco { transition: stroke-dasharray ${v('rapido')} ease; }
+.rec-dona__arco--ventas    { stroke: ${v('cat-ventas')}; }
+.rec-dona__arco--productos { stroke: ${v('cat-productos')}; }
+.rec-dona__arco--cursos    { stroke: ${v('cat-cursos')}; }
+.rec-dona__arco--citas     { stroke: ${v('cat-citas')}; }
+
+.rec-leyenda { display: flex; flex-direction: column; gap: ${v('espacio-2')}; flex: 1 1 auto; }
+.rec-leyenda__renglon { display: flex; align-items: center; gap: ${v('espacio-2')}; }
+.rec-leyenda__punto { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.rec-leyenda__punto--ventas    { background: ${v('cat-ventas')}; }
+.rec-leyenda__punto--productos { background: ${v('cat-productos')}; }
+.rec-leyenda__punto--cursos    { background: ${v('cat-cursos')}; }
+.rec-leyenda__punto--citas     { background: ${v('cat-citas')}; }
+.rec-leyenda__que { flex: 1 1 auto; font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
+.rec-leyenda__cuanto { font-variant-numeric: tabular-nums; }
+
+/* ---- Las acciones rapidas ---- */
+.rec-rapidas { display: grid; grid-template-columns: 1fr 1fr; gap: ${v('espacio-2')}; }
+/*
+ * LOS BOTONES ENVUELVEN SU TEXTO. "Recordatorio recurrente" e "Historial
+ * completado" no caben en media tarjeta de 320 px en una linea: sin envolver,
+ * el texto se sale de la caja y la rejilla desborda hacia la derecha. Con
+ * Un "min-width: 0" deja que la celda de la rejilla se encoja por debajo del
+ * ancho de su contenido, que es lo que de verdad lo permite.
+ */
+.rec-rapidas .pz-boton {
+  width: 100%; min-width: 0; justify-content: flex-start;
+  white-space: normal; text-align: left; line-height: 1.25;
+}
+
+.rec-consejo { flex-direction: row; align-items: center; gap: ${v('espacio-3')}; }
+.rec-consejo__hoja { color: ${v('marca')}; flex: 0 0 auto; opacity: 0.7; }
+
+/* ---- Los formularios ---- */
+.rec-forma { display: flex; flex-direction: column; gap: ${v('espacio-4')}; }
+.rec-ajustes { display: flex; flex-direction: column; gap: ${v('espacio-5')}; }
+.rec-ajustes section { display: flex; flex-direction: column; gap: ${v('espacio-3')}; }
+.rec-relacion, .rec-repeticion { display: flex; flex-direction: column; gap: ${v('espacio-3')}; }
+.rec-relacion__puesta { display: flex; align-items: center; gap: ${v('espacio-3')}; flex-wrap: wrap; }
+.rec-opciones { max-height: 220px; overflow-y: auto; overscroll-behavior: contain; }
+
+.rec-casilla { flex-direction: row; align-items: center; gap: ${v('espacio-2')}; }
+
+.rec-area {
+  width: 100%; resize: vertical; min-height: 64px;
+  padding: ${v('espacio-2')} ${v('espacio-3')};
+  border: 1px solid ${c('borde-tarjeta')};
+  border-radius: ${c('radio-control')};
+  background: ${v('superficie')}; color: ${v('texto')};
+  font: inherit; line-height: 1.5;
+}
+.rec-campo {
+  width: 100%;
+  padding: ${v('espacio-2')} ${v('espacio-3')};
+  border: 1px solid ${c('borde-tarjeta')};
+  border-radius: ${c('radio-control')};
+  background: ${v('superficie')}; color: ${v('texto')};
+  font: inherit;
+}
+
+/* Los siete dias, como botones cuadrados. */
+.rec-dias { display: flex; flex-wrap: wrap; gap: ${v('espacio-2')}; border: 0; padding: 0; }
+.rec-dia {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; cursor: pointer;
+  border: 1px solid ${c('borde-tarjeta')}; border-radius: ${c('radio-control')};
+  font-size: ${v('texto-micro')}; font-weight: 600;
+}
+.rec-dia--puesto {
+  background: ${v('marca-tenue')}; color: ${v('marca')}; border-color: ${v('marca')};
+}
+/* El foco del teclado se ve aunque la casilla este escondida: sin esto, quien
+   navega con Tab no sabe en que dia esta parado. */
+.rec-dia:focus-within { outline: 2px solid ${v('marca')}; outline-offset: 2px; }
+
+.rec-aplazar { display: flex; flex-direction: column; gap: ${v('espacio-4')}; }
+.rec-aplazar__rapidas { display: flex; flex-wrap: wrap; gap: ${v('espacio-2')}; }
+
+.rec-repeticion__renglon { flex-wrap: wrap; }
+.rec-repeticion__datos { display: flex; flex-direction: column; }
+.rec-automatizaciones { gap: ${v('espacio-2')}; }
+
+/* ---- Responsive ---- */
+/*
+ * EN TABLETA SE CAE EL COSTADO Y EN TELEFONO SE CAE TAMBIEN LA FICHA.
+ *
+ * Las columnas de 320 px no se encogen: dejarlas apretaria la tabla hasta que
+ * la unica salida fuera desplazar la pagina de lado, y el desplazamiento
+ * horizontal accidental es de lo que peor se siente en un telefono. Debajo de
+ * 1200 el costado pasa a ir debajo; debajo de 900 la ficha ocupa el ancho
+ * entero, que es el "detalle a pantalla completa" del diseño.
+ */
+@media (max-width: 1200px) {
+  .rec-cuerpo { grid-template-columns: minmax(0, 1fr); }
+  .rec-costado { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+}
+@media (max-width: 900px) {
+  .rec-principal:has(.rec-panel) { grid-template-columns: minmax(0, 1fr); }
+  .rec-rapidas { grid-template-columns: 1fr; }
+  .rec-barra { flex-direction: column; align-items: stretch; }
+  .rec-barra .pz-buscador { flex: 1 1 auto; }
+}
+
 `;
 }

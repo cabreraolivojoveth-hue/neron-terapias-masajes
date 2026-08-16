@@ -47,6 +47,12 @@ import {
   type ResumenDeClientes,
   type Seguimiento,
 } from '../datos/clientes.js';
+import {
+  llaveDeLigados,
+  traerLigados,
+  type RecordatorioLigado,
+} from '../datos/recordatorios.js';
+import { RecordatoriosLigados } from '../recordatorios/ligados.js';
 import { useSesion } from '../identidad/sesion.js';
 import { Icono } from '../ui/iconos.js';
 import { CifrasDeArriba, ResumenGeneral } from './cifras-de-clientes.js';
@@ -139,6 +145,20 @@ export function Directorio() {
   const expediente = useConsulta<ExpedienteDeCliente | null>(
     abierto ? llaveDelExpediente(abierto) : null,
     () => traerExpediente(abierto!, dia),
+  );
+
+  /*
+   * LOS RECORDATORIOS DE QUIEN ESTE ABIERTO — una consulta aparte, y solo si
+   * hay alguien abierto.
+   *
+   * NO SE METEN DENTRO DEL EXPEDIENTE. `expediente_del_cliente` ya trae veinte
+   * campos y su historial; sumarle esto haria que cerrar un recordatorio
+   * obligara a volver a pedir la ficha clinica entera. Con llave propia, cerrar
+   * uno refresca solo esta lista.
+   */
+  const ligados = useConsulta<RecordatorioLigado[]>(
+    abierto ? llaveDeLigados(negocio, 'cliente', abierto) : null,
+    () => traerLigados(negocio, 'cliente', abierto!),
   );
 
   /* --- Lo que cambia datos ------------------------------------------ */
@@ -340,6 +360,33 @@ export function Directorio() {
         {abierto ? (
           <Expediente
             expediente={expediente.datos}
+            /*
+             * LO PENDIENTE CON ESTA PERSONA, DENTRO DE SU FICHA.
+             *
+             * Sin esto, quien abre un expediente no tiene forma de saber que
+             * hay algo que hacer con ese paciente: el recordatorio existiria
+             * solo para quien se acuerde de ir a buscarlo al otro modulo.
+             *
+             * No se duplica ni un dato del recordatorio: se piden por su id de
+             * cliente y se pintan con la MISMA pieza que usa Recordatorios.
+             */
+            recordatorios={
+              <RecordatoriosLigados
+                tipo="cliente"
+                deQuien="esta persona"
+                recordatorios={ligados.datos ?? []}
+                hoy={dia}
+                cargando={ligados.estado === 'cargando' && ligados.datos === null}
+                error={ligados.error}
+                puedeGestionar={permisos['gestionarClientes'] === true}
+                onAbrir={(id) => ir('recordatorios', { intencion: `recordatorios:abrir:${id}` })}
+                onNuevo={() =>
+                  ir('recordatorios', { intencion: `recordatorios:para:cliente-${abierto}` })
+                }
+                onVerTodos={() => ir('recordatorios')}
+                onReintentar={ligados.recargar}
+              />
+            }
             cargando={expediente.estado === 'cargando' && expediente.datos === null}
             error={expediente.error}
             permisos={permisos}

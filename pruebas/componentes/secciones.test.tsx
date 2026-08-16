@@ -33,10 +33,19 @@ function pintar(
 }
 
 describe('las pestañas', () => {
-  it('son las ocho del diseño, en su orden', () => {
+  it('son las ocho del diseño mas los pendientes, en su orden', () => {
+    /*
+     * "Recordatorios" no esta en la foto del diseño de Reportes y se agrego a
+     * proposito: sin ella, el cumplimiento de los pendientes solo se podia ver
+     * contandolo a mano, o —peor— cada modulo se hubiera puesto a contarlo por
+     * su cuenta con su propia definicion de "vencido".
+     *
+     * VA AL FINAL. Las ocho de la foto conservan su orden: quien ya sabia donde
+     * estaba "Caja" la sigue encontrando en el mismo sitio.
+     */
     expect(PESTANAS_DEL_REPORTE.map((p) => p.clave)).toEqual([
       'resumen', 'ventas', 'servicios', 'clientes',
-      'productos', 'cursos', 'gastos', 'caja',
+      'productos', 'cursos', 'gastos', 'caja', 'recordatorios',
     ]);
   });
 

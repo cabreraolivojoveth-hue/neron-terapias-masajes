@@ -78,6 +78,10 @@ const LO_QUE_SE_ABRE: readonly {
      vive en la pantalla, que es lo que se pretendia. */
   { modulo: 'reportes', botones: ['Guardar reporte actual'] },
   { modulo: 'mensajes', botones: ['Plantillas', 'Configuración de mensajes', 'Nuevo mensaje'] },
+  /* Recordatorios abre tres: el alta, la configuracion del modulo y las
+     categorias. Los tres pasan por el Modal del producto, asi que los tres
+     tienen que tapar la ventana entera. */
+  { modulo: 'recordatorios', botones: ['Nuevo recordatorio', 'Configuración de recordatorios', 'Categorías'] },
 ];
 
 /** Lo mas oscuro que se le permite a un velo. Mas que esto borra lo de atras. */

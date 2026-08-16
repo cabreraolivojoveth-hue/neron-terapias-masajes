@@ -49,7 +49,7 @@ const DESDE = '-- ELIMINAR UN PRODUCTO — y por que no es lo mismo que desactiv
  * Lo que NO se hace es moverlas al final del instalador para que entren solas:
  * eso desordena el archivo y es como se partio la seccion de Reportes en dos.
  */
-const ADEMAS = ['public.ventas_del_rango'];
+const ADEMAS = ['public.ventas_del_rango', 'public.resumen_inicio'];
 
 const CABECERA = `-- =====================================================================
 -- ACTUALIZAR-BASE.sql — SOLO LO NUEVO
@@ -74,6 +74,19 @@ const CABECERA = `-- ===========================================================
 --      funciones.
 --   4. LA CAPA DE REPORTES: \`reporte_del_periodo\` —todo el reporte en UNA
 --      llamada— y la tabla \`reporte_guardado\` con sus reglas de fila.
+--   5. LA CAPA DE MENSAJES: conversaciones, hilos, canales, plantillas,
+--      automatizaciones y difusiones, con sus permisos de tabla.
+--   6. RECORDATORIOS COMPLETO: la tabla \`recordatorio\` del bloque 0 se
+--      completa —hora, categoria, responsable, notas, recurrencia, origen y
+--      quien lo cerro— y llegan \`recordatorio_recurrente\`,
+--      \`recordatorio_evento\`, \`recordatorio_ajustes\` y
+--      \`recordatorio_automatizacion\` con sus reglas de fila y sus veinte
+--      funciones. Sin esto, Recordatorios abre y contesta que las funciones no
+--      existen.
+--
+-- Y ARRIBA, EN LAS CORRECCIONES: \`resumen_inicio\` vuelve a crearse para
+-- separar los recordatorios de hoy de los vencidos. Sin ella, Inicio sigue
+-- funcionando pero sus dos tarjetas nuevas salen en cero.
 --
 -- POR QUE VAN LOS CUATRO Y NO SOLO EL ULTIMO: la version anterior de este
 -- archivo se regenero para Gastos y en el camino perdio los dos primeros

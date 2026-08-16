@@ -88,6 +88,7 @@ const LO_QUE_SE_REVISA: readonly {
   { modulo: 'gastos', abre: ['Nuevo gasto'] },
   { modulo: 'reportes', abre: ['Guardar reporte actual'] },
   { modulo: 'mensajes', abre: ['Plantillas', 'Nuevo mensaje'] },
+  { modulo: 'recordatorios', abre: ['Nuevo recordatorio', 'Configuración de recordatorios'] },
 ];
 
 interface Falla { donde: string; que: string }
