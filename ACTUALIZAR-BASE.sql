@@ -3417,8 +3417,33 @@ alter table recordatorio add constraint recordatorio_entidad_tipo_check
 -- LA LLAVE COMPUESTA QUE PERMITEN LAS DEMAS. Sin `(negocio_id, id)` unico, las
 -- tablas de abajo no pueden apuntar aqui con llave compuesta, y una llave
 -- simple deja colgar el historial de un centro del recordatorio de otro.
-alter table recordatorio drop constraint if exists recordatorio_negocio_id_unico;
-alter table recordatorio add constraint recordatorio_negocio_id_unico unique (negocio_id, id);
+--
+-- SE AGREGA SI FALTA, NO SE TIRA Y SE VUELVE A PONER, y esto costo un error en
+-- la segunda pasada del archivo:
+--
+--   cannot drop constraint recordatorio_negocio_id_unico on table recordatorio
+--   because other objects depend on it
+--
+-- El `drop constraint if exists` seguido de `add` es el patron idempotente de
+-- todo el instalador y funciona para las llaves foraneas y las restricciones de
+-- comprobacion, porque de esas no cuelga nada. De UNA LLAVE UNICA si cuelga: en
+-- cuanto `recordatorio_evento` apunta aqui con su llave compuesta, tirar el
+-- indice se lleva por delante esa llave foranea, y Postgres —con razon— se
+-- niega. La primera vez pasa; la segunda revienta el archivo entero.
+--
+-- Lo que NO se hace es `drop ... cascade`, que es lo que sugiere la pista del
+-- error: eso borraria en silencio la llave foranea del historial y la dejaria
+-- sin volver a crear si el archivo se cortara justo ahi.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+     where conname = 'recordatorio_negocio_id_unico'
+       and conrelid = 'recordatorio'::regclass
+  ) then
+    alter table recordatorio add constraint recordatorio_negocio_id_unico unique (negocio_id, id);
+  end if;
+end $$;
 
 alter table recordatorio drop constraint if exists recordatorio_categoria_mismo_negocio;
 alter table recordatorio add constraint recordatorio_categoria_mismo_negocio
