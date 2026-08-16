@@ -67,6 +67,15 @@ Proyectos que ya NO se usan:
 —0, 1, 2 Clientes, 3 Servicios y Cursos, 4 Agenda, 5 Productos, 6 Ventas/Caja,
 7 Gastos y Recordatorios, 8 Inicio, 9 Reportes, 11 Mensajes— ya están.
 
+**Recordatorios ya está CORRIENDO en la base buena** (`hgypobbanvkwnqmepqim`),
+comprobado el 16/08/2026: 4 tablas nuevas, 10 columnas nuevas, 21 funciones y
+`resumen_inicio` desglosando los vencidos. Y las funciones se ensayaron contra
+esa base de verdad —crear, listar, buscar, posponer, completar, reabrir,
+ajustar, cancelar, eliminar, historial, repeticion sin duplicar, la siguiente
+vuelta al completar, las automatizaciones sin crear nada estando apagadas,
+cumplimiento y tablero— dentro de un bloque que revienta a proposito para que
+Postgres lo deshaga entero. No quedo ni una fila: la tabla sigue en cero.
+
 **Recordatorios, lo que hay que saber para tocarlo:**
 
 - La tabla `recordatorio` es la del bloque 0 y **no se sustituyó, se completó**.

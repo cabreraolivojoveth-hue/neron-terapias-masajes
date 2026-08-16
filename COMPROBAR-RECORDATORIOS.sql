@@ -53,14 +53,24 @@ union all
 
 -- La que separa los recordatorios de hoy de los vencidos. Sin ella el sitio
 -- funciona igual, pero las dos tarjetas nuevas de Inicio salen en cero.
-select
-  '`resumen_inicio` ya desglosa los vencidos',
-  'sí',
-  case when position('recordatoriosVencidos' in pg_get_functiondef(p.oid)) > 0
-       then 'sí' else 'no' end,
-  case when position('recordatoriosVencidos' in pg_get_functiondef(p.oid)) > 0
-       then 'BIEN' else 'FALTA' end
-from pg_proc p
-join pg_namespace n on n.oid = p.pronamespace
-where n.nspname = 'public' and p.proname = 'resumen_inicio'
-limit 1;
+--
+-- EL `limit 1` VA DENTRO DE SU PROPIO SUBSELECT, y no es un capricho de estilo:
+-- un `limit` al final de un `union all` recorta EL CONJUNTO ENTERO, no la ultima
+-- rama. Escrito suelto ahi abajo, esta comprobacion contestaba un solo renglon
+-- —"Tablas nuevas: BIEN"— y las otras tres desaparecian sin decir nada. Es la
+-- peor forma de fallar para algo que existe justamente para decir la verdad:
+-- daba una respuesta corta y tranquilizadora que se leia como si todo estuviera
+-- comprobado.
+select * from (
+  select
+    '`resumen_inicio` ya desglosa los vencidos' as que,
+    'sí'                                       as se_esperaban,
+    case when position('recordatoriosVencidos' in pg_get_functiondef(p.oid)) > 0
+         then 'sí' else 'no' end               as hay,
+    case when position('recordatoriosVencidos' in pg_get_functiondef(p.oid)) > 0
+         then 'BIEN' else 'FALTA' end          as veredicto
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public' and p.proname = 'resumen_inicio'
+  limit 1
+) u;
