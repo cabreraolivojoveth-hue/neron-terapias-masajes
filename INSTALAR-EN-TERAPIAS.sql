@@ -9500,3 +9500,37 @@ alter table cliente add column if not exists acepta_promociones boolean not null
 comment on column cliente.acepta_promociones is
   'Si se le pueden mandar difusiones promocionales. Lo apaga quien lo pida, desde su ficha. No '
   'afecta a los mensajes de servicio: confirmar una cita no es promocion.';
+
+-- ---------------------------------------------------------------------
+-- 20. LOS PERMISOS DE TABLA QUE FALTABAN
+-- ---------------------------------------------------------------------
+--
+-- ESTO COSTO UN "permission denied for table canal_de_mensajes" EN PRODUCCION,
+-- con el SQL corrido entero y sin un solo error.
+--
+-- LA CONFUSION, Y ES FACIL DE REPETIR: las reglas de acceso por fila y los
+-- permisos de tabla son DOS COSAS DISTINTAS que suenan igual. La regla de fila
+-- RESTRINGE lo que ya se puede leer — decide CUALES filas. El `grant` es lo que
+-- da el permiso de partida. Una tabla con politicas preciosas y sin `grant` no
+-- deja leer NADA: las politicas no otorgan, recortan.
+--
+-- Se escribe una vez por tabla y se olvida para siempre, porque no falla al
+-- crearla: falla la primera vez que alguien abre la pantalla. Lo vigila la
+-- guardia 18.
+--
+-- `anon` no toca nada de esto: son datos de pacientes.
+revoke all on conversacion, mensaje, canal_de_mensajes, conversacion_etiqueta,
+              plantilla_de_mensaje, automatizacion_de_mensajes, difusion,
+              reporte_guardado
+  from anon;
+
+grant select, insert, update on conversacion, mensaje, canal_de_mensajes,
+              plantilla_de_mensaje, automatizacion_de_mensajes, reporte_guardado
+  to authenticated;
+
+-- Las etiquetas de un hilo se sustituyen enteras al guardar: hace falta borrar.
+grant select, insert, delete on conversacion_etiqueta to authenticated;
+
+-- Una difusion se escribe y se consulta; no se corrige. Igual que la caja: lo
+-- que se mando, se mando.
+grant select, insert, update on difusion to authenticated;

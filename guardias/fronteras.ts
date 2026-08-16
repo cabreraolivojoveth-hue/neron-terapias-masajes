@@ -835,6 +835,86 @@ function guardiaLasClasesQueSeEscribenExisten(): void {
 }
 
 /* ------------------------------------------------------------------ */
+/* 18 — Una tabla con reglas de fila tambien necesita su permiso        */
+/* ------------------------------------------------------------------ */
+/**
+ * ESTO SALIO A PRODUCCION Y EL SQL HABIA CORRIDO ENTERO, SIN UN SOLO ERROR.
+ *
+ * QUE SE VEIA: se abria Mensajes y la lista contestaba
+ * "permission denied for table canal_de_mensajes". Las siete tablas del modulo
+ * estaban creadas, con sus reglas de acceso por fila encendidas y forzadas, sus
+ * politicas escritas una por una, y sus funciones con su `grant execute`. Todo
+ * en su sitio. Y no se podia leer ni una fila.
+ *
+ * LA CONFUSION, que es facilisima de repetir: las reglas de fila y los permisos
+ * de tabla son DOS COSAS DISTINTAS que suenan igual.
+ *
+ *   · El `grant` da el permiso DE PARTIDA: si se puede tocar la tabla.
+ *   · La regla de fila RECORTA lo que ya se podia: CUALES filas.
+ *
+ * Una tabla con politicas preciosas y sin `grant` no deja leer NADA. Las
+ * politicas no otorgan; solo quitan. Y como el `security invoker` de las
+ * funciones hace que todo corra con los permisos de quien llama, el error sale
+ * en la pantalla y no al instalar.
+ *
+ * POR QUE NO BASTA CON HABERLO ARREGLADO: no falla al crear la tabla, no falla
+ * al crear la funcion, no falla al correr el archivo. Falla la primera vez que
+ * alguien abre la pantalla — o sea, despues de publicar. La tabla numero nueve
+ * la va a escribir alguien que copie la octava, y la octava tampoco lo tenia:
+ * `reporte_guardado` llevaba dias sin su `grant` y nadie lo noto porque nadie
+ * habia guardado un reporte todavia.
+ */
+function guardiaTodaTablaConReglasTieneSuPermiso(): void {
+  const rutas = [join(RAIZ, 'INSTALAR-EN-TERAPIAS.sql')];
+
+  for (const ruta of rutas) {
+    let crudo: string;
+    try { crudo = readFileSync(ruta, 'utf8'); } catch { continue; }
+    const nombre = relative(RAIZ, ruta);
+
+    /**
+     * Se miran las tablas que ENCIENDEN reglas de fila, y no todas: una tabla
+     * sin reglas es una que no guarda datos de un centro —los contadores
+     * internos, por ejemplo— y esas se tocan desde funciones que corren con
+     * otros permisos.
+     */
+    const conReglas = new Set<string>();
+    for (const m of crudo.matchAll(/alter table ([a-z_]+) enable row level security/g)) {
+      conReglas.add(m[1]!);
+    }
+
+    /** A quien se le dio permiso, en cualquiera de las formas de escribirlo. */
+    const conPermiso = new Set<string>();
+    for (const m of crudo.matchAll(/grant\s+[a-z,\s]+?\s+on\s+([a-z_,\s]+?)\s+to\s+authenticated/g)) {
+      for (const t of m[1]!.split(',')) conPermiso.add(t.trim());
+    }
+
+    /**
+     * QUITARLE EL PERMISO A PROPOSITO TAMBIEN VALE, y hace falta aceptarlo.
+     *
+     * `contador_de_folio` lo revoca con todas sus letras: nadie la toca
+     * directamente, solo una funcion que corre como `security definer`. Es una
+     * decision escrita, no un olvido — y una guardia que no distingue las dos
+     * cosas obliga a dar un permiso que el diseño quiso quitar.
+     */
+    const revocadas = new Set<string>();
+    for (const m of crudo.matchAll(/revoke\s+[a-z,\s]+?\s+on\s+([a-z_,\s]+?)\s+from\s+authenticated/g)) {
+      for (const t of m[1]!.split(',')) revocadas.add(t.trim());
+    }
+
+    for (const tabla of conReglas) {
+      if (conPermiso.has(tabla) || revocadas.has(tabla)) continue;
+      fallar(nombre, `la tabla "${tabla}" tiene reglas de fila y NO tiene grant`,
+        'Las reglas de fila RECORTAN lo que ya se puede leer; el grant es lo que da el permiso de ' +
+        'partida. Con politicas y sin grant no se lee NI UNA fila, y el error no sale al instalar: ' +
+        'sale la primera vez que alguien abre la pantalla, con un "permission denied for table ' +
+        `${tabla}" que parece un fallo del codigo. Agrega su grant al final del instalador, al lado ` +
+        'de los demas, y quitasela a `anon` si guarda datos de pacientes.');
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
 
 const GUARDIAS = [
   { nombre: 'ni un dato de ejemplo', correr: guardiaSinDatosDeEjemplo },
@@ -865,6 +945,10 @@ const GUARDIAS = [
   {
     nombre: 'toda clase que se escribe existe en la hoja',
     correr: guardiaLasClasesQueSeEscribenExisten,
+  },
+  {
+    nombre: 'toda tabla con reglas de fila tiene su permiso',
+    correr: guardiaTodaTablaConReglasTieneSuPermiso,
   },
 ];
 
