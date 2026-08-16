@@ -539,6 +539,29 @@ export function piezas(): string {
 .pz-error__que { margin: 0; font-size: ${v('texto-chico')}; color: ${v('peligro')}; font-weight: ${v('peso-medio')}; }
 .pz-error__detalle { margin: 0; font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; overflow-wrap: anywhere; }
 
+/*
+ * EL AVISO: no es un error, pero hay que leerlo antes de seguir.
+ *
+ * POR QUE ES UNA PIEZA Y NO UNA CLASE DE MODULO: el aviso de "ya existe alguien
+ * con ese telefono" estaba en Clientes y en Servicios pidiendo una clase
+ * —"pz-columna__duplicado"— QUE NO EXISTIA EN NINGUNA HOJA. Los dos salian como
+ * texto suelto, sin marco ni color, justo debajo de un campo: se leia como si
+ * fuera parte del formulario en vez de como una advertencia. No fallaba nada.
+ *
+ * Se distingue de "pz-error" a proposito: aquel es rojo porque algo se rompio y
+ * hay que arreglarlo; este es ambar porque nada se rompio y hay que DECIDIR.
+ * Pintar los dos igual hace que se dejen de leer los dos.
+ */
+.pz-aviso {
+  display: flex; flex-direction: column; gap: ${v('espacio-2')}; align-items: flex-start;
+  padding: ${v('espacio-3')} ${v('espacio-4')};
+  border-left: 3px solid ${v('advertencia')};
+  border-radius: ${c('radio-control')};
+  background: ${v('advertencia-tenue')};
+  font-size: ${v('texto-chico')};
+}
+.pz-aviso p { margin: 0; }
+
 .pz-cargando { display: flex; flex-direction: column; gap: ${v('espacio-2')}; }
 .pz-silueta {
   height: 44px;

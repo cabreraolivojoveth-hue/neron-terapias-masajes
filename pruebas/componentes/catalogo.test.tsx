@@ -182,7 +182,7 @@ describe('editar y duplicar traen la ficha COMPLETA', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Acciones para Sesión Uno' }));
     await userEvent.click(screen.getByRole('menuitem', { name: 'Editar' }));
 
-    await userEvent.click(await screen.findByRole('button', { name: /Información adicional/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Lo demás del servicio/ }));
     expect((screen.getByLabelText(/En qué consiste/) as HTMLTextAreaElement).value).toBe(
       'Llegar sin comer',
     );

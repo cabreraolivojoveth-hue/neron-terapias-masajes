@@ -84,7 +84,7 @@ export function RecordatoriosCercanos({
   onReintentar,
 }: PropiedadesDeRecordatorios) {
   return (
-    <section className="pz-tarjeta ini-recordatorios" aria-labelledby="ini-recordatorios-titulo">
+    <section className="pz-tarjeta" aria-labelledby="ini-recordatorios-titulo">
       <header className="pz-cabecera">
         <h3 className="tt-tarjeta" id="ini-recordatorios-titulo">
           Recordatorios

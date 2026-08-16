@@ -19,6 +19,7 @@ import { Programa } from '../src/cursos/programa.js';
 import { Almacen } from '../src/productos/almacen.js';
 import { Mostrador } from '../src/caja/mostrador.js';
 import { LibroDeGastos } from '../src/gastos/libro-de-gastos.js';
+import { Analisis } from '../src/reportes/analisis.js';
 import { Pendiente } from '../src/modulos/pendiente.js';
 import { GRUPOS, MODULOS, modulosVisibles } from '../src/modulos/registro.js';
 import { LEMA, NOMBRE_DEL_PRODUCTO, cssDeMarca } from '../src/marca.js';
@@ -45,6 +46,7 @@ const PANTALLAS: Readonly<Record<string, () => React.JSX.Element>> = {
   ventas: () => <Mostrador />,
   caja: () => <Mostrador />,
   gastos: () => <LibroDeGastos />,
+  reportes: () => <Analisis />,
 };
 
 function Vitrina() {

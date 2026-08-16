@@ -68,7 +68,7 @@ export function AgendaDeHoy({
   const lista = citasParaHoy(citas);
 
   return (
-    <section className="pz-tarjeta ini-agenda" aria-labelledby="ini-agenda-titulo">
+    <section className="pz-tarjeta" aria-labelledby="ini-agenda-titulo">
       <header className="pz-cabecera">
         <h3 className="tt-tarjeta" id="ini-agenda-titulo">
           Agenda de hoy

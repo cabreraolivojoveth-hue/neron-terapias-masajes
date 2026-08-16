@@ -35,7 +35,7 @@ const ALTO = 1024;
 
 const MODULOS = [
   'inicio', 'agenda', 'clientes', 'servicios', 'cursos', 'productos', 'ventas', 'caja',
-  'gastos',
+  'gastos', 'reportes',
 ];
 
 /**

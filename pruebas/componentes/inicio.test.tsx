@@ -6,7 +6,7 @@
  * Lo que se simula es el servidor; lo que se prueba es que la pantalla pida lo
  * correcto, respete el rol, y no invente ni un dato cuando no hay nada.
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -170,9 +170,17 @@ describe('a donde llevan las cosas', () => {
     const ir = vi.fn();
     navegacion.ir = ir;
     render(<Inicio />);
-    await userEvent.click(
-      await screen.findByText('Nueva cita', { selector: '.ini-agenda .pz-boton span' }),
-    );
+    /**
+     * Se busca DENTRO de la tarjeta de la agenda, por su nombre accesible.
+     *
+     * Antes se apuntaba con `.ini-agenda`, una clase que no tenia ni una regla
+     * de estilo: existia solo para que esta prueba pudiera encontrar la
+     * tarjeta. La guardia 17 la quito —una clase sin hoja es una clase que no
+     * viste nada— y esto es lo que habia que haber escrito desde el principio:
+     * la region ya tiene nombre para quien usa lector de pantalla.
+     */
+    const tarjeta = await screen.findByRole('region', { name: /Agenda de hoy/i });
+    await userEvent.click(within(tarjeta).getByRole('button', { name: /Nueva cita/ }));
     expect(ir.mock.calls[0]?.[0]).toBe('agenda');
     expect((ir.mock.calls[0]?.[1] as { intencion?: string })?.intencion).toBe('agenda:nueva');
   });

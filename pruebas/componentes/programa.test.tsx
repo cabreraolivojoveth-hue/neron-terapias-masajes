@@ -225,7 +225,7 @@ describe('editar y duplicar traen la ficha COMPLETA', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Acciones para Taller Uno' }));
     await userEvent.click(screen.getByRole('menuitem', { name: 'Editar' }));
-    await userEvent.click(await screen.findByRole('button', { name: /Información adicional/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Lo demás del curso/ }));
     expect((screen.getByLabelText(/Notas internas/) as HTMLTextAreaElement).value).toBe(
       'Algo interno',
     );

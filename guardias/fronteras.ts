@@ -645,6 +645,196 @@ function guardiaElModalEntraPorElEnvoltorio(): void {
 }
 
 /* ------------------------------------------------------------------ */
+/* 16 — Ninguna funcion de la base se parte por la mitad               */
+/* ------------------------------------------------------------------ */
+/**
+ * ESTA GUARDIA NACE DE UN DAÑO REAL QUE NADIE VIO, Y QUE NADA MIRABA.
+ *
+ * QUE PASO: al agregar la capa de Reportes al final de `INSTALAR-EN-TERAPIAS.sql`,
+ * el texto no se pego al final: se INSERTO EN MEDIO de dos funciones de Gastos,
+ * partido en dos pedazos. `resumen_de_gastos` se quedo con la firma de un lado y
+ * el cuerpo de `reporte_del_periodo` del otro; `gastos_de_la_categoria` se quedo
+ * con el cuerpo del reporte; y `reportes_guardados` termino devolviendo el conteo
+ * de gastos de una categoria.
+ *
+ * POR QUE NO LO CACHO NADIE: el SQL no lo compila nadie en esta maquina. Los
+ * tipos, las catorce guardias, las mil cuatrocientas pruebas, los velos y la
+ * compilacion salieron TODOS en verde y se publico — porque ninguno de ellos
+ * abre este archivo. El daño solo habria aparecido al pegar el instalador en
+ * Supabase, con un error de sintaxis a ocho mil lineas de distancia de su causa.
+ * Y peor: si la sintaxis hubiera cuadrado por casualidad, se habrian instalado
+ * funciones que contestan lo que no es.
+ *
+ * QUE COMPRUEBA: que entre `create or replace function` y su `as $$` no aparezca
+ * OTRO `create`. Es tonto a proposito y es exactamente lo que rompe un pegado
+ * mal puesto: una firma interrumpida por otra cosa siempre es un empalme.
+ */
+function guardiaNingunaFuncionDeLaBaseSePartePorLaMitad(): void {
+  const ARCHIVOS = ['INSTALAR-EN-TERAPIAS.sql', 'ACTUALIZAR-BASE.sql'];
+
+  for (const nombre of ARCHIVOS) {
+    let crudo: string;
+    try { crudo = readFileSync(join(RAIZ, nombre), 'utf8'); } catch { continue; }
+
+    const lineas = crudo.split(/\r?\n/);
+    /** `null` = fuera de una funcion; si no, donde empezo y si ya abrio cuerpo. */
+    let dentro: { linea: number; nombre: string; abrio: boolean } | null = null;
+
+    for (let i = 0; i < lineas.length; i += 1) {
+      const l = lineas[i]!;
+      if (l.startsWith('--')) continue;
+
+      // Los bloques anonimos `do $$ … end $$;` no son funciones: se saltan
+      // enteros para que su `$$` no se confunda con el de una.
+      if (/^do\s+\$\$/.test(l)) {
+        while (i < lineas.length && !/^end\s+\$\$;/.test(lineas[i]!)) i += 1;
+        continue;
+      }
+
+      const abre = l.match(/^create or replace function\s+([a-z_.]+)/);
+      if (abre) {
+        if (dentro) {
+          fallar(nombre, `"${abre[1]}" (linea ${i + 1}) empieza dentro de "${dentro.nombre}" ` +
+            `(linea ${dentro.linea})`,
+            'Una funcion que arranca antes de que la anterior cierre significa que un pedazo de SQL ' +
+            'se pego EN MEDIO de otra: la de arriba se queda con el cuerpo equivocado y la de abajo ' +
+            'sin el suyo. Ya paso al agregar Reportes al final del instalador, y salio publicado ' +
+            'porque nada de la bateria abre este archivo: el error solo aparece al pegarlo en ' +
+            'Supabase, a miles de lineas de su causa — o peor, no aparece y se instala una funcion ' +
+            'que contesta lo que no es. Mueve el bloque nuevo AL FINAL del archivo.');
+          dentro = null;
+          continue;
+        }
+        // Toda en una linea: `… as $$ select 6 $$;`. Ya cerro.
+        if (/as\s+\$\$.*\$\$;/.test(l)) continue;
+        dentro = { linea: i + 1, nombre: abre[1]!, abrio: /as\s+\$\$\s*$/.test(l) };
+        continue;
+      }
+
+      if (!dentro) continue;
+      if (!dentro.abrio) {
+        if (/as\s+\$\$.*\$\$;/.test(l)) { dentro = null; continue; }
+        if (/as\s+\$\$\s*$/.test(l)) dentro.abrio = true;
+        continue;
+      }
+      if (/^\$\$;/.test(l)) dentro = null;
+    }
+
+    if (dentro) {
+      fallar(nombre, `"${dentro.nombre}" (linea ${dentro.linea}) nunca cierra`,
+        'Le falta su `as $$ … $$;`. El archivo entero deja de aplicarse en Supabase, y el mensaje ' +
+        'que sale ahi no dice en que funcion empezo el problema.');
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 17 — Toda clase que se escribe existe en la hoja de estilos         */
+/* ------------------------------------------------------------------ */
+/**
+ * EL FALLO MAS BARATO DE COMETER Y EL MAS CARO DE ENCONTRAR.
+ *
+ * QUE PASO: la leyenda de la dona de Reportes y la de Gastos pedian
+ * `caja-punto`, `caja-leyenda__nombre` y `caja-leyenda__monto`. Ninguna de las
+ * tres existe — las de la hoja son `caja-leyenda__punto`, `__que` y `__cuanto`.
+ * Resultado: la leyenda salia como un texto pegado y sin punto de color
+ * ("Servicios$12,450.0050%"), en dos modulos a la vez.
+ *
+ * POR QUE NADIE LO CACHO: una clase que no existe NO FALLA. No revienta la
+ * compilacion, no sale en la consola, no rompe ninguna prueba —las pruebas
+ * buscan textos y papeles, no estilos— y ni siquiera se ve mal del todo: se ve
+ * "un poco raro". Es exactamente la clase de error que se descubre mirando una
+ * captura con lupa, y este proyecto ya pago ocho pantallas por confiar en eso.
+ *
+ * COMO SE COMPRUEBA: se juntan todas las clases que las hojas DEFINEN y todas
+ * las que el codigo ESCRIBE, y las segundas tienen que estar entre las
+ * primeras.
+ *
+ * SOLO SE MIRAN LOS PREFIJOS DEL PRODUCTO (`pz-`, `tt-`, `arm-`, `mv-` y los de
+ * modulo). Las clases de la base —`neron-*`— viven en su propio paquete y
+ * comprobarlas desde aqui obligaria a leer su CSS compilado: la guardia se
+ * volveria fragil y una guardia fragil se termina apagando.
+ */
+function guardiaLasClasesQueSeEscribenExisten(): void {
+  const HOJAS = [
+    join(RAIZ, 'src', 'estilo', 'cimientos.ts'),
+    join(RAIZ, 'src', 'estilo', 'piezas.ts'),
+    join(RAIZ, 'src', 'estilo', 'armadura.ts'),
+    join(RAIZ, 'src', 'estilo', 'movimiento.ts'),
+    join(RAIZ, 'src', 'estilos.ts'),
+  ];
+
+  /**
+   * Los prefijos que el producto se escribe a si mismo. Uno nuevo se agrega
+   * aqui A PROPOSITO: obliga a decidir si de verdad hace falta otro espacio de
+   * nombres, que es la pregunta que evito las ocho tarjetas distintas.
+   */
+  const MIOS = /^(pz|tt|arm|mv|ini|agd|cli|srv|cur|prd|vta|caja|gto|rep|terapias)-/;
+
+  const definidas = new Set<string>();
+  for (const archivo of HOJAS) {
+    let crudo: string;
+    try { crudo = readFileSync(archivo, 'utf8'); } catch { continue; }
+    // Se leen las hojas SIN quitar comentarios: una clase citada en un
+    // comentario de la hoja tambien esta definida en alguna parte, y quitarlos
+    // solo produciria gritos en falso.
+    for (const m of crudo.matchAll(/\.([a-zA-Z][a-zA-Z0-9_-]*)/g)) {
+      const clase = m[1]!;
+      definidas.add(clase);
+      /**
+       * UNA RAIZ CON HIJOS TAMBIEN CUENTA COMO DEFINIDA.
+       *
+       * `.rep-marca--ingresos` existe y `.rep-marca` a secas no, porque no
+       * necesita reglas propias: es el nombre del espacio. Exigirle una regla
+       * vacia para contentar a la guardia seria escribir CSS muerto — y el CSS
+       * muerto es justo lo que esta guardia viene a quitar.
+       *
+       * Lo que SI se sigue cazando es una raiz de la que no cuelga nada: eso no
+       * es un espacio de nombres, es una clase que alguien invento.
+       */
+      const raiz = clase.split(/__|--/)[0]!;
+      if (raiz !== clase) definidas.add(raiz);
+    }
+  }
+
+  for (const archivo of FUENTE) {
+    const limpio = sinComentarios(readFileSync(archivo, 'utf8'));
+
+    /**
+     * Se miran los `className` escritos como TEXTO, no las expresiones.
+     *
+     * `className={`pz-boton${puesto ? ' pz-boton--puesto' : ''}`}` se lee bien
+     * porque las dos piezas son texto literal dentro de la plantilla. Lo que no
+     * se puede leer —una clase armada con una variable, como
+     * `pz-cifra--${categoria}`— se salta: adivinarla produciria gritos en falso,
+     * y una guardia que grita en falso se termina apagando.
+     */
+    const trozos: string[] = [];
+    for (const m of limpio.matchAll(/className\s*=\s*(?:"([^"]*)"|'([^']*)'|\{([^}]*)\})/g)) {
+      trozos.push(m[1] ?? m[2] ?? '');
+      // Dentro de una expresion solo valen los textos literales que lleve.
+      for (const t of (m[3] ?? '').matchAll(/'([^']*)'|"([^"]*)"|`([^`$]*)`/g)) {
+        trozos.push(t[1] ?? t[2] ?? t[3] ?? '');
+      }
+    }
+
+    const yaDicho = new Set<string>();
+    for (const trozo of trozos) {
+      for (const clase of trozo.split(/\s+/)) {
+        if (!clase || !MIOS.test(clase) || definidas.has(clase) || yaDicho.has(clase)) continue;
+        yaDicho.add(clase);
+        fallar(archivo, `usa la clase "${clase}", que no existe en ninguna hoja`,
+          'Una clase que no existe NO FALLA: no revienta la compilacion, no sale en la consola y no ' +
+          'rompe ninguna prueba — solo deja el elemento sin vestir. La leyenda de la dona salio asi ' +
+          'en Reportes y en Gastos a la vez, como texto pegado sin punto de color, y solo se cacho ' +
+          'mirando una captura. Busca la pieza de verdad en src/estilo/piezas.ts antes de inventarle ' +
+          'un nombre parecido; si de verdad falta, agregala ahi para las ocho pantallas.');
+      }
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
 
 const GUARDIAS = [
   { nombre: 'ni un dato de ejemplo', correr: guardiaSinDatosDeEjemplo },
@@ -667,6 +857,14 @@ const GUARDIAS = [
   {
     nombre: 'el Modal entra por el envoltorio que amarra el foco',
     correr: guardiaElModalEntraPorElEnvoltorio,
+  },
+  {
+    nombre: 'ninguna funcion de la base se parte por la mitad',
+    correr: guardiaNingunaFuncionDeLaBaseSePartePorLaMitad,
+  },
+  {
+    nombre: 'toda clase que se escribe existe en la hoja',
+    correr: guardiaLasClasesQueSeEscribenExisten,
   },
 ];
 

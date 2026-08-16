@@ -170,11 +170,17 @@ describe('ya dentro', () => {
   });
 
   it('los modulos que no llegan lo DICEN, no inventan datos', async () => {
-    // Al entrar se cae en Inicio, que ya esta construido. El que todavia no
-    // llega —Reportes— se abre desde el menu y tiene que decir la verdad en
-    // vez de enseñar una tabla de mentiras.
+    /**
+     * Se abre desde el menu uno de los que todavia no llegan —Mensajes— y
+     * tiene que decir la verdad en vez de enseñar una tabla de mentiras.
+     *
+     * ANTES ERA REPORTES, y se cambio el dia que Reportes se construyo. Vale la
+     * pena dejarlo escrito: esta prueba vigila el modulo PENDIENTE, no uno en
+     * concreto, asi que cuando el ultimo se construya se borra — no se busca
+     * otro con que rellenarla.
+     */
     const { container } = conEstado('listo', ACCESO_DUENA);
-    await userEvent.click(screen.getByRole('button', { name: 'Reportes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Mensajes' }));
     expect(screen.getByText(/vacía a propósito/i)).toBeDefined();
     expect(container.textContent).not.toContain('$4,850');
   });

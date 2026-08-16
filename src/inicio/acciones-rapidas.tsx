@@ -108,7 +108,7 @@ export function AccionesRapidas({
   if (acciones.length === 0) return null;
 
   return (
-    <section className="pz-tarjeta ini-acciones" aria-labelledby="ini-acciones-titulo">
+    <section className="pz-tarjeta" aria-labelledby="ini-acciones-titulo">
       <h3 className="tt-tarjeta" id="ini-acciones-titulo">
         Acciones rápidas
       </h3>

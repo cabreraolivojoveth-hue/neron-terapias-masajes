@@ -17,6 +17,7 @@
 
 import { AreaDeTexto, Boton, Campo, Seleccion } from '@neron/base/ui';
 import { Modal } from '../ui/modal.js';
+import { Plegable } from '../ui/plegable.js';
 import { aCentavos, aPesos } from '@neron/base/utils';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Categoria, DatosDeServicio } from '../datos/servicios.js';
@@ -211,7 +212,7 @@ export function FormularioDeServicio({
         />
 
         {parecido ? (
-          <div className="pz-columna__duplicado" role="alert">
+          <div className="pz-aviso" role="alert">
             <p>
               Ya hay un servicio que se llama igual: <strong>{parecido.nombre}</strong>.
             </p>
@@ -276,17 +277,12 @@ export function FormularioDeServicio({
           />
         </div>
 
-        <button
-          type="button"
-          className="pz-columna__mas"
-          aria-expanded={extras}
-          onClick={() => setExtras((a) => !a)}
+        <Plegable
+          titulo="Lo demás del servicio"
+          detalle="Promoción, color en la agenda, días en que se ofrece y notas"
+          abierto={extras}
+          onAlternar={() => setExtras((a) => !a)}
         >
-          {extras ? '− Ocultar información adicional' : '+ Información adicional'}
-        </button>
-
-        {extras ? (
-          <>
             <div className="pz-dos">
               <Campo
                 etiqueta="Precio promocional"
@@ -398,8 +394,7 @@ export function FormularioDeServicio({
               maxLength={2000}
               ayuda="Solo para el equipo. No se le muestran al paciente."
             />
-          </>
-        ) : null}
+        </Plegable>
 
         {error ? (
           <p className="pz-error__que" role="alert">

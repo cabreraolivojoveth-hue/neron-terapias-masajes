@@ -152,13 +152,13 @@ describe('el formulario en pantalla', () => {
     // Quince campos a la vista hacen que se capture menos, no mas.
     pintar();
     expect(screen.queryByLabelText(/Precio promocional/)).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: /Información adicional/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Lo demás del servicio/ }));
     expect(screen.getByLabelText(/Precio promocional/)).toBeTruthy();
   });
 
   it('la preparacion solo se pide cuando se marca que hace falta', async () => {
     pintar();
-    await userEvent.click(screen.getByRole('button', { name: /Información adicional/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Lo demás del servicio/ }));
     expect(screen.queryByLabelText(/En qué consiste/)).toBeNull();
     await userEvent.click(screen.getByLabelText(/Requiere preparación/));
     expect(screen.getByLabelText(/En qué consiste/)).toBeTruthy();
@@ -196,7 +196,7 @@ describe('el formulario en pantalla', () => {
     const guardar = vi.fn();
     pintar({ onGuardar: guardar });
     await userEvent.type(screen.getByLabelText(/Nombre/), 'Sesión');
-    await userEvent.click(screen.getByRole('button', { name: /Información adicional/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Lo demás del servicio/ }));
     await userEvent.click(screen.getByRole('button', { name: 'miércoles' }));
     await userEvent.click(screen.getByRole('button', { name: 'lunes' }));
     await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));

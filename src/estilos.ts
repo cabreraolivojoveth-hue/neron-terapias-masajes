@@ -2631,5 +2631,151 @@ function loQueTodaviaEsDeUnModulo(): string {
    punto, que es donde el ojo NO espera que empiece. */
 .gto-rebanada { transform: rotate(-90deg); transform-origin: 50% 50%; }
 
+/* ================================================================ */
+/* REPORTES — la capa de analisis                                   */
+/* ================================================================ */
+
+/* El cuerpo son DOS COLUMNAS: el reporte y el costado fijo.
+
+   El costado no entra en las pestañas a proposito —el periodo, la ganancia
+   neta y los guardados hablan de la pantalla entera, no de la seccion— y por
+   eso la reja va aqui y no dentro de cada pestaña. */
+.rep-cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: ${v('espacio-4')};
+  align-items: start;
+}
+/* Debajo de mil cien, el costado pasa ABAJO en vez de encogerse: a 240 pixeles
+   la ganancia neta parte el renglon y deja de leerse de un vistazo, que es lo
+   unico que tenia que hacer. */
+@media (max-width: 1100px) {
+  .rep-cuerpo { grid-template-columns: minmax(0, 1fr); }
+}
+.rep-principal { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
+.rep-costado { display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0; }
+
+/* La grafica y la dona, lado a lado. La grafica pesa mas porque una linea
+   aplastada a la mitad del ancho no deja comparar dos series. */
+.rep-dos {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: ${v('espacio-4')};
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .rep-dos { grid-template-columns: minmax(0, 1fr); }
+}
+
+.rep-tarjeta__cabeza {
+  display: flex; align-items: center; justify-content: space-between; gap: ${v('espacio-3')};
+}
+
+/* El periodo escrito, al lado de los botones de arriba. Es lo primero que hay
+   que saber para creerse cualquier cifra de la pantalla. */
+.rep-periodo {
+  display: inline-flex; align-items: center; gap: ${v('espacio-2')};
+  padding: 0 ${v('espacio-3')};
+  height: 38px;
+  border: 1px solid ${c('borde-tarjeta')};
+  border-radius: ${c('radio-control')};
+  background: ${v('superficie')};
+  color: ${v('texto')};
+  font-size: ${v('texto-chico')};
+  font-weight: ${v('peso-medio')};
+  white-space: nowrap;
+}
+
+/* La comparacion contra el periodo anterior. Sin comparacion no lleva ninguna
+   de las dos clases y se queda del color del pie: "Sin comparación disponible"
+   en verde se leeria como una buena noticia. */
+.rep-pie--sube { color: ${v('exito')}; }
+.rep-pie--baja { color: ${v('peligro')}; }
+.rep-egreso { color: ${v('peligro')}; }
+.rep-neta { border-top: 1px solid ${c('borde-tenue')}; padding-top: ${v('espacio-3')}; }
+
+/* ---------------------------------------------------------------- */
+/* La grafica de lineas                                              */
+/* ---------------------------------------------------------------- */
+.rep-lienzo { width: 100%; height: auto; display: block; }
+.rep-raya { stroke: ${c('borde-tenue')}; stroke-width: 1; }
+.rep-eje {
+  fill: ${v('texto-tenue')};
+  font-size: 11px;
+  font-family: ${v('familia')};
+  font-variant-numeric: ${v('cifra-numeros')};
+}
+.rep-linea { stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rep-linea--ingresos { stroke: ${v('exito')}; }
+.rep-linea--egresos { stroke: ${v('peligro')}; }
+.rep-marca--ingresos { fill: ${v('exito')}; }
+.rep-marca--egresos { fill: ${v('peligro')}; }
+
+.rep-leyenda {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; gap: ${v('espacio-4')};
+  font-size: ${v('texto-chico')};
+  color: ${v('texto-suave')};
+}
+.rep-leyenda li { display: flex; align-items: center; gap: ${v('espacio-2')}; }
+.rep-punto { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.rep-punto--ingresos { background: ${v('exito')}; }
+.rep-punto--egresos { background: ${v('peligro')}; }
+
+/* ---------------------------------------------------------------- */
+/* Los filtros rapidos del costado                                   */
+/* ---------------------------------------------------------------- */
+.rep-rapidos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.rep-rapido {
+  width: 100%;
+  display: flex; align-items: center; gap: ${v('espacio-3')};
+  padding: ${v('espacio-2')} ${v('espacio-3')};
+  border: 0;
+  border-radius: ${c('radio-control')};
+  background: transparent;
+  color: ${v('texto-suave')};
+  font: inherit;
+  font-size: ${v('texto-chico')};
+  text-align: left;
+  cursor: pointer;
+  transition: background ${v('movimiento-curva')} ${v('movimiento-instantaneo')};
+}
+.rep-rapido:hover { background: ${v('superficie-tenue')}; }
+.rep-rapido:focus-visible { outline: 2px solid ${v('foco')}; outline-offset: 2px; }
+/* El puesto se distingue por FONDO Y PESO, no solo por color: quien no
+   distingue el verde tiene que poder ver cual esta escogido. */
+.rep-rapido--puesto {
+  background: ${v('marca-tenue')};
+  color: ${v('marca-fuerte')};
+  font-weight: ${v('peso-medio')};
+}
+.rep-rapido__flecha { margin-left: auto; display: inline-flex; }
+
+/* ---------------------------------------------------------------- */
+/* Un reporte guardado del costado                                   */
+/* ---------------------------------------------------------------- */
+.rep-guardado { display: flex; align-items: center; gap: ${v('espacio-3')}; min-width: 0; }
+.rep-guardado__icono { flex: none; display: inline-flex; color: ${v('texto-tenue')}; }
+/* El texto es el boton entero y no solo el nombre: un blanco de doce pixeles
+   de alto es imposible de tocar en una tableta. */
+.rep-guardado__texto {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 1px;
+  border: 0; background: transparent; padding: 0;
+  font: inherit; text-align: left; cursor: pointer; color: inherit;
+}
+.rep-guardado__texto:focus-visible { outline: 2px solid ${v('foco')}; outline-offset: 2px; }
+
+.rep-campo {
+  width: 100%;
+  padding: ${v('espacio-2')} ${v('espacio-3')};
+  border: 1px solid ${c('borde-tarjeta')};
+  border-radius: ${c('radio-control')};
+  background: ${v('superficie')};
+  color: ${v('texto')};
+  font: inherit;
+}
+.rep-campo:focus-visible { outline: 2px solid ${v('foco')}; outline-offset: 1px; }
+
 `;
 }

@@ -134,16 +134,19 @@ export function GastosPorCategoria({
             </div>
           </div>
 
+          {/* Las clases son las de la hoja, no unas parecidas: `caja-punto` y
+              `caja-leyenda__nombre` no existen, y con ellas la leyenda salia
+              como texto pegado y sin punto de color. Lo vigila la guardia 17. */}
           <ul className="caja-leyenda mv-escalonado">
             {partes.map((r, i) => (
-              <li key={r.nombre}>
+              <li key={r.nombre} className="caja-leyenda__renglon">
                 <span
-                  className="caja-punto"
+                  className="caja-leyenda__punto"
                   aria-hidden="true"
                   style={{ background: tonoDeLaRebanada(r, i) }}
                 />
-                <span className="caja-leyenda__nombre">{r.nombre}</span>
-                <span className="caja-leyenda__monto">{formatearMoneda(r.centavos)}</span>
+                <span className="caja-leyenda__que">{r.nombre}</span>
+                <span className="caja-leyenda__cuanto">{formatearMoneda(r.centavos)}</span>
                 <span className="caja-leyenda__parte">{r.parte}%</span>
               </li>
             ))}

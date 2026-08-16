@@ -7572,70 +7572,6 @@ create or replace function public.resumen_de_gastos(
   p_negocio text,
   p_desde   date,
   p_hasta   date
-
--- =====================================================================
--- REPORTES — la capa de analisis
--- =====================================================================
---
--- REPORTES NO ES DUEÑO DE NI UN DATO, y esa es toda su arquitectura. No hay
--- tabla de reportes, no hay copia de las ventas, no hay totales guardados. Todo
--- se cuenta EN EL MOMENTO desde las tablas de cada modulo: venta, venta_item,
--- pago, gasto, movimiento_caja, cliente, cita, producto, curso e inscripcion.
---
--- POR QUE ASI Y NO CON TOTALES GUARDADOS: un total guardado se desincroniza a
--- la primera venta cancelada, y a partir de ahi hay dos numeros verdaderos y
--- nadie sabe cual creer. Es el mismo error que este proyecto ya evito en el
--- expediente del cliente y en las cifras de Inicio.
---
--- TODO SE CALCULA EN EL SERVIDOR, en una sola llamada. Bajar mil ventas al
--- navegador para sumarlas seria lento hoy e imposible en dos años — y ademas
--- dejaria el calculo del lado donde se puede manipular.
---
--- UNA SOLA LLAMADA PARA TODO EL REPORTE, y no una por pestaña. Es lo que
--- garantiza que las ocho pestañas hablen del MISMO periodo y de los MISMOS
--- filtros: con una consulta por pestaña, basta que una se quede con el periodo
--- viejo para que la pantalla se contradiga a si misma sin avisar.
---
--- `security invoker` NO ES UN DETALLE: hace que las reglas de acceso por fila se
--- apliquen con los permisos de QUIEN LLAMA. De ahi salen gratis dos cosas que el
--- encargo pedia: un centro jamas ve los datos de otro, y quien no tiene
--- `verFinanzas` no obtiene cifras de dinero aunque llame a la funcion a mano
--- desde la consola.
-
--- ---------------------------------------------------------------------
--- COMO SE AGRUPA LA SERIE DEL TIEMPO
--- ---------------------------------------------------------------------
--- Un rango de un año agrupado por dia son trescientos sesenta y cinco puntos:
--- ilegible. Uno de una semana agrupado por mes es un solo punto: inutil. Se
--- decide por el largo del rango y se DICE en la respuesta, para que la grafica
--- pueda rotular el eje como corresponde.
-create or replace function app.paso_de_la_serie(p_desde date, p_hasta date)
-returns text
-language sql
-immutable
-as $$
-  select case when (p_hasta - p_desde) > 92 then 'mes' else 'dia' end;
-$$;
-
--- ---------------------------------------------------------------------
--- EL REPORTE DEL PERIODO
--- ---------------------------------------------------------------------
---
--- LOS FILTROS SE COMBINAN Y TODOS SON OPCIONALES. `null` significa "sin
--- filtrar", no "ninguno": un filtro que al quedarse vacio devuelve cero seria
--- indistinguible de un periodo sin ventas.
---
---   p_tipo      servicio | producto | curso — de que se compone el ingreso
---   p_metodo    efectivo | tarjeta | transferencia | otro
---   p_vendedor  quien cobro la venta
---
-create or replace function public.reporte_del_periodo(
-  p_negocio  text,
-  p_desde    date,
-  p_hasta    date,
-  p_tipo     text default null,
-  p_metodo   text default null,
-  p_vendedor uuid default null
 )
 returns jsonb
 language sql
@@ -7757,6 +7693,84 @@ $$;
 -- nada. Se desactiva: deja de ofrecerse al capturar y los viejos la conservan.
 create or replace function public.gastos_de_la_categoria(p_categoria uuid)
 returns bigint
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select count(*) from gasto where categoria_id = p_categoria and not eliminado;
+$$;
+
+-- =====================================================================
+-- REPORTES — la capa de analisis
+-- =====================================================================
+--
+-- REPORTES NO ES DUEÑO DE NI UN DATO, y esa es toda su arquitectura. No hay
+-- tabla de reportes, no hay copia de las ventas, no hay totales guardados. Todo
+-- se cuenta EN EL MOMENTO desde las tablas de cada modulo: venta, venta_item,
+-- pago, gasto, movimiento_caja, cliente, cita, producto, curso e inscripcion.
+--
+-- POR QUE ASI Y NO CON TOTALES GUARDADOS: un total guardado se desincroniza a
+-- la primera venta cancelada, y a partir de ahi hay dos numeros verdaderos y
+-- nadie sabe cual creer. Es el mismo error que este proyecto ya evito en el
+-- expediente del cliente y en las cifras de Inicio.
+--
+-- TODO SE CALCULA EN EL SERVIDOR, en una sola llamada. Bajar mil ventas al
+-- navegador para sumarlas seria lento hoy e imposible en dos años — y ademas
+-- dejaria el calculo del lado donde se puede manipular.
+--
+-- UNA SOLA LLAMADA PARA TODO EL REPORTE, y no una por pestaña. Es lo que
+-- garantiza que las ocho pestañas hablen del MISMO periodo y de los MISMOS
+-- filtros: con una consulta por pestaña, basta que una se quede con el periodo
+-- viejo para que la pantalla se contradiga a si misma sin avisar.
+--
+-- `security invoker` NO ES UN DETALLE: hace que las reglas de acceso por fila se
+-- apliquen con los permisos de QUIEN LLAMA. De ahi salen gratis dos cosas que el
+-- encargo pedia: un centro jamas ve los datos de otro, y quien no tiene
+-- `verFinanzas` no obtiene cifras de dinero aunque llame a la funcion a mano
+-- desde la consola.
+
+-- ---------------------------------------------------------------------
+-- COMO SE AGRUPA LA SERIE DEL TIEMPO
+-- ---------------------------------------------------------------------
+-- Un rango de un año agrupado por dia son trescientos sesenta y cinco puntos:
+-- ilegible. Uno de una semana agrupado por mes es un solo punto: inutil. Se
+-- decide por el largo del rango y se DICE en la respuesta, para que la grafica
+-- pueda rotular el eje como corresponde.
+create or replace function app.paso_de_la_serie(p_desde date, p_hasta date)
+returns text
+language sql
+immutable
+as $$
+  select case when (p_hasta - p_desde) > 92 then 'mes' else 'dia' end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- EL REPORTE DEL PERIODO
+-- ---------------------------------------------------------------------
+--
+-- LOS FILTROS SE COMBINAN Y TODOS SON OPCIONALES. `null` significa "sin
+-- filtrar", no "ninguno": un filtro que al quedarse vacio devuelve cero seria
+-- indistinguible de un periodo sin ventas.
+--
+--   p_tipo      servicio | producto | curso — de que se compone el ingreso
+--   p_metodo    efectivo | tarjeta | transferencia | otro
+--   p_vendedor  quien cobro la venta
+--
+create or replace function public.reporte_del_periodo(
+  p_negocio  text,
+  p_desde    date,
+  p_hasta    date,
+  p_tipo     text default null,
+  p_metodo   text default null,
+  p_vendedor uuid default null
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
   with
   -- El periodo anterior COMPARABLE: mismo numero de dias, pegado hacia atras.
   -- Comparar un mes contra una semana daria una caida del 75% que no existe.
@@ -8203,8 +8217,6 @@ stable
 security invoker
 set search_path = public, pg_temp
 as $$
-  select count(*) from gasto where categoria_id = p_categoria and not eliminado;
-$$;
   select coalesce(jsonb_agg(jsonb_build_object(
       'id', r.id, 'nombre', r.nombre, 'tipo', r.tipo,
       'desde', r.desde, 'hasta', r.hasta, 'filtros', r.filtros,

@@ -12,6 +12,7 @@
 
 import { AreaDeTexto, Boton, Campo, Seleccion } from '@neron/base/ui';
 import { Modal } from '../ui/modal.js';
+import { Plegable } from '../ui/plegable.js';
 import { aCentavos, aPesos } from '@neron/base/utils';
 import { useState, type FormEvent } from 'react';
 import type { Categoria } from '../datos/categorias.js';
@@ -228,17 +229,12 @@ export function FormularioDeProducto({
           </p>
         ) : null}
 
-        <button
-          type="button"
-          className="pz-columna__mas"
-          aria-expanded={extras}
-          onClick={() => setExtras((a) => !a)}
+        <Plegable
+          titulo="Lo demás del producto"
+          detalle="Código de barras, ubicación, proveedor y notas"
+          abierto={extras}
+          onAlternar={() => setExtras((a) => !a)}
         >
-          {extras ? '− Ocultar información adicional' : '+ Información adicional'}
-        </button>
-
-        {extras ? (
-          <>
             <div className="pz-dos">
               <Campo
                 etiqueta="Código de barras"
@@ -290,8 +286,7 @@ export function FormularioDeProducto({
               rows={2}
               maxLength={1000}
             />
-          </>
-        ) : null}
+        </Plegable>
 
         {error ? (
           <p className="pz-error__que" role="alert">

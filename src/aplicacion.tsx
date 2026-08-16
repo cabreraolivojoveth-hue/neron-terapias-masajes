@@ -25,6 +25,7 @@ import { Catalogo } from './servicios/catalogo.js';
 import { Programa } from './cursos/programa.js';
 import { Almacen } from './productos/almacen.js';
 import { LibroDeGastos } from './gastos/libro-de-gastos.js';
+import { Analisis } from './reportes/analisis.js';
 import { Mostrador } from './caja/mostrador.js';
 import { Pendiente } from './modulos/pendiente.js';
 import { GRUPOS, MODULOS, MODULO_POR_OMISION, modulosVisibles } from './modulos/registro.js';
@@ -180,6 +181,10 @@ function Interior() {
           <Mostrador />
         ) : modulo === 'gastos' ? (
           <LibroDeGastos />
+        ) : modulo === 'reportes' ? (
+          /* REPORTES NO ES UN MODULO MAS: no tiene tabla propia ni escribe una
+             cifra. Lee de los otros ocho y los suma en el servidor. */
+          <Analisis />
         ) : (
           <Pendiente modulo={modulo} />
         )

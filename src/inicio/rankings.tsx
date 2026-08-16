@@ -47,7 +47,7 @@ export function ServiciosMasVendidos({
   readonly onVerTodos: () => void;
 }) {
   return (
-    <section className="pz-tarjeta ini-ranking" aria-labelledby="ini-servicios-titulo">
+    <section className="pz-tarjeta" aria-labelledby="ini-servicios-titulo">
       <header className="pz-cabecera">
         <h3 className="tt-tarjeta" id="ini-servicios-titulo">
           Servicios más vendidos
@@ -140,7 +140,7 @@ export function ProductosMasVendidos({
   readonly onVerTodos: () => void;
 }) {
   return (
-    <section className="pz-tarjeta ini-productos" aria-labelledby="ini-productos-titulo">
+    <section className="pz-tarjeta" aria-labelledby="ini-productos-titulo">
       <header className="pz-cabecera">
         <h3 className="tt-tarjeta" id="ini-productos-titulo">
           Productos más vendidos

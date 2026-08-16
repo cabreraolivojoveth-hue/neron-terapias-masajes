@@ -428,6 +428,137 @@ const RESPUESTAS: Readonly<Record<string, unknown>> = {
   ficha_del_producto: null,
   proveedores_del_centro: [],
 
+  /* --- Reportes -------------------------------------------------- */
+  /**
+   * TODO EL REPORTE EN UNA RESPUESTA, igual que la funcion de verdad. Si aqui
+   * se partiera en varias, la vitrina no probaria lo unico que de verdad hay
+   * que mirar: que las ocho pestañas hablen del mismo periodo.
+   *
+   * La serie va con TREINTA puntos y no con cinco, y varios en cero: es la
+   * forma que de verdad tiene un mes, y es la unica manera de ver si los
+   * rotulos del eje se enciman o si un dia sin ventas parte la linea.
+   */
+  reporte_del_periodo: {
+    periodo: {
+      desde: enDias(-29), hasta: iso(hoy), dias: 30,
+      desdeAnterior: enDias(-59), hastaAnterior: enDias(-30), paso: 'dia',
+    },
+    hayComparacion: true,
+    metricas: {
+      ingresos: 2485000, ingresosAntes: 2096000,
+      ventas: 46, ventasAntes: 41,
+      clientes: 32, clientesAntes: 29,
+      servicios: 58, serviciosAntes: 50,
+    },
+    finanzas: {
+      ingresos: 2485000, egresos: 625000, utilidad: 1860000, margen: 74.8,
+      promedioDiario: 82833, clientesNuevos: 12, serviciosRealizados: 58, cursosVendidos: 16,
+    },
+    serie: Array.from({ length: 30 }, (_, i) => ({
+      punto: enDias(-29 + i),
+      ingresos: [
+        62000, 78000, 95000, 41000, 88000, 120000, 0, 74000, 99000, 132000,
+        58000, 86000, 110000, 0, 92000, 145000, 67000, 104000, 81000, 128000,
+        49000, 97000, 136000, 0, 73000, 118000, 90000, 152000, 84000, 121000,
+      ][i] ?? 0,
+      egresos: [
+        18000, 22000, 0, 31000, 19000, 45000, 0, 24000, 0, 38000,
+        21000, 0, 29000, 0, 26000, 41000, 0, 33000, 18000, 47000,
+        0, 28000, 39000, 0, 22000, 35000, 0, 44000, 25000, 30000,
+      ][i] ?? 0,
+    })),
+    categorias: [
+      { clave: 'servicio', monto: 1245000, cuantos: 58 },
+      { clave: 'curso', monto: 640000, cuantos: 16 },
+      { clave: 'producto', monto: 600000, cuantos: 71 },
+    ],
+    ventas: {
+      cobradas: 46, canceladas: 3, ticket: 54021, maxima: 185000, minima: 12000,
+      porMetodo: [
+        { metodo: 'efectivo', monto: 1180000, operaciones: 24 },
+        { metodo: 'tarjeta', monto: 795000, operaciones: 14 },
+        { metodo: 'transferencia', monto: 480000, operaciones: 7 },
+        { metodo: 'otro', monto: 30000, operaciones: 1 },
+      ],
+    },
+    servicios: {
+      realizados: 58, ingresos: 1245000,
+      ranking: SERVICIOS.map((s, i) => ({
+        id: uuid(300 + i), nombre: s.nombre,
+        cantidad: [12, 10, 8, 7, 5][i] ?? 1,
+        ingresos: [396000, 285000, 216000, 189000, 159000][i] ?? 0,
+      })),
+    },
+    clientes: {
+      totales: 128, nuevos: 12, atendidos: 32, recurrentes: 20,
+      ranking: PERSONAS.slice(0, 5).map((n, i) => ({
+        id: uuid(200 + i), nombre: n,
+        visitas: [7, 6, 5, 4, 3][i] ?? 1,
+        compras: [9, 6, 6, 4, 3][i] ?? 1,
+        gastado: [248000, 196000, 174000, 132000, 98000][i] ?? 0,
+      })),
+    },
+    productos: {
+      unidades: 71, ingresos: 600000, bajos: 1, agotados: 1,
+      ranking: [
+        { id: uuid(500), nombre: 'Aceite esencial de romero', cantidad: 18, ingresos: 163000 },
+        { id: uuid(501), nombre: 'Incienso de sándalo', cantidad: 12, ingresos: 138000 },
+        { id: uuid(502), nombre: 'Cuarzo natural pulido', cantidad: 10, ingresos: 128000 },
+        { id: uuid(503), nombre: 'Vela de cera de soya', cantidad: 9, ingresos: 98000 },
+        { id: uuid(504), nombre: 'Aceite de almendras dulces', cantidad: 8, ingresos: 73000 },
+      ],
+    },
+    cursos: {
+      vendidos: 16, ingresos: 640000, inscritos: 34, proximos: 2, terminados: 1,
+      ranking: [
+        { id: uuid(400), nombre: 'Formación en Sonoterapia', cantidad: 6, ingresos: 285000, inscritos: 14, cupo: 20 },
+        { id: uuid(401), nombre: 'Aromaterapia Aplicada', cantidad: 4, ingresos: 168000, inscritos: 9, cupo: 12 },
+        { id: uuid(402), nombre: 'Introducción al Reiki', cantidad: 3, ingresos: 112000, inscritos: 7, cupo: null },
+        { id: uuid(403), nombre: 'Masaje Terapéutico I', cantidad: 3, ingresos: 75000, inscritos: 4, cupo: 10 },
+      ],
+    },
+    gastos: {
+      total: 625000, cuantos: 9, promedio: 69444, mayor: 185000, menor: 12000,
+      categorias: [
+        { categoria: 'Renta', monto: 250000, cuantos: 1 },
+        { categoria: 'Insumos', monto: 185000, cuantos: 4 },
+        { categoria: 'Mantenimiento', monto: 120000, cuantos: 2 },
+        { categoria: 'Servicios', monto: 70000, cuantos: 2 },
+      ],
+    },
+    caja: {
+      ventas: 1180000, ingresosManuales: 45000, retiros: 320000, gastosDeCaja: 185000,
+      movimientos: 38, descuadre: -4500,
+      cortes: [
+        {
+          id: uuid(900), nombre: 'Caja del mostrador', cerradaEn: enHoras(-30),
+          saldoInicial: 100000, esperado: 742000, contado: 739500, diferencia: -2500,
+        },
+        {
+          id: uuid(901), nombre: 'Caja del mostrador', cerradaEn: enHoras(-102),
+          saldoInicial: 100000, esperado: 518000, contado: 516000, diferencia: -2000,
+        },
+      ],
+    },
+  },
+  reportes_guardados: [
+    {
+      id: uuid(950), nombre: 'Cierre del mes anterior', tipo: 'resumen',
+      desde: enDias(-59), hasta: enDias(-30), filtros: {},
+      creadoEn: enHoras(-200), creadoPor: 'Quien administra',
+    },
+    {
+      id: uuid(951), nombre: 'Servicios de la temporada', tipo: 'servicios',
+      desde: enDias(-89), hasta: enDias(-30), filtros: { tipo: 'servicio' },
+      creadoEn: enHoras(-320), creadoPor: 'Quien administra',
+    },
+    {
+      id: uuid(952), nombre: 'Cobros en efectivo', tipo: 'ventas',
+      desde: enDias(-29), hasta: iso(hoy), filtros: { metodo: 'efectivo' },
+      creadoEn: enHoras(-48), creadoPor: 'Quien atiende',
+    },
+  ],
+
   /* --- Compartido ------------------------------------------------ */
   buscar_en_todo: [],
   siguiente_folio: 'V-00004',

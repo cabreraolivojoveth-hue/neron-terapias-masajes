@@ -256,7 +256,7 @@ export function InformacionDelCliente({
         </div>
       ) : (
         <div className="pz-columna">
-          <div className="vta-quien-es">
+          <div className="pz-columna">
             <span className="pz-inicial" aria-hidden="true">
               {expediente.nombre.trim().charAt(0).toUpperCase()}
             </span>
@@ -302,7 +302,7 @@ export function InformacionDelCliente({
           </dl>
 
           {expediente.adeudo > 0 ? (
-            <p className="pz-columna__adeudo">Debe {formatearMoneda(expediente.adeudo)}</p>
+            <p className="pz-pastilla pz-pastilla--peligro">Debe {formatearMoneda(expediente.adeudo)}</p>
           ) : null}
 
           <button type="button" className="pz-boton pz-boton--ancho" onClick={onVerExpediente}>

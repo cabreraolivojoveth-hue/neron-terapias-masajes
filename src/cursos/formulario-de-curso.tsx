@@ -15,6 +15,7 @@
 
 import { AreaDeTexto, Boton, Campo, Seleccion } from '@neron/base/ui';
 import { Modal } from '../ui/modal.js';
+import { Plegable } from '../ui/plegable.js';
 import { aCentavos, aPesos } from '@neron/base/utils';
 import { useState, type FormEvent } from 'react';
 import type { Categoria } from '../datos/categorias.js';
@@ -254,17 +255,12 @@ export function FormularioDeCurso({
           />
         </div>
 
-        <button
-          type="button"
-          className="pz-columna__mas"
-          aria-expanded={extras}
-          onClick={() => setExtras((a) => !a)}
+        <Plegable
+          titulo="Lo demás del curso"
+          detalle="Horario, lugar, requisitos y lo que incluye"
+          abierto={extras}
+          onAlternar={() => setExtras((a) => !a)}
         >
-          {extras ? '− Ocultar información adicional' : '+ Información adicional'}
-        </button>
-
-        {extras ? (
-          <>
             <div className="pz-dos">
               <Seleccion
                 etiqueta="Modalidad"
@@ -323,8 +319,7 @@ export function FormularioDeCurso({
               maxLength={2000}
               ayuda="Solo para el equipo. No se les muestran a los alumnos."
             />
-          </>
-        ) : null}
+        </Plegable>
 
         {error ? (
           <p className="pz-error__que" role="alert">

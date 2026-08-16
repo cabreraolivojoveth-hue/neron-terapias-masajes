@@ -135,7 +135,7 @@ describe('el formulario en pantalla', () => {
   it('la informacion adicional viene PLEGADA', async () => {
     pintar();
     expect(screen.queryByLabelText(/Modalidad/)).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: /Información adicional/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Lo demás del curso/ }));
     expect(screen.getByLabelText(/Modalidad/)).toBeTruthy();
   });
 

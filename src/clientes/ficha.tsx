@@ -210,7 +210,7 @@ export function FichaDeCliente({
         </div>
 
         {duplicado ? (
-          <div className="pz-columna__duplicado" role="alert">
+          <div className="pz-aviso" role="alert">
             <p>
               Ya hay un cliente con ese {duplicado.porque === 'telefono' ? 'teléfono' : 'correo'}:{' '}
               <strong>{duplicado.nombre}</strong>.
