@@ -130,7 +130,46 @@ async function principal(): Promise<void> {
     `insert into membresia (negocio_id, usuario_id, correo, nombre, rol, activo)
      values ($1,$2,$3,'Quien ensena','dueno',true)`, [CENTRO, DUENA, CORREO]);
 
-  console.log('\n  Los nueve pasos, anclados al lunes de esta semana:');
+  /*
+   * EL CENTRO NO ESTA VACIO, Y ESA ES LA PRUEBA.
+   *
+   * La primera version de este ensayo sembraba sobre una base recien creada y
+   * salia verde; en el centro de verdad —que llevaba semanas usandose— la carga
+   * murio en el paso 8:
+   *
+   *   conflicting key value violates exclusion constraint "cita_sin_choque"
+   *
+   * Asi que aqui se ensucia el centro ANTES, con lo que cualquiera tiene
+   * despues de probar el sistema: una categoria que se llama igual, un producto
+   * con el mismo codigo, una automatizacion ya encendida y —lo que revento—
+   * citas propias justo en los horarios que la demostracion usa.
+   */
+  const CHOCAN = 6;
+  await cliente.query(
+    `insert into categoria (negocio_id, ambito, nombre) values ($1, 'servicio', 'Masajes')`, [CENTRO]);
+  await cliente.query(
+    `insert into producto (negocio_id, nombre, sku, precio_centavos)
+     values ($1, 'Mi producto', 'AE-LAV15', 100)`, [CENTRO]);
+  await cliente.query(
+    `insert into recordatorio_automatizacion (negocio_id, evento, activa, plantilla_titulo)
+     values ($1, 'cita_nueva', false, 'La mia')`, [CENTRO]);
+  const mio = (await cliente.query(
+    `insert into cliente (negocio_id, nombre) values ($1, 'Paciente propio') returning id`,
+    [CENTRO])).rows[0];
+  const suServicio = (await cliente.query(
+    `insert into servicio (negocio_id, nombre, duracion_min, precio_centavos)
+     values ($1, 'Servicio propio', 60, 50000) returning id`, [CENTRO])).rows[0];
+  const suMembresia = (await cliente.query(
+    `select id from membresia where negocio_id = $1 limit 1`, [CENTRO])).rows[0];
+  for (let i = 0; i < CHOCAN; i += 1) {
+    await cliente.query(
+      `insert into cita (negocio_id, cliente_id, servicio_id, profesional_id, fecha,
+                         hora_inicio, hora_fin, estado)
+       values ($1,$2,$3,$4, current_date - $5::int, '09:00', '10:00', 'confirmada')`,
+      [CENTRO, mio.id, suServicio.id, suMembresia.id, i * 7 + 1]);
+  }
+
+  console.log(String.fromCharCode(10) + '  Los nueve pasos, sobre un centro QUE YA SE USABA:');
   for (let paso = 1; paso <= 9; paso += 1) {
     const r = await como(
       `select public.cargar_datos_de_demostracion($1, $2,
@@ -270,8 +309,9 @@ async function principal(): Promise<void> {
    * el servidor, que es lo unico que la hace servir para auditar. Lo que se
    * comprueba es que no quede NADA sembrado.
    */
+  // Queda lo del centro: su paciente, sus seis citas y su gasto. Nada sembrado.
   ok('no queda ni una fila sembrada, ni lo que colgaba de ella',
-    resto.clientes === 0 && resto.citas === 0 && resto.ventas === 0 &&
+    resto.clientes === 1 && resto.citas === CHOCAN && resto.ventas === 0 &&
     resto.recordatorios === 0 && resto.rastro === 0,
     JSON.stringify(resto));
   ok('y la bitacora conserva lo que hizo una persona, que no se borra nunca',
@@ -281,6 +321,21 @@ async function principal(): Promise<void> {
 
   ok('se puede volver a cargar desde cero',
     (await como(`select public.cargar_datos_de_demostracion($1, 1) as x`, [CENTRO])).rows[0].x.paso === 1);
+
+  /* Y lo que ya tenia el centro sigue exactamente donde estaba */
+  const suyo = await uno(`select
+      (select count(*) from cita where negocio_id=$1 and hora_inicio = '09:00'
+        and cliente_id = $2)::int citas,
+      (select count(*) from cliente where negocio_id=$1 and nombre='Paciente propio')::int cliente,
+      (select count(*) from categoria where negocio_id=$1 and ambito='servicio' and nombre='Masajes')::int categoria,
+      (select count(*) from producto where negocio_id=$1 and sku='AE-LAV15')::int producto,
+      (select count(*) from recordatorio_automatizacion where negocio_id=$1 and evento='cita_nueva'
+        and plantilla_titulo='La mia')::int automatizacion`, [CENTRO, mio.id]);
+  ok('las citas que ya tenia el centro siguen ahi, sin pisar ni una',
+    suyo.citas === CHOCAN, `${suyo.citas} de ${CHOCAN}`);
+  ok('y su categoria, su producto y su automatizacion tambien',
+    suyo.cliente === 1 && suyo.categoria === 1 && suyo.producto === 1 && suyo.automatizacion === 1,
+    JSON.stringify(suyo));
 
   await cliente.query('delete from negocio where id = $1', [CENTRO]);
   await cliente.end();

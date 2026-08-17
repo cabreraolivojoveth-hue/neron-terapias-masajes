@@ -635,6 +635,12 @@ begin
           ('conversacion', 'Informacion', 'Precios, horarios y dudas', '#5FA8B8', 2),
           ('conversacion', 'Seguimiento', 'Como siguio despues de la sesion', '#9C8AC4', 3)
         ) as x(ambito, nombre, descripcion, color, orden)
+      -- SI EL CENTRO YA TENIA UNA QUE SE LLAMA IGUAL, SE RESPETA LA SUYA.
+      -- `categoria_nombre_unico` no deja dos con el mismo nombre en el mismo
+      -- ambito, y sin esto la carga entera moria por una categoria repetida.
+      -- La que se queda es la del centro, y como no entra al rastro, quitar la
+      -- demostracion tampoco se la lleva.
+      on conflict do nothing
       returning id)
     insert into dato_de_demostracion (negocio_id, tabla, fila_id)
     select p_negocio, 'categoria', id from nuevas;
@@ -744,6 +750,9 @@ begin
           ('Tintura de valeriana 30 ml', 'Gotero', 14000, 6200, 6, 'HB-VAL',
            'pieza', 'Estante B', 'Herbolaria')
         ) as x(nombre, descripcion, precio, costo, minimo, sku, unidad, ubicacion, categoria)
+      -- Mismo motivo: `producto_sku_unico` es unico por centro y el de aqui
+      -- podria chocar con uno que ya exista.
+      on conflict do nothing
       returning id)
     insert into dato_de_demostracion (negocio_id, tabla, fila_id)
     select p_negocio, 'producto', id from nuevos;
@@ -985,6 +994,11 @@ begin
           ('stock_bajo', true, 'Reponer {nombre}',
            'Quedan pocas piezas en vitrina.', 0, 'alta', 'Inventario')
         ) as x(evento, activa, titulo, detalle, dias, prioridad, categoria)
+      -- UNA REGLA POR EVENTO Y POR CENTRO, dice la tabla. Si el centro ya
+      -- encendio la de "cita nueva", la suya manda y la demostracion no la
+      -- pisa: encenderle a alguien una automatizacion que apago es de las
+      -- pocas cosas que este sistema no puede deshacer.
+      on conflict do nothing
       returning id)
     insert into dato_de_demostracion (negocio_id, tabla, fila_id)
     select p_negocio, 'recordatorio_automatizacion', id from nuevas;
@@ -1317,17 +1331,48 @@ begin
             when v_estado = 'no_asistio' then 'No llego y no aviso.'
             else null end;
 
-          insert into cita (negocio_id, cliente_id, servicio_id, profesional_id, fecha,
-                            hora_inicio, hora_fin, estado, notas, creado_en, actualizado_en)
-          values (p_negocio, v_cliente, v_serv_id, v_membresia, v_dia, v_hora,
-                  v_hora + make_interval(mins => v_serv_min), v_estado, v_texto,
-                  (v_dia - 4)::timestamp + time '12:00',
-                  v_dia::timestamp + time '20:00')
-          returning id into v_cita;
-          perform app.demo_anotar(p_negocio, 'cita', v_cita);
+          /*
+           * SI ESA HORA YA ESTABA OCUPADA, LA DEMOSTRACION NO LA PISA.
+           *
+           * ESTO REVENTO EL PASO 8 EN UN CENTRO DE VERDAD:
+           *
+           *   conflicting key value violates exclusion constraint "cita_sin_choque"
+           *
+           * La demostracion siembra a las 09:00, 10:30, 12:00… y esas horas
+           * entre ellas no chocan nunca. Con quien choca es con las citas que ya
+           * habia en la agenda: cualquiera que haya estado probando el sistema
+           * tiene una a las nueve de un martes, y la restriccion de exclusion
+           * —que es la que impide dos pacientes en la misma sala a la misma
+           * hora— la rechaza, con razon.
+           *
+           * NO SE TOCA ESA RESTRICCION NI SE BORRA LA CITA DE NADIE: se salta el
+           * hueco. Una demostracion con cuatro citas menos ese dia se ve igual
+           * de bien; una que empuja la cita de verdad de alguien, no.
+           *
+           * El `exception` va DENTRO del bucle a proposito: en plpgsql un bloque
+           * con manejador es un punto de retorno, asi que solo se deshace ESA
+           * cita y el mes entero sigue. Con el manejador afuera se perderia el
+           * mes completo por un choque de las nueve de la mañana.
+           */
+          v_cita := null;
+          begin
+            insert into cita (negocio_id, cliente_id, servicio_id, profesional_id, fecha,
+                              hora_inicio, hora_fin, estado, notas, creado_en, actualizado_en)
+            values (p_negocio, v_cliente, v_serv_id, v_membresia, v_dia, v_hora,
+                    v_hora + make_interval(mins => v_serv_min), v_estado, v_texto,
+                    (v_dia - 4)::timestamp + time '12:00',
+                    v_dia::timestamp + time '20:00')
+            returning id into v_cita;
+            perform app.demo_anotar(p_negocio, 'cita', v_cita);
+          exception when exclusion_violation then
+            -- Ese horario ya era de alguien. Se deja como estaba.
+            v_cita := null;
+          end;
 
           /* --- Lo que se atendio, se cobro -------------------------- */
-          if v_estado = 'completada' and v_sesion is not null then
+          -- SIN CITA NO HAY VENTA: si el hueco estaba ocupado, no se atendio a
+          -- nadie, y cobrar una sesion que no ocurrio descuadraria el dia.
+          if v_cita is not null and v_estado = 'completada' and v_sesion is not null then
             -- ¿Se llevo algo de mostrador? Uno de cada cuatro, y solo si
             -- queda existencia: vender lo que no hay dejaria el inventario en
             -- negativo, que es justo lo que la base impide en el sistema de
