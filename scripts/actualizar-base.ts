@@ -95,7 +95,17 @@ const DESDE = '-- DATOS DE DEMOSTRACION — CINCO MESES DE USO, PARA ENSEÑAR EL
  * mas arriba, su nombre va aqui — que es como `registrar_venta` viajo con el
  * bloque 10.
  */
-const ADEMAS: string[] = [];
+/*
+ * `resumen_de_gastos` VIAJA AQUI PORQUE TIRABA LA PANTALLA DE GASTOS.
+ *
+ * Vive en el bloque 7, muy por encima de la frontera, y aun asi cambio: su
+ * promedio diario salia con decimales —`sum()` de un bigint devuelve numeric—
+ * y la guardia de la base rechaza cualquier dinero que no sea un entero de
+ * centavos. Con el centro vacio la division daba cero clavado y no se veia.
+ * Sin sacarla por aqui, el arreglo no llegaria a la base y Gastos seguiria
+ * cayendose con datos de verdad dentro.
+ */
+const ADEMAS: string[] = ['public.resumen_de_gastos'];
 
 const CABECERA = `-- =====================================================================
 -- ACTUALIZAR-BASE.sql — SOLO LO NUEVO
@@ -110,8 +120,15 @@ const CABECERA = `-- ===========================================================
 -- Es seguro correrlo las veces que haga falta: no borra datos, no reescribe
 -- filas, y todo va con \`if not exists\` o \`create or replace\`.
 --
--- QUE TRAE: SOLO EL BLOQUE 11, los datos de demostracion. Lo de antes ya corrio
--- y esta comprobado contra la base.
+-- ARRIBA, UNA CORRECCION DE LO QUE YA CORRIA:
+--
+--   · \`resumen_de_gastos\` VUELVE A CREARSE. Su promedio diario salia con
+--     decimales —\`sum()\` de un bigint devuelve numeric— y la guardia del
+--     dinero tira la pantalla de Gastos entera en cuanto hay gastos de verdad:
+--     "formatearMoneda() recibio 67222.58066516129". Con el centro vacio la
+--     division daba cero clavado y no se veia.
+--
+-- Y DESPUES, EL BLOQUE 11: los datos de demostracion.
 --
 --   · Nace \`dato_de_demostracion\`, con sus reglas de fila y su permiso. Es el
 --     rastro de que fila nacio de una demostracion, y es lo unico que permite

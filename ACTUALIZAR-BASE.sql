@@ -11,8 +11,15 @@
 -- Es seguro correrlo las veces que haga falta: no borra datos, no reescribe
 -- filas, y todo va con `if not exists` o `create or replace`.
 --
--- QUE TRAE: SOLO EL BLOQUE 11, los datos de demostracion. Lo de antes ya corrio
--- y esta comprobado contra la base.
+-- ARRIBA, UNA CORRECCION DE LO QUE YA CORRIA:
+--
+--   · `resumen_de_gastos` VUELVE A CREARSE. Su promedio diario salia con
+--     decimales —`sum()` de un bigint devuelve numeric— y la guardia del
+--     dinero tira la pantalla de Gastos entera en cuanto hay gastos de verdad:
+--     "formatearMoneda() recibio 67222.58066516129". Con el centro vacio la
+--     division daba cero clavado y no se veia.
+--
+-- Y DESPUES, EL BLOQUE 11: los datos de demostracion.
 --
 --   · Nace `dato_de_demostracion`, con sus reglas de fila y su permiso. Es el
 --     rastro de que fila nacio de una demostracion, y es lo unico que permite
@@ -39,6 +46,109 @@
 --
 -- Este archivo lo genera `scripts/actualizar-base.ts` a partir de
 -- INSTALAR-EN-TERAPIAS.sql. No se edita a mano: se corre el guion.
+
+-- =====================================================================
+-- CORRECCIONES A LO QUE YA HABIAS CORRIDO
+-- =====================================================================
+--
+-- Son `create or replace`: se pueden correr encima de las que ya existen.
+
+create or replace function public.resumen_de_gastos(
+  p_negocio text,
+  p_desde   date,
+  p_hasta   date
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  with dias as (
+    select greatest((p_hasta - p_desde) + 1, 1) as n
+  ),
+  actual as (
+    select * from gasto
+     where negocio_id = p_negocio and not eliminado and fecha between p_desde and p_hasta
+  ),
+  anterior as (
+    select * from gasto
+     where negocio_id = p_negocio and not eliminado
+       and fecha between p_desde - (select n from dias) and p_desde - 1
+  ),
+  mayor as (
+    select descripcion, monto_centavos from actual order by monto_centavos desc, creado_en limit 1
+  )
+  select jsonb_build_object(
+    'totalCentavos', coalesce((select sum(monto_centavos) from actual), 0),
+    'cuantos', (select count(*) from actual),
+    'dias', (select n from dias),
+    -- El promedio se saca entre los DIAS del periodo, no entre los gastos: es
+    -- "cuanto sale al dia", que es la pregunta que se hace quien lo mira.
+    /*
+     * EL `round` NO SOBRA, Y SU FALTA TIRO LA PANTALLA DE GASTOS ENTERA:
+     *
+     *   formatearMoneda() recibio "67222.58066516129", que no son centavos
+     *   enteros. El dinero del sistema SIEMPRE es un entero de centavos.
+     *
+     * `sum()` de un `bigint` devuelve NUMERIC —no bigint—, asi que dividirlo
+     * entre los dias da decimales en cuanto no toca exacto. Con el centro
+     * vacio, cero entre sesenta y dos daba cero clavado y no se veia; con
+     * sesenta y cuatro gastos de verdad, la division cayo en un numero con doce
+     * decimales y la guardia de la base —que hace bien en existir— tumbo la
+     * pantalla.
+     *
+     * Se redondea AQUI, en el servidor, y no al pintar: el dinero sale entero
+     * de la base o no sale. Redondear en el navegador seria dejar que cada
+     * pantalla decidiera por su cuenta cuantos centavos son un centavo.
+     */
+    'promedioDiarioCentavos',
+      round(coalesce((select sum(monto_centavos) from actual), 0)
+            / (select n from dias))::bigint,
+    'mayor', case when exists (select 1 from mayor)
+      then (select jsonb_build_object('descripcion', descripcion, 'centavos', monto_centavos) from mayor)
+      end,
+    'anteriorCentavos', coalesce((select sum(monto_centavos) from anterior), 0),
+    -- SIN PERIODO ANTERIOR NO HAY PORCENTAJE. Dividir entre cero no da cero:
+    -- no da nada, y "+∞%" o "+5000%" es el numero que mas veces se ve mal
+    -- hecho en un tablero.
+    'hayComparacion', (select count(*) from anterior) > 0,
+    'porCategoria', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', t.categoria_id, 'nombre', t.nombre, 'color', t.color,
+        'centavos', t.centavos, 'cuantos', t.n
+      ) order by t.centavos desc)
+      from (
+        select a.categoria_id, coalesce(c.nombre, 'Sin categoría') as nombre, c.color,
+               sum(a.monto_centavos) as centavos, count(*) as n
+          from actual a
+          left join categoria c on c.id = a.categoria_id and c.negocio_id = p_negocio
+         group by a.categoria_id, c.nombre, c.color
+      ) t
+    ), '[]'::jsonb),
+    'porMetodo', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'metodo', t.metodo, 'centavos', t.centavos, 'cuantos', t.n
+      ) order by t.centavos desc)
+      from (
+        select metodo, sum(monto_centavos) as centavos, count(*) as n
+          from actual group by metodo
+      ) t
+    ), '[]'::jsonb),
+    'porDia', coalesce((
+      select jsonb_agg(jsonb_build_object('fecha', t.d, 'centavos', t.centavos) order by t.d)
+      from (
+        -- LOS DIAS SIN GASTOS VAN EN CERO, no ausentes: un hueco en la grafica
+        -- se lee como una caida en vez de como un dia tranquilo.
+        select s.d::date as d, coalesce(sum(a.monto_centavos), 0) as centavos
+          from generate_series(p_desde, p_hasta, interval '1 day') s(d)
+          left join actual a on a.fecha = s.d::date
+         group by s.d
+      ) t
+    ), '[]'::jsonb),
+    'efectivoCentavos', coalesce((select sum(efectivo_centavos) from actual), 0)
+  );
+$$;
 
 -- =====================================================================
 -- DATOS DE DEMOSTRACION — CINCO MESES DE USO, PARA ENSEÑAR EL SISTEMA (bloque 11)

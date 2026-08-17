@@ -7703,8 +7703,26 @@ as $$
     'dias', (select n from dias),
     -- El promedio se saca entre los DIAS del periodo, no entre los gastos: es
     -- "cuanto sale al dia", que es la pregunta que se hace quien lo mira.
+    /*
+     * EL `round` NO SOBRA, Y SU FALTA TIRO LA PANTALLA DE GASTOS ENTERA:
+     *
+     *   formatearMoneda() recibio "67222.58066516129", que no son centavos
+     *   enteros. El dinero del sistema SIEMPRE es un entero de centavos.
+     *
+     * `sum()` de un `bigint` devuelve NUMERIC —no bigint—, asi que dividirlo
+     * entre los dias da decimales en cuanto no toca exacto. Con el centro
+     * vacio, cero entre sesenta y dos daba cero clavado y no se veia; con
+     * sesenta y cuatro gastos de verdad, la division cayo en un numero con doce
+     * decimales y la guardia de la base —que hace bien en existir— tumbo la
+     * pantalla.
+     *
+     * Se redondea AQUI, en el servidor, y no al pintar: el dinero sale entero
+     * de la base o no sale. Redondear en el navegador seria dejar que cada
+     * pantalla decidiera por su cuenta cuantos centavos son un centavo.
+     */
     'promedioDiarioCentavos',
-      coalesce((select sum(monto_centavos) from actual), 0) / (select n from dias),
+      round(coalesce((select sum(monto_centavos) from actual), 0)
+            / (select n from dias))::bigint,
     'mayor', case when exists (select 1 from mayor)
       then (select jsonb_build_object('descripcion', descripcion, 'centavos', monto_centavos) from mayor)
       end,

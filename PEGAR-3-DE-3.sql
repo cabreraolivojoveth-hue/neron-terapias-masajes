@@ -1,5 +1,5 @@
 -- =====================================================================
--- PARTE 2 DE 2 — pegar en Supabase -> SQL Editor -> Run
+-- PARTE 3 DE 3 — pegar en Supabase -> SQL Editor -> Run
 -- =====================================================================
 --
 -- Proyecto: hgypobbanvkwnqmepqim (neron-terapias). MIRA EL REF EN LA BARRA

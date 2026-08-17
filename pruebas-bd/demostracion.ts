@@ -249,11 +249,44 @@ async function principal(): Promise<void> {
     ['Bitacora', `select public.bitacora_del_centro($1) as x`],
     ['Exportar', `select public.exportar_del_centro($1, 'ventas') as x`],
   ];
+/**
+ * EL DINERO QUE NO ES UN ENTERO DE CENTAVOS, buscado a mano por todo lo que
+ * contesta cada pantalla.
+ *
+ * ESTO TIRO LA PANTALLA DE GASTOS ENTERA, con la demostracion ya cargada:
+ *
+ *   formatearMoneda() recibio "67222.58066516129", que no son centavos enteros.
+ *
+ * `sum()` de un `bigint` devuelve NUMERIC, asi que cualquier division sin
+ * `round` sale con decimales — y solo se nota cuando hay datos de verdad: con
+ * el centro vacio, cero entre sesenta y dos da cero clavado. La guardia de la
+ * base hace bien en reventar; lo que faltaba era encontrarlo antes.
+ *
+ * Se mira POR EL NOMBRE de la llave, que es lo unico que distingue un importe
+ * de un porcentaje o de una hora en un JSON.
+ */
+function dineroConDecimales(dato: unknown, camino = ''): string[] {
+  const ES_DINERO = /centavos|monto|total|precio|costo|saldo|esperado|contado|diferencia|subtotal|impuesto|descuento|promedio/i;
+  if (Array.isArray(dato)) return dato.flatMap((x, i) => dineroConDecimales(x, `${camino}[${i}]`));
+  if (dato !== null && typeof dato === 'object') {
+    return Object.entries(dato as Record<string, unknown>).flatMap(([llave, valor]) => {
+      if (typeof valor === 'number' && ES_DINERO.test(llave) && !Number.isInteger(valor)) {
+        return [`${camino}.${llave} = ${valor}`];
+      }
+      return dineroConDecimales(valor, `${camino}.${llave}`);
+    });
+  }
+  return [];
+}
+
   for (const [nombre, sql] of PANTALLAS) {
     try {
       const x = (await como(sql, [CENTRO])).rows[0]?.x;
       const texto = JSON.stringify(x ?? null);
-      ok(nombre, texto !== 'null' && texto !== '[]' && texto !== '{}', `${texto.length} caracteres`);
+      const rotos = dineroConDecimales(x);
+      ok(nombre, texto !== 'null' && texto !== '[]' && texto !== '{}' && rotos.length === 0,
+        rotos.length > 0 ? `dinero con decimales: ${rotos.slice(0, 3).join('; ')}`
+                         : `${texto.length} caracteres`);
     } catch (e) {
       ok(nombre, false, (e as Error).message);
     }
