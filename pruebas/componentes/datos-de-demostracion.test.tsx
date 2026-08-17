@@ -57,11 +57,19 @@ describe('antes de cargar nada', () => {
     // Saber que hay vuelta atras cambia por completo la decision de apretar.
     pintar();
     expect(screen.getByText(/Se pueden quitar enteros/i)).toBeDefined();
+    expect(screen.getByText(/no es información de tu centro/i)).toBeDefined();
+  });
+
+  it('avisa de que hay que cerrar la caja antes', () => {
+    // La demostracion abre y cierra la caja de cada dia y la base solo permite
+    // una abierta: con una del uso normal, la carga se para en seco.
+    pintar();
+    expect(screen.getByText(/Necesita la caja cerrada/i)).toBeDefined();
   });
 
   it('avisa de que tarda, y de que no se cierre a media carga', () => {
     pintar();
-    expect(screen.getByText(/Tarda cerca de un minuto/i)).toBeDefined();
+    expect(screen.getByText(/Tarda unos segundos/i)).toBeDefined();
   });
 
   it('el boton pide cargar una vez', async () => {
@@ -188,9 +196,15 @@ describe('cuando ya esta cargada', () => {
     expect(onQuitar).toHaveBeenCalledTimes(1);
   });
 
-  it('promete que lo capturado de verdad se queda', () => {
+  it('dice la verdad completa: lo de encima tambien se va', () => {
+    /*
+     * Se aprendio contra una Postgres de verdad: borrar un paciente sembrado
+     * con una venta encima revienta contra la llave foranea `restrict`. Se
+     * borra tambien lo que cuelga, y por eso hay que decirlo ANTES.
+     */
     pintar({ estado: cargada });
-    expect(screen.getByText(/Lo que hayas capturado tú se queda/i)).toBeDefined();
+    expect(screen.getByText(/también lo que hayas hecho/i)).toBeDefined();
+    expect(screen.getByText(/Lo que capturaste/i)).toBeDefined();
   });
 });
 

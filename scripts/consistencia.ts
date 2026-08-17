@@ -47,6 +47,18 @@ const PASOS = [
    */
   { titulo: 'Alcance', porque: 'que nada quede fuera de alcance al crecer el contenido', orden: 'npx tsx scripts/alcance.ts' },
   { titulo: 'Compilacion', porque: 'que lo que se va a publicar de verdad compile', orden: 'npx vite build' },
+  /**
+   * EL UNICO PASO QUE EJECUTA EL CUERPO DE UNA FUNCION `plpgsql`, y por eso
+   * existe: Postgres NO valida ese cuerpo al crearla. La carga de demostracion
+   * son mil setecientas lineas que se aplican sin una queja y revientan cuando
+   * alguien aprieta el boton — paso tres veces seguidas, con los otros seis
+   * pasos en verde.
+   *
+   * Se salta solo si no hay una base LOCAL donde correrlo, y lo dice en voz
+   * alta: contra Supabase no corre nunca, porque sembraria cinco meses de
+   * pacientes inventados en un centro de verdad.
+   */
+  { titulo: 'Demostracion', porque: 'que los cinco meses de datos se siembren y se quiten enteros', orden: 'npx tsx pruebas-bd/demostracion.ts' },
   { titulo: 'Ataques', porque: 'que las reglas de acceso de verdad muerdan', orden: 'npx tsx pruebas-bd/ataques.ts' },
 ];
 
@@ -56,7 +68,7 @@ const arranque = Date.now();
 for (let i = 0; i < PASOS.length; i += 1) {
   const paso = PASOS[i]!;
 
-  if (paso.titulo === 'Ataques' && !HAY_BASE) continue;
+  if ((paso.titulo === 'Ataques' || paso.titulo === 'Demostracion') && !HAY_BASE) continue;
 
   console.log(`\n  [${i + 1}/${PASOS.length}] ${paso.titulo} — ${paso.porque}`);
   const r = spawnSync(paso.orden, { shell: true, stdio: 'inherit' });

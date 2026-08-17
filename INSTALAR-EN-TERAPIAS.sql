@@ -97,6 +97,24 @@ create index if not exists cliente_negocio_idx on cliente (negocio_id) where not
 -- recorre la tabla entera.
 create index if not exists cliente_nombre_idx on cliente (negocio_id, lower(nombre));
 
+/*
+ * ESTA COLUMNA SUBE AQUI, Y NO ES ORDEN: ES QUE EL ARCHIVO NO SE PODIA
+ * INSTALAR DE CERO.
+ *
+ * `acepta_promociones` la agrega el bloque de Mensajes, cuatro mil lineas mas
+ * abajo. Pero `clientes_del_centro` —que vive en el bloque 2, mucho antes— la
+ * LEE, y es una funcion de lenguaje `sql`: Postgres SI parsea su cuerpo al
+ * crearla. En la base de verdad no se nota, porque cuando esa funcion se
+ * recreo la columna ya existia de una corrida anterior; en una base NUEVA el
+ * instalador muere con "column f.acepta_promociones does not exist" y todo lo
+ * que va despues se queda sin aplicar.
+ *
+ * Se vio levantando una Postgres limpia y aplicando el archivo entero, que es
+ * la unica forma de verlo. Se queda tambien la de mas abajo: es
+ * `if not exists`, asi que no hace nada la segunda vez.
+ */
+alter table cliente add column if not exists acepta_promociones boolean not null default true;
+
 -- ---------------------------------------------------------------------
 -- SERVICIOS — el catalogo: Reiki, Biomagnetismo, Limpieza Energetica...
 -- ---------------------------------------------------------------------
@@ -5151,6 +5169,17 @@ as $$
     select
       c.id, c.nombre, c.telefono, c.correo, c.fecha_nacimiento,
       c.profesional_id, c.eliminado, c.creado_en,
+      -- LA COLUMNA FALTABA AQUI Y LA FUNCION LA DEVOLVIA ABAJO. El bloque de
+      -- Mensajes agrego `aceptaPromociones` a lo que sale, y nadie la agrego a
+      -- esta lista: `f.acepta_promociones` no existia en el CTE. La funcion
+      -- entera se negaba a crearse —"column f.acepta_promociones does not
+      -- exist"— y con ella se caia todo el resto del instalador.
+      --
+      -- POR QUE NO SE NOTO NUNCA: en la base de verdad esta funcion se aplico
+      -- por ultima vez antes de ese cambio, asi que ahi corre una version vieja
+      -- que si funciona. Solo aparece al instalar de cero, y eso no lo hacia
+      -- nadie. Se vio levantando una Postgres limpia y aplicando el archivo.
+      c.acepta_promociones,
       coalesce(x.visitas, 0) as visitas,
       x.ultima_visita
     from cliente c
@@ -13759,6 +13788,33 @@ begin
     insert into dato_de_demostracion (negocio_id, tabla, fila_id)
     select p_negocio, 'plantilla_de_mensaje', id from nuevas;
 
+    /*
+     * DOS AUTOMATIZACIONES DE MENSAJES, LAS DOS APAGADAS.
+     *
+     * Apagadas no es un descuido: mandarle mensajes a los pacientes de alguien
+     * sin que esa persona lo haya pedido es de lo poco que este sistema no
+     * puede deshacer, y ademas todavia no hay un servidor que las dispare. Se
+     * siembran para que la pantalla de automatizaciones tenga algo que enseñar
+     * —vacia no se entiende para que sirve— y se ven tal como estan: a la
+     * espera.
+     */
+    with nuevas as (
+      insert into automatizacion_de_mensajes (negocio_id, evento, plantilla_id, canal_id,
+                                              activa, creado_en)
+      select p_negocio, x.evento,
+             (select p.id from plantilla_de_mensaje p
+               where p.negocio_id = p_negocio and p.nombre = x.plantilla),
+             (select c.id from canal_de_mensajes c
+               where c.negocio_id = p_negocio and c.tipo = 'manual' limit 1),
+             false, (v_inicio - 1)::timestamp + time '10:40'
+        from (values
+          ('cita_recordatorio', 'Recordatorio de cita'),
+          ('seguimiento', 'Seguimiento despues de la sesion')
+        ) as x(evento, plantilla)
+      returning id)
+    insert into dato_de_demostracion (negocio_id, tabla, fila_id)
+    select p_negocio, 'automatizacion_de_mensajes', id from nuevas;
+
     /* Los gastos que se repiten cada mes */
     with nuevos as (
       insert into gasto_recurrente (negocio_id, descripcion, detalle, categoria_id, proveedor_id,
@@ -14095,10 +14151,33 @@ begin
         for v_i in 1..v_cuantas loop
           v_hora := time '09:00' + make_interval(mins => (v_i - 1) * 90);
 
-          select s.id, s.nombre, s.duracion_min, s.precio_centavos
-            into v_serv_id, v_serv_nombre, v_serv_min, v_serv_precio
+          /*
+           * EL SORTEO SE HACE FUERA DE LA CONSULTA, Y ESTO COSTO UNA CARGA
+           * ENTERA. La primera version decia:
+           *
+           *   select ... into ... from servicio s
+           *    where s.id = v_servicios[1 + floor(random() * ...)::int];
+           *
+           * y reventaba con "null value in column servicio_id of relation
+           * cita violates not-null constraint" en un dia cualquiera del tercer
+           * paso. La causa no se ve leyendolo: `random()` es VOLATIL, asi que
+           * el motor la evalua UNA VEZ POR CADA FILA que examina. Con doce
+           * servicios, cada fila se comparaba contra un sorteo distinto y las
+           * doce podian fallar a la vez — una de cada tres veces no encontraba
+           * ninguna, la consulta no devolvia nada, y `select into` deja las
+           * variables en nulo sin quejarse. El error salia tres lineas mas
+           * abajo, en el insert, hablando de otra cosa.
+           *
+           * Sorteado antes en una variable, el sorteo ocurre una vez y la
+           * consulta busca un id fijo. Es la misma trampa que un `where
+           * fecha > now()` dentro de un bucle: la funcion volatil no se queda
+           * quieta solo porque uno la lea como si fuera un valor.
+           */
+          v_serv_id := v_servicios[1 + floor(random() * array_length(v_servicios, 1))::int];
+          select s.nombre, s.duracion_min, s.precio_centavos
+            into v_serv_nombre, v_serv_min, v_serv_precio
             from servicio s
-           where s.id = v_servicios[1 + floor(random() * array_length(v_servicios, 1))::int];
+           where s.id = v_serv_id;
 
           v_cliente := v_clientes[1 + floor(random() * v_elegibles)::int];
 
@@ -14143,10 +14222,14 @@ begin
             v_lleva := random() < 0.26;
             v_prod_id := null;
             if v_lleva then
-              select p.id, p.nombre, p.precio_centavos, p.costo_centavos, p.stock_actual
-                into v_prod_id, v_prod_nombre, v_prod_precio, v_prod_costo, v_prod_stock
+              -- El sorteo, FUERA de la consulta. Ver el comentario largo de
+              -- arriba: `random()` dentro del `where` se evalua una vez por
+              -- fila y la consulta se queda sin devolver nada.
+              v_prod_id := v_productos[1 + floor(random() * array_length(v_productos, 1))::int];
+              select p.nombre, p.precio_centavos, p.costo_centavos, p.stock_actual
+                into v_prod_nombre, v_prod_precio, v_prod_costo, v_prod_stock
                 from producto p
-               where p.id = v_productos[1 + floor(random() * array_length(v_productos, 1))::int];
+               where p.id = v_prod_id;
               if coalesce(v_prod_stock, 0) < 1 then
                 v_prod_id := null;
               end if;
@@ -14556,6 +14639,43 @@ begin
       end if;
     end loop;
 
+    /*
+     * ALGUNOS RECORDATORIOS SABEN DE QUE HABLAN, y sin eso el modulo se queda
+     * a medias: un recordatorio que solo dice "Pedir aceite de almendras" es
+     * texto muerto — no se puede abrir el producto, ni saber si ya se repuso.
+     * El panel de "lo pendiente de este paciente" del expediente y el del
+     * producto salen de aqui, y sin una sola fila ligada salen siempre vacios.
+     */
+    update recordatorio rc set entidad_tipo = 'cliente', entidad_id = c.id
+      from cliente c
+     where rc.negocio_id = p_negocio and c.negocio_id = p_negocio
+       and c.nombre = 'Roberto Quinones'
+       and rc.titulo = 'Seguimiento a la paciente con hernia';
+
+    update recordatorio rc set entidad_tipo = 'cliente', entidad_id = c.id
+      from cliente c
+     where rc.negocio_id = p_negocio and c.negocio_id = p_negocio
+       and c.nombre = 'Adriana Villalobos'
+       and rc.titulo = 'Llamar a la paciente de la cita cancelada';
+
+    update recordatorio rc set entidad_tipo = 'producto', entidad_id = p.id
+      from producto p
+     where rc.negocio_id = p_negocio and p.negocio_id = p_negocio
+       and p.nombre = 'Aceite de almendras dulces 250 ml'
+       and rc.titulo = 'Pedir aceite de almendras';
+
+    update recordatorio rc set entidad_tipo = 'producto', entidad_id = p.id
+      from producto p
+     where rc.negocio_id = p_negocio and p.negocio_id = p_negocio
+       and p.nombre = 'Incienso de copal'
+       and rc.titulo = 'Reponer inciensos de copal';
+
+    update recordatorio rc set entidad_tipo = 'curso', entidad_id = cu.id
+      from curso cu
+     where rc.negocio_id = p_negocio and cu.negocio_id = p_negocio
+       and cu.nombre = 'Introduccion al biomagnetismo'
+       and rc.titulo = 'Mandar el recordatorio del curso de biomagnetismo';
+
     /* --- Las dos reglas que se repiten -------------------------------- */
     with nuevas as (
       insert into recordatorio_recurrente (negocio_id, titulo, detalle, hora, prioridad,
@@ -14804,10 +14924,23 @@ declare
     'gasto', 'gasto_recurrente', 'cita',
     'recordatorio', 'recordatorio_recurrente', 'recordatorio_automatizacion',
     'sesion_caja', 'cliente', 'servicio', 'proveedor', 'categoria',
-    'plantilla_de_mensaje', 'canal_de_mensajes', 'reporte_guardado', 'auditoria'];
+    -- La automatizacion va ANTES que la plantilla y el canal de los que
+    -- cuelga. Apuntan con `set null`, asi que el orden contrario tampoco
+    -- reventaria — pero dejaria una regla apuntando al vacio si el borrado se
+    -- cortara justo ahi.
+    'automatizacion_de_mensajes', 'plantilla_de_mensaje', 'canal_de_mensajes',
+    'reporte_guardado', 'auditoria'];
   v_tabla  text;
   v_n      int;
   v_total  int := 0;
+  /* Lo que NO sembro la demostracion pero cuelga de ella. Ver mas abajo. */
+  v_arrastradas int := 0;
+  v_clientes  uuid[];
+  v_servicios uuid[];
+  v_productos uuid[];
+  v_cursos    uuid[];
+  v_ventas    uuid[];
+  v_sembrados uuid[];
 begin
   if not app.es_miembro(p_negocio) then
     raise exception 'Ese centro no es el tuyo.' using errcode = 'insufficient_privilege';
@@ -14820,6 +14953,140 @@ begin
     raise exception 'Hace falta el permiso de configuracion para quitar la demostracion.'
       using errcode = 'insufficient_privilege';
   end if;
+
+  /*
+   * PRIMERO SE VA LO QUE CRECIO ENCIMA DE LA DEMOSTRACION, Y ESTO REVENTO EN
+   * UN ENSAYO CONTRA UNA POSTGRES DE VERDAD:
+   *
+   *   update or delete on table "cliente" violates RESTRICT setting of foreign
+   *   key constraint "venta_cliente_mismo_negocio" on table "venta"
+   *
+   * Pasa siempre que alguien USA la demostracion, que es justo para lo que
+   * existe: se cobra una venta a un paciente sembrado, se agenda una cita con
+   * un servicio sembrado, se inscribe a alguien a un curso sembrado. Esas filas
+   * son de quien las capturo —no estan en el rastro— pero apuntan a lo
+   * sembrado con una llave foranea `restrict`, que es la que protege un
+   * expediente con historial. Al borrar el paciente, la base se niega, con
+   * razon, y el borrado entero se deshace.
+   *
+   * LAS DOS SALIDAS MALAS: dejar la demostracion pegada para siempre en cuanto
+   * alguien la use, o quitarle el `restrict` a la llave —que es lo que impide
+   * borrar el historial de un paciente de verdad—. Ninguna se toma.
+   *
+   * LO QUE SE HACE: se borra tambien lo que cuelga, y la pantalla lo dice con
+   * esas palabras. Una venta a un paciente inventado no es informacion del
+   * centro: es parte de la demostracion aunque la haya tecleado una persona.
+   * Lo que se capturo APARTE —un paciente propio, un gasto, un recordatorio—
+   * no se toca, y eso sigue siendo verdad.
+   */
+  select array_agg(fila_id) into v_clientes from dato_de_demostracion
+   where negocio_id = p_negocio and tabla = 'cliente' and fila_id is not null;
+  select array_agg(fila_id) into v_servicios from dato_de_demostracion
+   where negocio_id = p_negocio and tabla = 'servicio' and fila_id is not null;
+  select array_agg(fila_id) into v_productos from dato_de_demostracion
+   where negocio_id = p_negocio and tabla = 'producto' and fila_id is not null;
+  select array_agg(fila_id) into v_cursos from dato_de_demostracion
+   where negocio_id = p_negocio and tabla = 'curso' and fila_id is not null;
+
+  v_clientes  := coalesce(v_clientes,  '{}'::uuid[]);
+  v_servicios := coalesce(v_servicios, '{}'::uuid[]);
+  v_productos := coalesce(v_productos, '{}'::uuid[]);
+  v_cursos    := coalesce(v_cursos,    '{}'::uuid[]);
+
+  -- Las ventas que cobraron algo sembrado: al paciente, o el servicio, el
+  -- producto o el curso. `coalesce` de las tres referencias funciona porque un
+  -- renglon de venta tiene exactamente una, y la base lo obliga.
+  select array_agg(v.id) into v_ventas
+    from venta v
+   where v.negocio_id = p_negocio
+     and (v.cliente_id = any(v_clientes)
+          or exists (select 1 from venta_item i
+                      where i.venta_id = v.id
+                        and coalesce(i.producto_id, i.servicio_id, i.curso_id)
+                            = any(v_productos || v_servicios || v_cursos)));
+  v_ventas := coalesce(v_ventas, '{}'::uuid[]);
+
+  -- El rastro de esas ventas, de adentro hacia afuera. La caja cuelga del PAGO
+  -- desde el bloque 6, asi que hay que buscarla por ahi.
+  delete from movimiento_caja m
+   where m.negocio_id = p_negocio
+     and ((m.origen = 'pago'
+           and m.referencia_id in (select p.id from pago p where p.venta_id = any(v_ventas)))
+       or (m.origen = 'venta' and m.referencia_id = any(v_ventas)));
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  delete from pago where venta_id = any(v_ventas);
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  delete from venta_item where venta_id = any(v_ventas);
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  delete from venta where id = any(v_ventas);
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  -- Las citas de un paciente o un servicio sembrado.
+  delete from cita c
+   where c.negocio_id = p_negocio
+     and (c.cliente_id = any(v_clientes) or c.servicio_id = any(v_servicios));
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  -- Y las inscripciones a un curso sembrado o de un paciente sembrado.
+  delete from inscripcion i
+   where i.negocio_id = p_negocio
+     and (i.cliente_id = any(v_clientes) or i.curso_id = any(v_cursos));
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  /*
+   * LO QUE EL PROPIO SISTEMA CREO A PARTIR DE LO SEMBRADO, que es la fuga que
+   * mas costo ver: al abrir Recordatorios, las automatizaciones se ponen al dia
+   * solas y crearon OCHENTA Y NUEVE recordatorios —"Confirmar la cita de
+   * Fulana", "Reponer Incienso de copal"— a partir de las citas y los productos
+   * inventados. Ninguno esta en el rastro, porque no los sembro la
+   * demostracion: los creo el sistema funcionando, que es exactamente lo que se
+   * queria enseñar.
+   *
+   * Se van con ella. Un recordatorio que habla de una cita que ya no existe no
+   * es informacion del centro: es basura con nombre de paciente inventado, y
+   * ademas no se puede abrir.
+   *
+   * Se compara contra TODO el rastro de una vez —cualquier id sembrado— porque
+   * un recordatorio puede colgar de cuatro sitios distintos: la entidad de la
+   * que habla, la fila que lo origino, la automatizacion que lo creo o la regla
+   * que lo repite.
+   */
+  select array_agg(fila_id) into v_sembrados from dato_de_demostracion
+   where negocio_id = p_negocio and fila_id is not null;
+  v_sembrados := coalesce(v_sembrados, '{}'::uuid[]);
+
+  delete from recordatorio rc
+   where rc.negocio_id = p_negocio
+     and (rc.entidad_id = any(v_sembrados)
+       or rc.origen_id = any(v_sembrados)
+       or rc.automatizacion_id = any(v_sembrados)
+       or rc.recurrente_id = any(v_sembrados));
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  -- Lo mismo con los gastos que nacieron de una plantilla recurrente sembrada:
+  -- la renta de un local inventado no es un gasto del centro.
+  delete from gasto g
+   where g.negocio_id = p_negocio and g.recurrente_id = any(v_sembrados);
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  -- Y las conversaciones que se abrieron con un paciente sembrado. Sus
+  -- mensajes se van en cascada con ellas.
+  delete from conversacion cv
+   where cv.negocio_id = p_negocio and cv.cliente_id = any(v_clientes);
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  /*
+   * LO QUE ESTAS CUATRO NO NECESITAN, y por que:
+   *   · `movimiento_inventario` y `producto_proveedor` cuelgan del producto en
+   *     CASCADA: se van solos.
+   *   · `conversacion`, `gasto`, `recordatorio` y `curso` apuntan con
+   *     `set null`: se quedan, sin el dato que ya no existe. Es lo correcto —
+   *     un gasto propio no desaparece porque su categoria era de la
+   *     demostracion.
+   */
 
   foreach v_tabla in array v_orden loop
     execute format(
@@ -14850,13 +15117,18 @@ begin
 
   delete from dato_de_demostracion where negocio_id = p_negocio;
 
-  return jsonb_build_object('quitadas', v_total, 'cargada', false, 'filas', 0);
+  -- SE DEVUELVEN LAS DOS CIFRAS POR SEPARADO. "Se borraron 4 300 renglones" no
+  -- dice si alguno era tuyo; "4 200 sembrados y 8 que capturaste encima de
+  -- ellos" si, y es lo unico que deja entender que se fue.
+  return jsonb_build_object('quitadas', v_total, 'arrastradas', v_arrastradas,
+                            'cargada', false, 'filas', 0);
 end;
 $$;
 
 comment on function public.quitar_datos_de_demostracion(text) is
-  'Borra EXACTAMENTE lo que sembro la demostracion, en el orden de las llaves foraneas, y deja '
-  'intacto lo que el centro haya capturado de verdad.';
+  'Borra lo que sembro la demostracion, en el orden de las llaves foraneas, y ademas lo que se '
+  'capturo COLGADO de ella —una venta a un paciente inventado se va con el—. Lo capturado aparte '
+  'no se toca. Devuelve las dos cifras por separado.';
 
 revoke all on function public.quitar_datos_de_demostracion(text) from public, anon;
 grant execute on function public.quitar_datos_de_demostracion(text) to authenticated;

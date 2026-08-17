@@ -15,7 +15,8 @@
     "vitrina": "vite --config pruebas-visuales/vite.config.ts",
     "capturas": "tsx scripts/capturas.ts",
     "velos": "tsx scripts/velos.ts",
-    "alcance": "tsx scripts/alcance.ts"
+    "alcance": "tsx scripts/alcance.ts",
+    "demostracion": "tsx pruebas-bd/demostracion.ts"
   },
   "dependencies": {
     "@neron/base": "git+https://github.com/cabreraolivojoveth-hue/base-neronprogramas.git#v1.1.0",

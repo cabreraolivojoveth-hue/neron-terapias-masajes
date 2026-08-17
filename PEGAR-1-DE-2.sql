@@ -916,6 +916,33 @@ begin
     insert into dato_de_demostracion (negocio_id, tabla, fila_id)
     select p_negocio, 'plantilla_de_mensaje', id from nuevas;
 
+    /*
+     * DOS AUTOMATIZACIONES DE MENSAJES, LAS DOS APAGADAS.
+     *
+     * Apagadas no es un descuido: mandarle mensajes a los pacientes de alguien
+     * sin que esa persona lo haya pedido es de lo poco que este sistema no
+     * puede deshacer, y ademas todavia no hay un servidor que las dispare. Se
+     * siembran para que la pantalla de automatizaciones tenga algo que enseñar
+     * —vacia no se entiende para que sirve— y se ven tal como estan: a la
+     * espera.
+     */
+    with nuevas as (
+      insert into automatizacion_de_mensajes (negocio_id, evento, plantilla_id, canal_id,
+                                              activa, creado_en)
+      select p_negocio, x.evento,
+             (select p.id from plantilla_de_mensaje p
+               where p.negocio_id = p_negocio and p.nombre = x.plantilla),
+             (select c.id from canal_de_mensajes c
+               where c.negocio_id = p_negocio and c.tipo = 'manual' limit 1),
+             false, (v_inicio - 1)::timestamp + time '10:40'
+        from (values
+          ('cita_recordatorio', 'Recordatorio de cita'),
+          ('seguimiento', 'Seguimiento despues de la sesion')
+        ) as x(evento, plantilla)
+      returning id)
+    insert into dato_de_demostracion (negocio_id, tabla, fila_id)
+    select p_negocio, 'automatizacion_de_mensajes', id from nuevas;
+
     /* Los gastos que se repiten cada mes */
     with nuevos as (
       insert into gasto_recurrente (negocio_id, descripcion, detalle, categoria_id, proveedor_id,
@@ -1252,10 +1279,33 @@ begin
         for v_i in 1..v_cuantas loop
           v_hora := time '09:00' + make_interval(mins => (v_i - 1) * 90);
 
-          select s.id, s.nombre, s.duracion_min, s.precio_centavos
-            into v_serv_id, v_serv_nombre, v_serv_min, v_serv_precio
+          /*
+           * EL SORTEO SE HACE FUERA DE LA CONSULTA, Y ESTO COSTO UNA CARGA
+           * ENTERA. La primera version decia:
+           *
+           *   select ... into ... from servicio s
+           *    where s.id = v_servicios[1 + floor(random() * ...)::int];
+           *
+           * y reventaba con "null value in column servicio_id of relation
+           * cita violates not-null constraint" en un dia cualquiera del tercer
+           * paso. La causa no se ve leyendolo: `random()` es VOLATIL, asi que
+           * el motor la evalua UNA VEZ POR CADA FILA que examina. Con doce
+           * servicios, cada fila se comparaba contra un sorteo distinto y las
+           * doce podian fallar a la vez — una de cada tres veces no encontraba
+           * ninguna, la consulta no devolvia nada, y `select into` deja las
+           * variables en nulo sin quejarse. El error salia tres lineas mas
+           * abajo, en el insert, hablando de otra cosa.
+           *
+           * Sorteado antes en una variable, el sorteo ocurre una vez y la
+           * consulta busca un id fijo. Es la misma trampa que un `where
+           * fecha > now()` dentro de un bucle: la funcion volatil no se queda
+           * quieta solo porque uno la lea como si fuera un valor.
+           */
+          v_serv_id := v_servicios[1 + floor(random() * array_length(v_servicios, 1))::int];
+          select s.nombre, s.duracion_min, s.precio_centavos
+            into v_serv_nombre, v_serv_min, v_serv_precio
             from servicio s
-           where s.id = v_servicios[1 + floor(random() * array_length(v_servicios, 1))::int];
+           where s.id = v_serv_id;
 
           v_cliente := v_clientes[1 + floor(random() * v_elegibles)::int];
 
@@ -1300,10 +1350,14 @@ begin
             v_lleva := random() < 0.26;
             v_prod_id := null;
             if v_lleva then
-              select p.id, p.nombre, p.precio_centavos, p.costo_centavos, p.stock_actual
-                into v_prod_id, v_prod_nombre, v_prod_precio, v_prod_costo, v_prod_stock
+              -- El sorteo, FUERA de la consulta. Ver el comentario largo de
+              -- arriba: `random()` dentro del `where` se evalua una vez por
+              -- fila y la consulta se queda sin devolver nada.
+              v_prod_id := v_productos[1 + floor(random() * array_length(v_productos, 1))::int];
+              select p.nombre, p.precio_centavos, p.costo_centavos, p.stock_actual
+                into v_prod_nombre, v_prod_precio, v_prod_costo, v_prod_stock
                 from producto p
-               where p.id = v_productos[1 + floor(random() * array_length(v_productos, 1))::int];
+               where p.id = v_prod_id;
               if coalesce(v_prod_stock, 0) < 1 then
                 v_prod_id := null;
               end if;
@@ -1712,6 +1766,43 @@ begin
         perform app.demo_anotar(p_negocio, 'recordatorio_evento', v_cita);
       end if;
     end loop;
+
+    /*
+     * ALGUNOS RECORDATORIOS SABEN DE QUE HABLAN, y sin eso el modulo se queda
+     * a medias: un recordatorio que solo dice "Pedir aceite de almendras" es
+     * texto muerto — no se puede abrir el producto, ni saber si ya se repuso.
+     * El panel de "lo pendiente de este paciente" del expediente y el del
+     * producto salen de aqui, y sin una sola fila ligada salen siempre vacios.
+     */
+    update recordatorio rc set entidad_tipo = 'cliente', entidad_id = c.id
+      from cliente c
+     where rc.negocio_id = p_negocio and c.negocio_id = p_negocio
+       and c.nombre = 'Roberto Quinones'
+       and rc.titulo = 'Seguimiento a la paciente con hernia';
+
+    update recordatorio rc set entidad_tipo = 'cliente', entidad_id = c.id
+      from cliente c
+     where rc.negocio_id = p_negocio and c.negocio_id = p_negocio
+       and c.nombre = 'Adriana Villalobos'
+       and rc.titulo = 'Llamar a la paciente de la cita cancelada';
+
+    update recordatorio rc set entidad_tipo = 'producto', entidad_id = p.id
+      from producto p
+     where rc.negocio_id = p_negocio and p.negocio_id = p_negocio
+       and p.nombre = 'Aceite de almendras dulces 250 ml'
+       and rc.titulo = 'Pedir aceite de almendras';
+
+    update recordatorio rc set entidad_tipo = 'producto', entidad_id = p.id
+      from producto p
+     where rc.negocio_id = p_negocio and p.negocio_id = p_negocio
+       and p.nombre = 'Incienso de copal'
+       and rc.titulo = 'Reponer inciensos de copal';
+
+    update recordatorio rc set entidad_tipo = 'curso', entidad_id = cu.id
+      from curso cu
+     where rc.negocio_id = p_negocio and cu.negocio_id = p_negocio
+       and cu.nombre = 'Introduccion al biomagnetismo'
+       and rc.titulo = 'Mandar el recordatorio del curso de biomagnetismo';
 
     /* --- Las dos reglas que se repiten -------------------------------- */
     with nuevas as (

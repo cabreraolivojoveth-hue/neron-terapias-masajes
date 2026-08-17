@@ -160,16 +160,23 @@ export function DatosDeDemostracion({
           </li>
           <li>
             <strong>Se pueden quitar enteros.</strong> Cada renglón que se escribe queda anotado, y
-            al quitarlos se borran exactamente esos — lo que tú captures después se queda.
+            al quitarlos se borran exactamente esos. Lo que captures <em>aparte</em> se queda; lo
+            que cuelgue de lo inventado se va con ello — una venta cobrada a un paciente de
+            demostración no es información de tu centro.
           </li>
           <li>
             <strong>La ficha del centro solo se llena si estaba vacía.</strong> Si ya escribiste tu
             dirección y tu teléfono, no se tocan.
           </li>
           <li>
-            <strong>Tarda cerca de un minuto</strong>, en nueve pasos. No cierres la pestaña a
-            media carga: si se corta, quedan cargados los pasos que alcanzaron y hay que quitarlos
-            para volver a empezar.
+            <strong>Tarda unos segundos</strong>, en nueve pasos. No cierres la pestaña a media
+            carga: si se corta, quedan cargados los pasos que alcanzaron y se puede seguir desde
+            ahí.
+          </li>
+          <li>
+            <strong>Necesita la caja cerrada.</strong> La demostración abre y cierra la caja de
+            cada día, y la base solo permite una abierta: si tienes una del uso normal, haz su
+            corte antes.
           </li>
         </ul>
 
@@ -285,8 +292,15 @@ export function DatosDeDemostracion({
           </h3>
           <p className="tt-secundario">
             Se borran los {comoSeCuentanLasFilas(estado?.filas ?? 0)} que sembró la demostración, en
-            el orden en que se pueden borrar. Lo que hayas capturado tú se queda: se borra por
-            identificador, uno por uno, contra la lista de lo sembrado.
+            el orden en que se pueden borrar, y también lo que hayas hecho <em>encima</em> de
+            ellos: una venta cobrada a un paciente inventado, una cita con un servicio inventado,
+            los recordatorios que las automatizaciones sacaron de esas citas. Se van con la
+            demostración porque no son información de tu centro.
+          </p>
+          <p className="tt-secundario">
+            Lo que capturaste <strong>aparte</strong> —un paciente tuyo, un gasto, un
+            recordatorio— no se toca. Se borra por identificador, uno por uno, contra la lista de
+            lo sembrado.
           </p>
 
           <Campo

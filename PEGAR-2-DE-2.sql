@@ -52,10 +52,23 @@ declare
     'gasto', 'gasto_recurrente', 'cita',
     'recordatorio', 'recordatorio_recurrente', 'recordatorio_automatizacion',
     'sesion_caja', 'cliente', 'servicio', 'proveedor', 'categoria',
-    'plantilla_de_mensaje', 'canal_de_mensajes', 'reporte_guardado', 'auditoria'];
+    -- La automatizacion va ANTES que la plantilla y el canal de los que
+    -- cuelga. Apuntan con `set null`, asi que el orden contrario tampoco
+    -- reventaria — pero dejaria una regla apuntando al vacio si el borrado se
+    -- cortara justo ahi.
+    'automatizacion_de_mensajes', 'plantilla_de_mensaje', 'canal_de_mensajes',
+    'reporte_guardado', 'auditoria'];
   v_tabla  text;
   v_n      int;
   v_total  int := 0;
+  /* Lo que NO sembro la demostracion pero cuelga de ella. Ver mas abajo. */
+  v_arrastradas int := 0;
+  v_clientes  uuid[];
+  v_servicios uuid[];
+  v_productos uuid[];
+  v_cursos    uuid[];
+  v_ventas    uuid[];
+  v_sembrados uuid[];
 begin
   if not app.es_miembro(p_negocio) then
     raise exception 'Ese centro no es el tuyo.' using errcode = 'insufficient_privilege';
@@ -68,6 +81,140 @@ begin
     raise exception 'Hace falta el permiso de configuracion para quitar la demostracion.'
       using errcode = 'insufficient_privilege';
   end if;
+
+  /*
+   * PRIMERO SE VA LO QUE CRECIO ENCIMA DE LA DEMOSTRACION, Y ESTO REVENTO EN
+   * UN ENSAYO CONTRA UNA POSTGRES DE VERDAD:
+   *
+   *   update or delete on table "cliente" violates RESTRICT setting of foreign
+   *   key constraint "venta_cliente_mismo_negocio" on table "venta"
+   *
+   * Pasa siempre que alguien USA la demostracion, que es justo para lo que
+   * existe: se cobra una venta a un paciente sembrado, se agenda una cita con
+   * un servicio sembrado, se inscribe a alguien a un curso sembrado. Esas filas
+   * son de quien las capturo —no estan en el rastro— pero apuntan a lo
+   * sembrado con una llave foranea `restrict`, que es la que protege un
+   * expediente con historial. Al borrar el paciente, la base se niega, con
+   * razon, y el borrado entero se deshace.
+   *
+   * LAS DOS SALIDAS MALAS: dejar la demostracion pegada para siempre en cuanto
+   * alguien la use, o quitarle el `restrict` a la llave —que es lo que impide
+   * borrar el historial de un paciente de verdad—. Ninguna se toma.
+   *
+   * LO QUE SE HACE: se borra tambien lo que cuelga, y la pantalla lo dice con
+   * esas palabras. Una venta a un paciente inventado no es informacion del
+   * centro: es parte de la demostracion aunque la haya tecleado una persona.
+   * Lo que se capturo APARTE —un paciente propio, un gasto, un recordatorio—
+   * no se toca, y eso sigue siendo verdad.
+   */
+  select array_agg(fila_id) into v_clientes from dato_de_demostracion
+   where negocio_id = p_negocio and tabla = 'cliente' and fila_id is not null;
+  select array_agg(fila_id) into v_servicios from dato_de_demostracion
+   where negocio_id = p_negocio and tabla = 'servicio' and fila_id is not null;
+  select array_agg(fila_id) into v_productos from dato_de_demostracion
+   where negocio_id = p_negocio and tabla = 'producto' and fila_id is not null;
+  select array_agg(fila_id) into v_cursos from dato_de_demostracion
+   where negocio_id = p_negocio and tabla = 'curso' and fila_id is not null;
+
+  v_clientes  := coalesce(v_clientes,  '{}'::uuid[]);
+  v_servicios := coalesce(v_servicios, '{}'::uuid[]);
+  v_productos := coalesce(v_productos, '{}'::uuid[]);
+  v_cursos    := coalesce(v_cursos,    '{}'::uuid[]);
+
+  -- Las ventas que cobraron algo sembrado: al paciente, o el servicio, el
+  -- producto o el curso. `coalesce` de las tres referencias funciona porque un
+  -- renglon de venta tiene exactamente una, y la base lo obliga.
+  select array_agg(v.id) into v_ventas
+    from venta v
+   where v.negocio_id = p_negocio
+     and (v.cliente_id = any(v_clientes)
+          or exists (select 1 from venta_item i
+                      where i.venta_id = v.id
+                        and coalesce(i.producto_id, i.servicio_id, i.curso_id)
+                            = any(v_productos || v_servicios || v_cursos)));
+  v_ventas := coalesce(v_ventas, '{}'::uuid[]);
+
+  -- El rastro de esas ventas, de adentro hacia afuera. La caja cuelga del PAGO
+  -- desde el bloque 6, asi que hay que buscarla por ahi.
+  delete from movimiento_caja m
+   where m.negocio_id = p_negocio
+     and ((m.origen = 'pago'
+           and m.referencia_id in (select p.id from pago p where p.venta_id = any(v_ventas)))
+       or (m.origen = 'venta' and m.referencia_id = any(v_ventas)));
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  delete from pago where venta_id = any(v_ventas);
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  delete from venta_item where venta_id = any(v_ventas);
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  delete from venta where id = any(v_ventas);
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  -- Las citas de un paciente o un servicio sembrado.
+  delete from cita c
+   where c.negocio_id = p_negocio
+     and (c.cliente_id = any(v_clientes) or c.servicio_id = any(v_servicios));
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  -- Y las inscripciones a un curso sembrado o de un paciente sembrado.
+  delete from inscripcion i
+   where i.negocio_id = p_negocio
+     and (i.cliente_id = any(v_clientes) or i.curso_id = any(v_cursos));
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  /*
+   * LO QUE EL PROPIO SISTEMA CREO A PARTIR DE LO SEMBRADO, que es la fuga que
+   * mas costo ver: al abrir Recordatorios, las automatizaciones se ponen al dia
+   * solas y crearon OCHENTA Y NUEVE recordatorios —"Confirmar la cita de
+   * Fulana", "Reponer Incienso de copal"— a partir de las citas y los productos
+   * inventados. Ninguno esta en el rastro, porque no los sembro la
+   * demostracion: los creo el sistema funcionando, que es exactamente lo que se
+   * queria enseñar.
+   *
+   * Se van con ella. Un recordatorio que habla de una cita que ya no existe no
+   * es informacion del centro: es basura con nombre de paciente inventado, y
+   * ademas no se puede abrir.
+   *
+   * Se compara contra TODO el rastro de una vez —cualquier id sembrado— porque
+   * un recordatorio puede colgar de cuatro sitios distintos: la entidad de la
+   * que habla, la fila que lo origino, la automatizacion que lo creo o la regla
+   * que lo repite.
+   */
+  select array_agg(fila_id) into v_sembrados from dato_de_demostracion
+   where negocio_id = p_negocio and fila_id is not null;
+  v_sembrados := coalesce(v_sembrados, '{}'::uuid[]);
+
+  delete from recordatorio rc
+   where rc.negocio_id = p_negocio
+     and (rc.entidad_id = any(v_sembrados)
+       or rc.origen_id = any(v_sembrados)
+       or rc.automatizacion_id = any(v_sembrados)
+       or rc.recurrente_id = any(v_sembrados));
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  -- Lo mismo con los gastos que nacieron de una plantilla recurrente sembrada:
+  -- la renta de un local inventado no es un gasto del centro.
+  delete from gasto g
+   where g.negocio_id = p_negocio and g.recurrente_id = any(v_sembrados);
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  -- Y las conversaciones que se abrieron con un paciente sembrado. Sus
+  -- mensajes se van en cascada con ellas.
+  delete from conversacion cv
+   where cv.negocio_id = p_negocio and cv.cliente_id = any(v_clientes);
+  get diagnostics v_n = row_count; v_arrastradas := v_arrastradas + v_n;
+
+  /*
+   * LO QUE ESTAS CUATRO NO NECESITAN, y por que:
+   *   · `movimiento_inventario` y `producto_proveedor` cuelgan del producto en
+   *     CASCADA: se van solos.
+   *   · `conversacion`, `gasto`, `recordatorio` y `curso` apuntan con
+   *     `set null`: se quedan, sin el dato que ya no existe. Es lo correcto —
+   *     un gasto propio no desaparece porque su categoria era de la
+   *     demostracion.
+   */
 
   foreach v_tabla in array v_orden loop
     execute format(
@@ -98,13 +245,18 @@ begin
 
   delete from dato_de_demostracion where negocio_id = p_negocio;
 
-  return jsonb_build_object('quitadas', v_total, 'cargada', false, 'filas', 0);
+  -- SE DEVUELVEN LAS DOS CIFRAS POR SEPARADO. "Se borraron 4 300 renglones" no
+  -- dice si alguno era tuyo; "4 200 sembrados y 8 que capturaste encima de
+  -- ellos" si, y es lo unico que deja entender que se fue.
+  return jsonb_build_object('quitadas', v_total, 'arrastradas', v_arrastradas,
+                            'cargada', false, 'filas', 0);
 end;
 $$;
 
 comment on function public.quitar_datos_de_demostracion(text) is
-  'Borra EXACTAMENTE lo que sembro la demostracion, en el orden de las llaves foraneas, y deja '
-  'intacto lo que el centro haya capturado de verdad.';
+  'Borra lo que sembro la demostracion, en el orden de las llaves foraneas, y ademas lo que se '
+  'capturo COLGADO de ella —una venta a un paciente inventado se va con el—. Lo capturado aparte '
+  'no se toca. Devuelve las dos cifras por separado.';
 
 revoke all on function public.quitar_datos_de_demostracion(text) from public, anon;
 grant execute on function public.quitar_datos_de_demostracion(text) to authenticated;
