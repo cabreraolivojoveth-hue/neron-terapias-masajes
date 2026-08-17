@@ -48,10 +48,216 @@
 -- INSTALAR-EN-TERAPIAS.sql. No se edita a mano: se corre el guion.
 
 -- =====================================================================
+-- BLOQUE 12 — LAS COLUMNAS Y LOS AYUDANTES QUE USA TODO LO DEMAS
+-- =====================================================================
+--
+-- ESTO VIVE AQUI ARRIBA Y NO CON EL RESTO DEL BLOQUE 12, y no es por gusto:
+-- `servicios_del_centro`, `ficha_del_servicio`, `citas_del_rango` y
+-- `ficha_del_curso` son funciones `language sql`, y a esas Postgres SI les
+-- valida el cuerpo al crearlas. Si las columnas y los ayudantes nacieran al
+-- final del archivo, el instalador se caeria mil lineas antes de llegar ahi
+-- diciendo que no existe `app.preparacion_del_servicio` — y el error no
+-- mencionaria el orden, que es lo unico que estaria mal.
+--
+-- La marca de arriba se la lleva `scripts/actualizar-base.ts` a
+-- `ACTUALIZAR-BASE.sql`: sin ella, todo esto se quedaria antes de la frontera
+-- y la base publicada recibiria las funciones nuevas sin las columnas que
+-- necesitan.
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- 1. LA PREPARACION: los minutos que una sesion ocupa ADEMAS de su duracion
+-- ---------------------------------------------------------------------
+--
+-- Un masaje con piedras calientes de 10:00 a 11:00 no libera la sala a las
+-- 11:00: hay que limpiar, recoger las piedras, cambiar el material y preparar
+-- la siguiente terapia. Si la agenda deja poner otra cita a las 11:00, esa
+-- cita no se puede dar — y el sistema la ofrecio.
+--
+-- NULO NO ES CERO, y esta distincion es toda la herencia:
+--
+--   · un numero  → lo que dice el servicio, y manda sobre todo lo demas;
+--   · NULO       → "lo que diga mi categoria";
+--   · sin nada en la categoria tampoco → cero.
+--
+-- Que el cero se pueda escribir a proposito es justo lo que permite que un
+-- servicio se salga de la regla de su categoria sin tener que sacarlo de ella.
+alter table servicio add column if not exists preparacion_antes_min int;
+alter table servicio add column if not exists preparacion_despues_min int;
+alter table servicio drop constraint if exists servicio_preparacion_razonable;
+alter table servicio add constraint servicio_preparacion_razonable check (
+  (preparacion_antes_min is null or (preparacion_antes_min between 0 and 240))
+  and (preparacion_despues_min is null or (preparacion_despues_min between 0 and 240))
+);
+
+comment on column servicio.preparacion_despues_min is
+  'Minutos que la sala sigue ocupada DESPUES de terminar la sesion: limpiar, recoger, preparar. '
+  'Bloquean agenda de verdad. NULO significa "lo que diga mi categoria", no cero.';
+
+-- La categoria pone el valor por omision de sus servicios. Es donde de verdad
+-- se parece: todos los masajes necesitan mas limpieza que todas las lecturas.
+alter table categoria add column if not exists preparacion_antes_min int;
+alter table categoria add column if not exists preparacion_despues_min int;
+alter table categoria drop constraint if exists categoria_preparacion_razonable;
+alter table categoria add constraint categoria_preparacion_razonable check (
+  (preparacion_antes_min is null or (preparacion_antes_min between 0 and 240))
+  and (preparacion_despues_min is null or (preparacion_despues_min between 0 and 240))
+);
+
+/**
+ * LA HERENCIA, RESUELTA EN UN SOLO SITIO.
+ *
+ * Servicio → categoria → cero. Si esta cuenta se escribiera en cada pantalla
+ * que la necesita, el dia que cambie el orden habria que acordarse de las
+ * cuatro — y la que se olvide bloqueara horarios distintos que las otras tres.
+ */
+create or replace function app.preparacion_del_servicio(p_servicio uuid)
+returns table (antes int, despues int)
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce(s.preparacion_antes_min, c.preparacion_antes_min, 0),
+         coalesce(s.preparacion_despues_min, c.preparacion_despues_min, 0)
+    from servicio s
+    left join categoria c on c.id = s.categoria_id
+   where s.id = p_servicio;
+$$;
+
+comment on function app.preparacion_del_servicio is
+  'La prioridad del encargo, en un solo lugar: configuracion del SERVICIO, luego la de su '
+  'CATEGORIA, luego cero. Nulo en el servicio es "heredo"; cero es "ninguno, y lo digo yo".';
+
+-- Lo que una cita ocupa DE VERDAD, con su preparacion incluida. Lo escribe el
+-- disparador `app.cita_hora_fin` y lo vigila la restriccion de choque.
+alter table cita add column if not exists bloqueo_inicio time;
+alter table cita add column if not exists bloqueo_fin time;
+
+comment on column cita.bloqueo_fin is
+  'Hora en que la sala queda libre de verdad: la de fin mas la preparacion posterior. Se GUARDA '
+  'y no se calcula al leer porque la restriccion de exclusion que impide los choques no puede '
+  'consultar otra tabla — y porque es la foto de lo que se acordo al agendar.';
+
+-- ---------------------------------------------------------------------
+-- 2. LA CITA COBRADA: de que cita nacio una venta
+-- ---------------------------------------------------------------------
+--
+-- La relacion vive EN LA VENTA y no en la cita, y la direccion importa. Un
+-- campo `cobrada` en `cita` seria un segundo lugar donde vive la misma verdad:
+-- el dia que se cancele la venta se quedaria diciendo que si, y esa sesion se
+-- cobraria dos veces sin que nada avisara.
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'cita_negocio_id_unico') then
+    alter table cita add constraint cita_negocio_id_unico unique (negocio_id, id);
+  end if;
+end $$;
+
+alter table venta add column if not exists cita_id uuid;
+
+alter table venta drop constraint if exists venta_cita_mismo_negocio;
+alter table venta add constraint venta_cita_mismo_negocio
+  foreign key (negocio_id, cita_id) references cita (negocio_id, id)
+  -- Compuesta como todas: sin esto se podria colgar una venta de este centro
+  -- de la cita de otro, porque las llaves foraneas no obedecen las reglas de
+  -- fila. `set null (columna)` nombra la que se vacia: un `set null` pelon
+  -- vaciaria tambien `negocio_id`, que no acepta nulos.
+  on delete set null (cita_id);
+
+/**
+ * UNA CITA SE COBRA UNA VEZ. LO IMPIDE LA BASE, NO LA PANTALLA.
+ *
+ * El boton apagado ayuda y no defiende: la pestaña de al lado no sabe de este
+ * boton, y dos personas en dos mostradores cobran la misma sesion sin que
+ * ninguna vea a la otra. Un indice unico no tiene ventana.
+ *
+ * Solo cuenta lo COBRADO: una venta cancelada libera la cita, que es lo que
+ * uno espera —se cancelo el cobro, hay que volver a cobrar—.
+ */
+create unique index if not exists venta_una_por_cita
+  on venta (negocio_id, cita_id)
+  where cita_id is not null and not eliminado and estado = 'cobrada';
+
+-- ---------------------------------------------------------------------
+-- 3. EL VIDEO DE PRESENTACION DE UN CURSO
+-- ---------------------------------------------------------------------
+--
+-- SE GUARDA EL IDENTIFICADOR, NO LA DIRECCION. Guardar la URL que alguien pego
+-- y meterla despues en un `iframe` es dejar que quien edite un curso incruste
+-- el sitio que quiera dentro del sistema. Con los once caracteres del video, la
+-- direccion la arma el producto y siempre apunta a YouTube.
+alter table curso add column if not exists video_youtube text;
+alter table curso drop constraint if exists curso_video_identificador;
+alter table curso add constraint curso_video_identificador check (
+  video_youtube is null or video_youtube ~ '^[A-Za-z0-9_-]{11}$'
+);
+
+comment on column curso.video_youtube is
+  'El identificador de once caracteres del video, NUNCA la URL. La direccion la arma la pantalla, '
+  'y por eso no hay forma de que un curso incruste otra cosa que un video de YouTube.';
+
+/**
+ * EL IDENTIFICADOR DE UN ENLACE DE YOUTUBE, en todas sus formas.
+ *
+ * El mismo video llega escrito de seis maneras y todas son legitimas:
+ *
+ *     youtube.com/watch?v=ID          el de la barra de direcciones
+ *     youtu.be/ID                     el de "Compartir"
+ *     youtube.com/embed/ID            el de "Insertar"
+ *     youtube.com/shorts/ID           los verticales
+ *     youtube.com/live/ID             las transmisiones
+ *     ...cualquiera de los anteriores con &t=90, ?si=... o &list=...
+ *
+ * Devuelve NULO si no reconoce ninguno — nunca se inventa un identificador.
+ * Vive en la base y no solo en la pantalla porque la pantalla se puede saltar:
+ * quien llame a `guardar_curso` a mano tiene que pasar por aqui igual.
+ */
+create or replace function app.identificador_de_youtube(p_texto text)
+returns text
+language plpgsql
+immutable
+as $$
+declare
+  v_limpio text := btrim(coalesce(p_texto, ''));
+  v_id     text;
+begin
+  if v_limpio = '' then return null; end if;
+
+  -- Ya viene pelado: once caracteres y nada mas.
+  if v_limpio ~ '^[A-Za-z0-9_-]{11}$' then return v_limpio; end if;
+
+  -- `substring` con un grupo devuelve el grupo. El `(?:...)` de delante no
+  -- captura, asi que lo que sale es siempre el identificador.
+  v_id := substring(v_limpio from '(?:v=|/embed/|/shorts/|/live/|youtu\.be/|/v/)([A-Za-z0-9_-]{11})');
+  if v_id is not null then return v_id; end if;
+
+  return null;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- 4. LAS FIRMAS QUE CAMBIARON
+-- ---------------------------------------------------------------------
+--
+-- `guardar_servicio` y `guardar_curso` ganan argumentos. Postgres no sustituye
+-- una funcion cuando cambia su lista de argumentos: crea OTRA con el mismo
+-- nombre. Y con dos, PostgREST no sabe a cual llamar y contesta "Could not
+-- choose the best candidate function" a todo el mundo. Asi que la vieja se va.
+--
+-- Van con `if exists` porque en una instalacion nueva nunca existieron.
+drop function if exists public.guardar_servicio(
+  text, uuid, text, text, uuid, int, bigint, bigint, date, date, text, boolean,
+  text, text, text, time, time, boolean);
+drop function if exists public.guardar_curso(
+  text, uuid, text, text, text, uuid, uuid, date, date, bigint, int, text, text,
+  text, text, text, boolean);
+
+-- =====================================================================
 -- CORRECCIONES A LO QUE YA HABIAS CORRIDO
 -- =====================================================================
 --
 -- Son `create or replace`: se pueden correr encima de las que ya existen.
+-- Van DESPUES de las columnas de arriba porque varias las usan.
 
 create or replace function public.resumen_de_gastos(
   p_negocio text,
@@ -148,6 +354,749 @@ as $$
     ), '[]'::jsonb),
     'efectivoCentavos', coalesce((select sum(efectivo_centavos) from actual), 0)
   );
+$$;
+
+create or replace function app.cita_hora_fin()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_duracion int;
+  v_antes    int := 0;
+  v_despues  int := 0;
+  v_ini      time;
+  v_fin      time;
+begin
+  if new.hora_fin is null or new.hora_fin <= new.hora_inicio then
+    select duracion_min into v_duracion from servicio where id = new.servicio_id;
+    new.hora_fin := new.hora_inicio + make_interval(mins => coalesce(v_duracion, 60));
+  end if;
+
+  select p.antes, p.despues into v_antes, v_despues
+    from app.preparacion_del_servicio(new.servicio_id) p;
+  v_antes := coalesce(v_antes, 0);
+  v_despues := coalesce(v_despues, 0);
+
+  /*
+   * LA HORA SE DA LA VUELTA, Y ESO ROMPE EL RANGO.
+   *
+   * En Postgres `time '00:05' - interval '10 min'` NO da un error: da
+   * `23:55`. Con eso, una cita de las 00:05 con diez minutos de preparacion
+   * guardaria un bloqueo que empieza a las 23:55 y termina a la 1:05 — un
+   * rango invertido que la restriccion de exclusion rechaza con un mensaje
+   * que no menciona nada de esto. Se detecta por la vuelta, no por comparar
+   * con las cero horas: es la unica señal fiable.
+   */
+  v_ini := new.hora_inicio - make_interval(mins => v_antes);
+  if v_ini > new.hora_inicio then v_ini := time '00:00'; end if;
+  v_fin := new.hora_fin + make_interval(mins => v_despues);
+  if v_fin < new.hora_fin then v_fin := time '23:59:59'; end if;
+
+  new.bloqueo_inicio := v_ini;
+  new.bloqueo_fin := v_fin;
+  new.actualizado_en := now();
+  return new;
+end;
+$$;
+
+create or replace function public.citas_del_rango(
+  p_negocio text,
+  p_desde date,
+  p_hasta date,
+  p_profesional uuid default null,
+  p_servicio uuid default null,
+  p_estado text default null
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select coalesce(jsonb_agg(x order by x->>'fecha', x->>'horaInicio'), '[]'::jsonb)
+  from (
+    select jsonb_build_object(
+      'id', c.id,
+      'fecha', c.fecha,
+      'horaInicio', to_char(c.hora_inicio, 'HH24:MI'),
+      'horaFin', to_char(c.hora_fin, 'HH24:MI'),
+      'estado', c.estado,
+      'notas', c.notas,
+      'clienteId', c.cliente_id,
+      'cliente', cl.nombre,
+      'clienteTelefono', cl.telefono,
+      'clienteCorreo', cl.correo,
+      'servicioId', c.servicio_id,
+      'servicio', s.nombre,
+      -- LA DURACION APLICADA, no la del catalogo de hoy.
+      --
+      -- Si un servicio pasa de 60 a 90 minutos, las citas del año pasado
+      -- duraron 60. Leer `s.duracion_min` las reescribiria en pantalla y el
+      -- reporte de ocupacion del año pasado cambiaria solo. La cita ya guarda
+      -- su hora de inicio y de fin: esa resta ES el dato historico.
+      'servicioMinutos', extract(epoch from (c.hora_fin - c.hora_inicio))::int / 60,
+      'servicioPrecio', s.precio_centavos,
+      'profesionalId', c.profesional_id,
+      'profesional', m.nombre,
+      /*
+       * LA FRANJA DE PREPARACION, tal como se guardo al agendar.
+       *
+       * Sale del bloqueo y no del servicio de hoy, por la misma razon que la
+       * duracion: cambiar la limpieza de un servicio de quince a treinta
+       * minutos no reescribe lo que ocupo la agenda del mes pasado.
+       */
+      'preparacionAntesMin',
+        extract(epoch from (c.hora_inicio - coalesce(c.bloqueo_inicio, c.hora_inicio)))::int / 60,
+      'preparacionDespuesMin',
+        extract(epoch from (coalesce(c.bloqueo_fin, c.hora_fin) - c.hora_fin))::int / 60,
+      /*
+       * SI ESTA CITA YA SE COBRO, Y CON QUE VENTA.
+       *
+       * No es un estado guardado en la cita: es la venta la que sabe de que
+       * cita nacio. Un campo `cobrada` en `cita` seria un segundo lugar donde
+       * vive la misma verdad, y el dia que se cancele la venta se quedaria
+       * diciendo que si — que es como se cobra dos veces la misma sesion.
+       *
+       * De aqui sale la diferencia entre "Completada — pendiente de cobro" y
+       * "Completada — cobrada", que la pantalla calcula y no guarda.
+       */
+      'ventaId', (
+        select v.id from venta v
+        where v.negocio_id = c.negocio_id and v.cita_id = c.id
+          and v.estado = 'cobrada' and not v.eliminado
+        limit 1
+      )
+    ) as x
+    from cita c
+    join cliente cl on cl.id = c.cliente_id
+    join servicio s on s.id = c.servicio_id
+    left join membresia m on m.id = c.profesional_id
+    where c.negocio_id = p_negocio
+      and not c.eliminado
+      and c.fecha between p_desde and p_hasta
+      and (p_profesional is null or c.profesional_id = p_profesional)
+      and (p_servicio is null or c.servicio_id = p_servicio)
+      and (p_estado is null or c.estado = p_estado)
+  ) t;
+$$;
+
+create or replace function public.servicios_del_centro(
+  p_negocio text,
+  p_busqueda text default null,
+  p_estado text default null,
+  p_categoria uuid default null,
+  p_pagina int default 1,
+  p_por_pagina int default 10,
+  p_hoy date default current_date
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  with base as (
+    select s.*,
+      c.nombre as categoria_nombre,
+      c.color as categoria_color,
+      app.precio_efectivo(s.precio_centavos, s.precio_promocional_centavos,
+                          s.promocion_desde, s.promocion_hasta, p_hoy) as precio_hoy
+    from servicio s
+    left join categoria c on c.id = s.categoria_id
+    where s.negocio_id = p_negocio and not s.eliminado
+  ),
+  filtrado as (
+    select b.* from base b
+    where (p_estado is null or p_estado = ''
+           or (p_estado = 'activo' and b.activo)
+           or (p_estado = 'inactivo' and not b.activo))
+      and (p_categoria is null or b.categoria_id = p_categoria)
+      and (p_busqueda is null or p_busqueda = ''
+           or b.nombre ilike '%' || p_busqueda || '%'
+           or coalesce(b.descripcion, '') ilike '%' || p_busqueda || '%'
+           or coalesce(b.categoria_nombre, '') ilike '%' || p_busqueda || '%')
+  )
+  select jsonb_build_object(
+    'total', (select count(*) from filtrado),
+    'filas', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', f.id, 'nombre', f.nombre, 'descripcion', f.descripcion,
+        'categoriaId', f.categoria_id, 'categoria', f.categoria_nombre,
+        'categoriaColor', f.categoria_color,
+        'duracionMin', f.duracion_min,
+        -- LOS MINUTOS QUE DE VERDAD SE VAN A BLOQUEAR, ya resueltos: los del
+        -- servicio si los tiene, si no los de su categoria, si no cero. La
+        -- lista enseña lo que va a pasar, no lo que esta escrito en la fila.
+        'preparacionAntesMin', (select antes from app.preparacion_del_servicio(f.id)),
+        'preparacionDespuesMin', (select despues from app.preparacion_del_servicio(f.id)),
+        'precioCentavos', f.precio_centavos,
+        'precioHoyCentavos', f.precio_hoy,
+        'enPromocion', f.precio_hoy <> f.precio_centavos,
+        'activo', f.activo,
+        'color', f.color
+      ) order by f.nombre)
+      from (
+        select * from filtrado order by nombre
+        limit greatest(coalesce(p_por_pagina, 10), 1)
+        offset greatest(coalesce(p_pagina, 1) - 1, 0) * greatest(coalesce(p_por_pagina, 10), 1)
+      ) f
+    ), '[]'::jsonb)
+  );
+$$;
+
+create or replace function public.ficha_del_servicio(
+  p_servicio uuid, p_hoy date default current_date
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select jsonb_build_object(
+    'id', s.id, 'nombre', s.nombre, 'descripcion', s.descripcion, 'notas', s.notas,
+    'categoriaId', s.categoria_id,
+    'categoria', (select c.nombre from categoria c where c.id = s.categoria_id),
+    'categoriaColor', (select c.color from categoria c where c.id = s.categoria_id),
+    'duracionMin', s.duracion_min,
+    'precioCentavos', s.precio_centavos,
+    'precioPromocionalCentavos', s.precio_promocional_centavos,
+    'promocionDesde', s.promocion_desde,
+    'promocionHasta', s.promocion_hasta,
+    'precioHoyCentavos', app.precio_efectivo(s.precio_centavos, s.precio_promocional_centavos,
+                                             s.promocion_desde, s.promocion_hasta, p_hoy),
+    'color', s.color,
+    'requierePreparacion', s.requiere_preparacion,
+    'preparacion', s.preparacion,
+    /*
+     * LOS MINUTOS DE PREPARACION VAN EN DOS PARES, y hacen falta los dos.
+     *
+     * El par "…Min" es lo ESCRITO en el servicio, y puede ser nulo: nulo
+     * significa "lo que diga mi categoria", no cero. El par "efectiva…" es lo
+     * que de verdad se va a bloquear despues de resolver la herencia.
+     *
+     * Con uno solo, el formulario no puede distinguir "no lo he puesto" de
+     * "lo puse en cero a proposito" — y son cosas distintas: la primera sigue
+     * a la categoria y la segunda la desobedece.
+     */
+    'preparacionAntesMin', s.preparacion_antes_min,
+    'preparacionDespuesMin', s.preparacion_despues_min,
+    'efectivaAntesMin', (select antes from app.preparacion_del_servicio(s.id)),
+    'efectivaDespuesMin', (select despues from app.preparacion_del_servicio(s.id)),
+    'categoriaAntesMin', (select k.preparacion_antes_min from categoria k where k.id = s.categoria_id),
+    'categoriaDespuesMin', (select k.preparacion_despues_min from categoria k where k.id = s.categoria_id),
+    'diasDisponibles', s.dias_disponibles,
+    'horaDesde', s.hora_desde,
+    'horaHasta', s.hora_hasta,
+    'activo', s.activo,
+    'creadoEn', s.creado_en,
+    -- CUANTAS CITAS FUTURAS TIENE. Es lo que se le enseña a quien va a
+    -- apagarlo: apagar un servicio con doce citas agendadas sin avisar es
+    -- como cancelarlas a ciegas.
+    'citasFuturas', (
+      select count(*) from cita v
+      where v.servicio_id = s.id and not v.eliminado
+        and v.estado in ('pendiente', 'confirmada') and v.fecha >= p_hoy
+    ),
+    'citasCompletadas', (
+      select count(*) from cita v
+      where v.servicio_id = s.id and not v.eliminado and v.estado = 'completada'
+    ),
+    -- SI ESTA PERSONA PUEDE VER LA BITACORA.
+    --
+    -- La regla de fila de `auditoria` solo la entrega a quien tiene
+    -- `verAuditoria`. Sin este dato, una recepcionista recibiria una lista
+    -- vacia y la pantalla le diria "todavia no hay cambios registrados" —
+    -- que es mentira: los hay, simplemente no son para sus ojos. Una pantalla
+    -- que confunde "no puedes verlo" con "no existe" enseña a desconfiar de
+    -- todo lo demas que dice.
+    'puedeVerHistorial', app.tiene_permiso(s.negocio_id, 'verAuditoria'),
+    -- El historial sale de la bitacora que ya existe. No hay una segunda.
+    --
+    -- La columna de tiempo se llama `ocurrido_en`, NO `creado_en`: la bitacora
+    -- guarda cuando PASO la cosa, que no siempre es cuando se pudo escribir el
+    -- renglon —una entrada que se reintenta con mala red se escribe despues—.
+    'historial', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'accion', a.accion, 'quien', a.usuario_nombre, 'cuando', a.ocurrido_en,
+        'antes', a.antes, 'despues', a.despues
+      ) order by a.ocurrido_en desc)
+      from (
+        select * from auditoria
+        where negocio_id = s.negocio_id and modulo = 'servicios' and entidad = s.id::text
+        order by ocurrido_en desc limit 20
+      ) a
+    ), '[]'::jsonb)
+  )
+  from servicio s
+  where s.id = p_servicio;
+$$;
+
+create or replace function public.guardar_servicio(
+  p_negocio text,
+  p_id uuid,
+  p_nombre text,
+  p_descripcion text,
+  p_categoria uuid,
+  p_duracion int,
+  p_precio bigint,
+  -- De aqui para abajo todo es OPCIONAL, y por eso lleva valor por omision: un
+  -- servicio se da de alta con nombre, duracion y precio. Obligar a mandar
+  -- diecinueve argumentos para crear uno hace que cualquiera que llame a esta
+  -- funcion desde otro lado se equivoque de posicion en silencio.
+  p_promo bigint default null,
+  p_promo_desde date default null,
+  p_promo_hasta date default null,
+  p_color text default null,
+  p_requiere_preparacion boolean default false,
+  p_preparacion text default null,
+  p_notas text default null,
+  p_dias text default null,
+  p_hora_desde time default null,
+  p_hora_hasta time default null,
+  p_activo boolean default true,
+  -- NULO NO ES CERO. Nulo es "lo que diga mi categoria"; cero es "ninguno, y
+  -- lo digo yo". Por eso no llevan `coalesce` al guardar.
+  p_preparacion_antes int default null,
+  p_preparacion_despues int default null
+)
+returns servicio
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_s     servicio;
+  v_antes jsonb;
+  v_quien membresia;
+begin
+  -- Los porteros van AQUI: un `security definer` se salta las reglas de fila.
+  if not app.es_miembro(p_negocio) then
+    raise exception 'Ese centro no es el tuyo.' using errcode = 'insufficient_privilege';
+  end if;
+  if not app.tiene_permiso(p_negocio, 'gestionarCatalogo') then
+    raise exception 'No tienes permiso para administrar el catalogo.'
+      using errcode = 'insufficient_privilege';
+  end if;
+  if not app.licencia_permite(p_negocio) then
+    raise exception 'La licencia no permite registrar operaciones.'
+      using errcode = 'insufficient_privilege';
+  end if;
+
+  if coalesce(btrim(p_nombre), '') = '' then
+    raise exception 'El servicio necesita un nombre.' using errcode = 'invalid_parameter_value';
+  end if;
+  if p_duracion is null or p_duracion <= 0 then
+    raise exception 'La duracion tiene que ser mayor que cero.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+  if p_precio is null or p_precio < 0 then
+    raise exception 'El precio no puede ser negativo.' using errcode = 'invalid_parameter_value';
+  end if;
+  /*
+   * EL TOPE DE CUATRO HORAS NO ES UN CAPRICHO.
+   *
+   * La preparacion BLOQUEA agenda de verdad. Un cero de mas —"150" en vez de
+   * "15"— convierte un servicio de una hora en un bloque de dos y media, y lo
+   * que se ve despues es "no hay horarios disponibles" sin ninguna pista de
+   * por que. Se rechaza en la puerta y con el numero delante.
+   */
+  if p_preparacion_antes is not null and (p_preparacion_antes < 0 or p_preparacion_antes > 240) then
+    raise exception 'La preparacion previa son entre 0 y 240 minutos, no %.', p_preparacion_antes
+      using errcode = 'invalid_parameter_value';
+  end if;
+  if p_preparacion_despues is not null and (p_preparacion_despues < 0 or p_preparacion_despues > 240) then
+    raise exception 'La preparacion posterior son entre 0 y 240 minutos, no %.', p_preparacion_despues
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  select * into v_quien from membresia
+   where negocio_id = p_negocio and usuario_id = auth.uid() limit 1;
+
+  if p_id is null then
+    insert into servicio (negocio_id, nombre, descripcion, categoria_id, duracion_min,
+                          precio_centavos, precio_promocional_centavos, promocion_desde,
+                          promocion_hasta, color, requiere_preparacion, preparacion, notas,
+                          dias_disponibles, hora_desde, hora_hasta, activo,
+                          preparacion_antes_min, preparacion_despues_min)
+    values (p_negocio, btrim(p_nombre), p_descripcion, p_categoria, p_duracion,
+            p_precio, p_promo, p_promo_desde, p_promo_hasta, p_color,
+            coalesce(p_requiere_preparacion, false), p_preparacion, p_notas,
+            p_dias, p_hora_desde, p_hora_hasta, coalesce(p_activo, true),
+            p_preparacion_antes, p_preparacion_despues)
+    returning * into v_s;
+
+    insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
+                           entidad, antes, despues)
+    values (p_negocio, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
+            coalesce((select r.etiqueta from rol r
+                     where r.negocio_id = v_quien.negocio_id and r.id = v_quien.rol),
+                    v_quien.rol, 'desconocido'), 'servicios', 'crear', v_s.id::text, null,
+            jsonb_build_object('nombre', v_s.nombre, 'precio', v_s.precio_centavos,
+                               'duracion', v_s.duracion_min));
+    return v_s;
+  end if;
+
+  select * into v_s from servicio where id = p_id and negocio_id = p_negocio and not eliminado;
+  if v_s.id is null then
+    raise exception 'Ese servicio no existe.' using errcode = 'no_data_found';
+  end if;
+
+  v_antes := jsonb_build_object('nombre', v_s.nombre, 'precio', v_s.precio_centavos,
+                                'duracion', v_s.duracion_min, 'activo', v_s.activo,
+                                'categoria', v_s.categoria_id, 'promo', v_s.precio_promocional_centavos);
+
+  update servicio
+     set nombre = btrim(p_nombre), descripcion = p_descripcion, categoria_id = p_categoria,
+         duracion_min = p_duracion, precio_centavos = p_precio,
+         precio_promocional_centavos = p_promo, promocion_desde = p_promo_desde,
+         promocion_hasta = p_promo_hasta, color = p_color,
+         requiere_preparacion = coalesce(p_requiere_preparacion, false),
+         preparacion = p_preparacion, notas = p_notas,
+         dias_disponibles = p_dias, hora_desde = p_hora_desde, hora_hasta = p_hora_hasta,
+         activo = coalesce(p_activo, v_s.activo),
+         preparacion_antes_min = p_preparacion_antes,
+         preparacion_despues_min = p_preparacion_despues,
+         actualizado_en = now()
+   where id = p_id
+  returning * into v_s;
+
+  insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
+                         entidad, antes, despues)
+  values (p_negocio, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
+          coalesce((select r.etiqueta from rol r
+                     where r.negocio_id = v_quien.negocio_id and r.id = v_quien.rol),
+                    v_quien.rol, 'desconocido'), 'servicios', 'editar', v_s.id::text, v_antes,
+          jsonb_build_object('nombre', v_s.nombre, 'precio', v_s.precio_centavos,
+                             'duracion', v_s.duracion_min, 'activo', v_s.activo,
+                             'categoria', v_s.categoria_id, 'promo', v_s.precio_promocional_centavos));
+  return v_s;
+end;
+$$;
+
+create or replace function public.cursos_del_centro(
+  p_negocio text,
+  p_busqueda text default null,
+  p_estado text default null,
+  p_categoria uuid default null,
+  p_instructor uuid default null,
+  p_modalidad text default null,
+  p_con_lugares boolean default null,
+  p_hoy date default current_date,
+  p_pagina int default 1,
+  p_por_pagina int default 10
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  with base as (
+    select
+      c.*,
+      app.estado_del_curso(c.estado, c.activo, c.fecha_inicio, c.fecha_fin, p_hoy) as vida,
+      app.lugares_ocupados(c.id) as ocupados,
+      (select count(*) from sesion_curso s
+        where s.curso_id = c.id and not s.eliminado) as sesiones,
+      (select k.nombre from categoria k where k.id = c.categoria_id) as categoria,
+      (select k.color  from categoria k where k.id = c.categoria_id) as categoria_color,
+      (select m.nombre from membresia m where m.id = c.instructor_id) as instructor
+    from curso c
+    where c.negocio_id = p_negocio
+      and not c.eliminado
+      and (p_categoria  is null or c.categoria_id  = p_categoria)
+      and (p_instructor is null or c.instructor_id = p_instructor)
+      and (p_modalidad  is null or c.modalidad     = p_modalidad)
+      -- El buscador mira nombre, subtitulo y descripcion. Sin acentos no se
+      -- puede: `ilike` ya ignora mayusculas, que es lo que la gente escribe mal.
+      and (p_busqueda is null or (
+            c.nombre      ilike '%' || p_busqueda || '%'
+         or c.subtitulo   ilike '%' || p_busqueda || '%'
+         or c.descripcion ilike '%' || p_busqueda || '%'))
+  ),
+  filtrada as (
+    select * from base
+    where (p_estado is null or vida = p_estado)
+      -- "Con lugares disponibles" es una pregunta real de mostrador: sirve
+      -- para saber a quien todavia se le puede ofrecer.
+      and (p_con_lugares is not true or cupo is null or ocupados < cupo)
+  )
+  select jsonb_build_object(
+    'total', (select count(*) from filtrada),
+    'filas', coalesce((
+      -- Se agrega desde la subconsulta ya paginada y ordenada. El alias es
+      -- `t`: referirse a `x` aqui afuera no compila.
+      select jsonb_agg(t.x order by t.orden desc)
+      from (
+        select jsonb_build_object(
+          'id', f.id,
+          'nombre', f.nombre,
+          'subtitulo', f.subtitulo,
+          'categoriaId', f.categoria_id,
+          'categoria', f.categoria,
+          'categoriaColor', f.categoria_color,
+          'instructorId', f.instructor_id,
+          'instructor', f.instructor,
+          'fechaInicio', f.fecha_inicio,
+          'fechaFin', f.fecha_fin,
+          'sesiones', f.sesiones,
+          'precioCentavos', f.precio_centavos,
+          'cupo', f.cupo,
+          'ocupados', f.ocupados,
+          'modalidad', f.modalidad,
+          'imagenUrl', f.imagen_url,
+          'videoYoutube', f.video_youtube,
+          'vida', f.vida,
+          'activo', f.activo
+        ) as x,
+        -- Los proximos primero, que es lo que se administra. Los finalizados
+        -- se hunden solos sin tener que filtrarlos a mano.
+        f.fecha_inicio as orden
+        from filtrada f
+        order by f.fecha_inicio desc
+        limit greatest(p_por_pagina, 1)
+        offset greatest(p_pagina - 1, 0) * greatest(p_por_pagina, 1)
+      ) t
+    ), '[]'::jsonb)
+  );
+$$;
+
+create or replace function public.ficha_del_curso(
+  p_curso uuid, p_hoy date default current_date
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select jsonb_build_object(
+    'id', c.id,
+    'nombre', c.nombre,
+    'subtitulo', c.subtitulo,
+    'descripcion', c.descripcion,
+    'notas', c.notas,
+    'categoriaId', c.categoria_id,
+    'categoria', (select k.nombre from categoria k where k.id = c.categoria_id),
+    'categoriaColor', (select k.color from categoria k where k.id = c.categoria_id),
+    'instructorId', c.instructor_id,
+    'instructor', (select m.nombre from membresia m where m.id = c.instructor_id),
+    'fechaInicio', c.fecha_inicio,
+    'fechaFin', c.fecha_fin,
+    'precioCentavos', c.precio_centavos,
+    'cupo', c.cupo,
+    'ocupados', app.lugares_ocupados(c.id),
+    'enEspera', (select count(*) from inscripcion i
+                 where i.curso_id = c.id and i.estado = 'lista_espera'),
+    'modalidad', c.modalidad,
+    'lugar', c.lugar,
+    'enlace', c.enlace,
+    'imagenUrl', c.imagen_url,
+    -- El identificador pelon, no una direccion. La arma la pantalla, y por eso
+    -- siempre apunta a YouTube pase lo que pase con lo que se pego.
+    'videoYoutube', c.video_youtube,
+    'estado', c.estado,
+    'activo', c.activo,
+    'vida', app.estado_del_curso(c.estado, c.activo, c.fecha_inicio, c.fecha_fin, p_hoy),
+    -- Los ALUMNOS son clientes con inscripcion. El nombre se RESUELVE al leer:
+    -- si mañana se cambia el apellido, esta lista lo muestra al dia.
+    'alumnos', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', i.id, 'clienteId', i.cliente_id, 'nombre', cl.nombre,
+        'telefono', cl.telefono, 'correo', cl.correo,
+        'estado', i.estado, 'origen', i.origen,
+        'inscritoEn', i.creado_en,
+        -- El dinero se dice APARTE del estado de inscripcion: se puede estar
+        -- inscrito y deber, y se puede haber pagado y luego cancelar.
+        'pagada', i.venta_id is not null
+      ) order by i.creado_en)
+      from inscripcion i
+      join cliente cl on cl.id = i.cliente_id
+      where i.curso_id = c.id
+    ), '[]'::jsonb),
+    'sesiones', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', s.id, 'titulo', s.titulo, 'fecha', s.fecha,
+        'horaInicio', s.hora_inicio, 'horaFin', s.hora_fin,
+        'instructorId', s.instructor_id,
+        'instructor', (select m.nombre from membresia m where m.id = s.instructor_id),
+        'lugar', s.lugar, 'estado', s.estado
+      ) order by s.fecha, s.hora_inicio)
+      from sesion_curso s
+      where s.curso_id = c.id and not s.eliminado
+    ), '[]'::jsonb),
+    'material', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', m.id, 'titulo', m.titulo, 'tipo', m.tipo, 'url', m.url,
+        'descripcion', m.descripcion, 'visibleParaAlumnos', m.visible_para_alumnos
+      ) order by m.creado_en)
+      from material_curso m
+      where m.curso_id = c.id and not m.eliminado
+    ), '[]'::jsonb)
+  )
+  from curso c
+  where c.id = p_curso and not c.eliminado;
+$$;
+
+create or replace function public.guardar_curso(
+  p_negocio text,
+  p_id uuid,
+  p_nombre text,
+  p_subtitulo text default null,
+  p_descripcion text default null,
+  p_categoria uuid default null,
+  p_instructor uuid default null,
+  p_inicio date default null,
+  p_fin date default null,
+  p_precio bigint default 0,
+  p_cupo int default null,
+  p_modalidad text default 'presencial',
+  p_lugar text default null,
+  p_enlace text default null,
+  p_imagen text default null,
+  p_notas text default null,
+  p_activo boolean default true,
+  -- El enlace de YouTube tal cual lo pego la persona. Se valida y se normaliza
+  -- aqui abajo; lo que se GUARDA es el identificador del video, no la URL.
+  p_video text default null
+)
+returns curso
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_c      curso;
+  v_antes  jsonb;
+  v_quien  membresia;
+  v_ocupados int;
+  v_video  text;
+begin
+  -- Los porteros van AQUI: un `security definer` se salta las reglas de fila.
+  if not app.es_miembro(p_negocio) then
+    raise exception 'Ese centro no es el tuyo.' using errcode = 'insufficient_privilege';
+  end if;
+  if not app.tiene_permiso(p_negocio, 'gestionarCatalogo') then
+    raise exception 'No tienes permiso para administrar el catalogo.'
+      using errcode = 'insufficient_privilege';
+  end if;
+  if not app.licencia_permite(p_negocio) then
+    raise exception 'La licencia no permite registrar operaciones.'
+      using errcode = 'insufficient_privilege';
+  end if;
+
+  if coalesce(btrim(p_nombre), '') = '' then
+    raise exception 'El curso necesita un nombre.' using errcode = 'invalid_parameter_value';
+  end if;
+  if p_inicio is null then
+    raise exception 'El curso necesita una fecha de inicio.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+  if p_fin is not null and p_fin < p_inicio then
+    raise exception 'El curso no puede terminar antes de empezar.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+  if p_precio is null or p_precio < 0 then
+    raise exception 'El precio no puede ser negativo.' using errcode = 'invalid_parameter_value';
+  end if;
+  -- Un cupo en cero no es "sin limite": es un curso al que nadie puede entrar.
+  -- Sin limite se dice con NULO, nunca con 999999.
+  if p_cupo is not null and p_cupo <= 0 then
+    raise exception 'El cupo tiene que ser mayor que cero. Dejalo vacio si no hay limite.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  /*
+   * EL VIDEO SE VALIDA EN LA BASE, NO SOLO EN LA PANTALLA.
+   *
+   * Lo que se guarda es el IDENTIFICADOR de once caracteres, no la direccion
+   * que alguien pego. Dos razones, y la segunda es la que importa:
+   *
+   *   · Un mismo video llega escrito de seis formas —`watch?v=`, `youtu.be/`,
+   *     `/embed/`, `/shorts/`, con `&t=90`, con `?si=` de compartir—. Guardar
+   *     la cadena entera obligaria a que cada pantalla las entienda todas.
+   *   · Guardar una URL cualquiera y meterla despues en un `iframe` es dejar
+   *     que quien edite un curso incruste el sitio que quiera dentro del
+   *     sistema. Con el identificador, la direccion la ARMA el producto y
+   *     siempre apunta a YouTube.
+   *
+   * Cadena vacia y nulo son lo mismo aqui: quitar el video.
+   */
+  v_video := app.identificador_de_youtube(p_video);
+  if coalesce(btrim(p_video), '') <> '' and v_video is null then
+    raise exception 'Ese enlace no parece un video de YouTube.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  select * into v_quien from membresia
+   where negocio_id = p_negocio and usuario_id = auth.uid() limit 1;
+
+  if p_id is null then
+    insert into curso (negocio_id, nombre, subtitulo, descripcion, categoria_id, instructor_id,
+                       fecha_inicio, fecha_fin, precio_centavos, cupo, modalidad, lugar,
+                       enlace, imagen_url, notas, activo, video_youtube)
+    values (p_negocio, btrim(p_nombre), p_subtitulo, p_descripcion, p_categoria, p_instructor,
+            p_inicio, p_fin, p_precio, p_cupo, coalesce(p_modalidad, 'presencial'), p_lugar,
+            p_enlace, p_imagen, p_notas, coalesce(p_activo, true), v_video)
+    returning * into v_c;
+
+    insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
+                           entidad, antes, despues)
+    values (p_negocio, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
+            coalesce((select r.etiqueta from rol r
+                       where r.negocio_id = v_quien.negocio_id and r.id = v_quien.rol),
+                      v_quien.rol, 'desconocido'),
+            'cursos', 'crear', v_c.id::text, null,
+            jsonb_build_object('nombre', v_c.nombre, 'precio', v_c.precio_centavos,
+                               'cupo', v_c.cupo, 'inicio', v_c.fecha_inicio));
+    return v_c;
+  end if;
+
+  select * into v_c from curso where id = p_id and negocio_id = p_negocio and not eliminado;
+  if v_c.id is null then
+    raise exception 'Ese curso no existe.' using errcode = 'no_data_found';
+  end if;
+
+  -- BAJAR EL CUPO POR DEBAJO DE LOS QUE YA ENTRARON deja gente inscrita en un
+  -- curso que dice estar lleno de mas, y nadie sabe a quien sacar.
+  v_ocupados := app.lugares_ocupados(p_id);
+  if p_cupo is not null and p_cupo < v_ocupados then
+    raise exception 'Ya hay % alumnos inscritos: el cupo no puede quedar en %.',
+      v_ocupados, p_cupo using errcode = 'invalid_parameter_value';
+  end if;
+
+  v_antes := jsonb_build_object('nombre', v_c.nombre, 'precio', v_c.precio_centavos,
+                                'cupo', v_c.cupo, 'inicio', v_c.fecha_inicio,
+                                'activo', v_c.activo, 'categoria', v_c.categoria_id,
+                                'instructor', v_c.instructor_id);
+
+  update curso
+     set nombre = btrim(p_nombre), subtitulo = p_subtitulo, descripcion = p_descripcion,
+         categoria_id = p_categoria, instructor_id = p_instructor,
+         fecha_inicio = p_inicio, fecha_fin = p_fin, precio_centavos = p_precio,
+         cupo = p_cupo, modalidad = coalesce(p_modalidad, 'presencial'), lugar = p_lugar,
+         enlace = p_enlace, imagen_url = p_imagen, notas = p_notas,
+         activo = coalesce(p_activo, v_c.activo), video_youtube = v_video,
+         actualizado_en = now()
+   where id = p_id
+  returning * into v_c;
+
+  insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
+                         entidad, antes, despues)
+  values (p_negocio, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
+          coalesce((select r.etiqueta from rol r
+                     where r.negocio_id = v_quien.negocio_id and r.id = v_quien.rol),
+                    v_quien.rol, 'desconocido'),
+          'cursos', 'editar', v_c.id::text, v_antes,
+          jsonb_build_object('nombre', v_c.nombre, 'precio', v_c.precio_centavos,
+                             'cupo', v_c.cupo, 'inicio', v_c.fecha_inicio,
+                             'activo', v_c.activo, 'categoria', v_c.categoria_id,
+                             'instructor', v_c.instructor_id));
+  return v_c;
+end;
 $$;
 
 -- =====================================================================
@@ -2437,4 +3386,332 @@ grant execute on function public.quitar_datos_de_demostracion(text) to authentic
 -- HAY QUE VOLVER A CORRERLO CADA VEZ QUE NAZCA UNA TABLA. Por eso vive al final
 -- del instalador y por eso `COMPROBAR-DEMOSTRACION.sql` lo comprueba: la unica
 -- defensa contra un permiso que se regala solo es preguntarle a la base.
+revoke truncate, references, trigger on all tables in schema public from anon, authenticated;
+
+-- =====================================================================
+-- BLOQUE 12 — EL SISTEMA COMO UNO SOLO
+-- =====================================================================
+--
+-- Este bloque no agrega una pantalla: agrega las CONEXIONES que faltaban entre
+-- las que ya habia. Todo lo que hay aqui existe para que un dato que el sistema
+-- ya conoce no se le vuelva a pedir a nadie.
+--
+--   1. El bloqueo real de la agenda: una cita ocupa su duracion MAS su
+--      preparacion, y la restriccion de choque pasa a mirar eso.
+--   2. `cobrar_cita`: completar una cita y cobrarla son un solo viaje, con la
+--      venta atada a la cita para que no se pueda cobrar dos veces.
+--   3. `cita_para_cobrar`: lo que Caja necesita para abrirse ya llena.
+--   4. `ventas_por_dia`: los conteos que sostienen el historial por mes,
+--      semana y dia sin traerse quinientas ventas al navegador.
+--
+-- LAS COLUMNAS NUEVAS NO ESTAN AQUI, estan mil lineas mas arriba y marcadas
+-- para que el actualizador se las lleve: las funciones "language sql" que las
+-- usan se validan al crearse, y a esas les toca antes que a este bloque.
+--
+-- NO BORRA NI REESCRIBE NADA. Lo unico que toca de lo que ya habia es rellenar
+-- el bloqueo de las citas existentes, y lo rellena con lo que esas citas ya
+-- ocupaban.
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- 1. LA AGENDA BLOQUEA LO QUE DE VERDAD SE OCUPA
+-- ---------------------------------------------------------------------
+--
+-- LAS CITAS QUE YA EXISTEN SE RELLENAN CON SU PROPIO HORARIO, ni un minuto
+-- mas. Aplicarles la preparacion de hoy moveria hacia atras el bloqueo de una
+-- cita de la semana que viene y podria hacerla chocar con la de al lado — una
+-- cita que alguien ya agendo, que ya se confirmo, y que de pronto la base
+-- declara imposible. La preparacion empieza a contar en lo que se agende de
+-- ahora en adelante.
+update cita
+   set bloqueo_inicio = hora_inicio, bloqueo_fin = hora_fin
+ where bloqueo_inicio is null or bloqueo_fin is null;
+
+/**
+ * LA RESTRICCION DE CHOQUE PASA A MIRAR EL BLOQUEO.
+ *
+ * Es la misma de siempre —la de exclusion, la que aguanta que dos personas
+ * guarden en el mismo milisegundo— con una diferencia: compara lo que la sala
+ * esta ocupada de verdad, no lo que dura la sesion. Con eso, un masaje de
+ * 10:00 a 11:00 con quince minutos de limpieza deja la sala libre a las 11:15,
+ * y la base se niega a guardar una cita a las 11:00.
+ *
+ * EL "coalesce" NO SOBRA. Una cita cuyo bloqueo fuera nulo produciria un rango
+ * nulo, y un rango nulo no choca con nada: esa cita dejaria de reservar su
+ * horario sin que nada avisara. Con el coalesce, lo peor que puede pasar es
+ * que reserve exactamente lo que dura — que es como funcionaba antes.
+ */
+alter table cita drop constraint if exists cita_sin_choque;
+alter table cita add constraint cita_sin_choque
+  exclude using gist (
+    negocio_id with =,
+    coalesce(profesional_id, '00000000-0000-0000-0000-000000000000'::uuid) with =,
+    tsrange(fecha + coalesce(bloqueo_inicio, hora_inicio),
+            fecha + coalesce(bloqueo_fin, hora_fin)) with &&
+  )
+  where (not eliminado and estado in ('pendiente', 'confirmada', 'completada'));
+
+comment on constraint cita_sin_choque on cita is
+  'Impide dos citas encimadas para el mismo profesional, contando la preparacion. Es una '
+  'restriccion de la base y no una comprobacion previa: por eso aguanta que dos personas guarden '
+  'al mismo tiempo.';
+
+-- ---------------------------------------------------------------------
+-- 2. COBRAR UNA CITA — un solo viaje, y una sola vez
+-- ---------------------------------------------------------------------
+--
+-- POR QUE ES UNA FUNCION APARTE Y NO UN ARGUMENTO MAS DE `registrar_venta`:
+--
+-- Porque `registrar_venta` la llaman sitios que no tienen nada que ver con la
+-- agenda, y porque cambiarle la firma a la funcion que mueve TODO el dinero
+-- del sistema para agregarle un caso de uso es la clase de cambio que se paga
+-- meses despues. Esta la envuelve: una funcion es una transaccion, asi que la
+-- venta, el enlace con la cita y el cambio de estado pasan enteros o no pasa
+-- ninguno.
+--
+-- LO QUE RESUELVE, CONTADO COMO PASA EN EL MOSTRADOR: la sesion termino, se
+-- marca la cita completada, y hasta hoy habia que ir a Caja, buscar al
+-- paciente, buscar el servicio y volver a escribir un precio que el sistema ya
+-- sabia. Ahora se cobra desde la propia cita y no se vuelve a capturar nada.
+create or replace function public.cobrar_cita(
+  p_negocio text,
+  p_cita uuid,
+  p_items jsonb,
+  p_pagos jsonb default '[]'::jsonb,
+  p_cliente uuid default null,
+  p_vendedor uuid default null,
+  p_descuento bigint default 0,
+  p_efectivo_recibido bigint default null,
+  p_notas text default null,
+  p_llave text default null,
+  p_fecha date default current_date
+)
+returns venta
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_cita  cita;
+  v_venta venta;
+  v_ya    venta;
+begin
+  -- Los porteros van AQUI: un `security definer` se salta las reglas de fila.
+  -- `registrar_venta` vuelve a comprobar los suyos, y esta bien que lo haga:
+  -- llegar hasta alla con una cita ajena ya seria tarde.
+  if not app.es_miembro(p_negocio) then
+    raise exception 'Ese centro no es el tuyo.' using errcode = 'insufficient_privilege';
+  end if;
+
+  select * into v_cita from cita
+   where id = p_cita and negocio_id = p_negocio and not eliminado;
+  if v_cita.id is null then
+    raise exception 'Esa cita no existe en este centro.' using errcode = 'no_data_found';
+  end if;
+
+  /*
+   * NO SE COBRA DOS VECES LA MISMA SESION.
+   *
+   * El indice unico es la defensa de verdad —aguanta dos mostradores a la
+   * vez—, pero su error habla de un indice y no le dice nada a quien esta
+   * cobrando. Aqui se comprueba para poder decirlo con palabras y con el folio
+   * delante.
+   *
+   * SE PERDONA EL REINTENTO: si la venta que ya existe trae ESTA misma llave,
+   * es la misma peticion llegando dos veces —una red lenta, un doble clic— y
+   * lo correcto es devolver la que ya se hizo, no gritar.
+   */
+  select * into v_ya from venta
+   where negocio_id = p_negocio and cita_id = p_cita
+     and estado = 'cobrada' and not eliminado
+   limit 1;
+  if v_ya.id is not null then
+    if p_llave is not null and v_ya.llave_idempotencia is not distinct from p_llave then
+      return v_ya;
+    end if;
+    raise exception 'Esa cita ya se cobro con la venta %.', v_ya.folio
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  /*
+   * EL PACIENTE SALE DE LA CITA SI NADIE MANDA OTRO.
+   *
+   * Es el corazon de todo esto: la cita ya sabe de quien es. Volver a pedirlo
+   * es exactamente el trabajo manual que este bloque existe para quitar. Se
+   * deja mandar otro por un caso real —viene la mama a pagar la sesion de su
+   * hija— y entonces manda quien cobra.
+   */
+  v_venta := registrar_venta(
+    p_negocio,
+    p_items,
+    p_pagos,
+    coalesce(p_cliente, v_cita.cliente_id),
+    p_vendedor,
+    p_descuento,
+    p_efectivo_recibido,
+    p_notas,
+    p_llave,
+    p_fecha
+  );
+
+  -- El enlace va DESPUES de la venta y dentro de la misma transaccion. Si
+  -- `registrar_venta` hubiera fallado —sin stock, sin caja abierta, pagos que
+  -- no cuadran— aqui no se llega y la cita se queda exactamente como estaba.
+  update venta set cita_id = p_cita where id = v_venta.id
+  returning * into v_venta;
+
+  /*
+   * COBRADA ES COMPLETADA. Si se pago, la sesion se dio.
+   *
+   * Solo se mueve desde los dos estados vivos: una cita cancelada o marcada
+   * como que no asistio no revive por cobrarla —eso borraria el motivo por el
+   * que se cancelo— y una que ya estaba completada se queda igual.
+   *
+   * Se llama a `cambiar_estado_cita` en vez de hacer el update aqui porque esa
+   * funcion ademas apaga los recordatorios pendientes de la cita y deja el
+   * rastro en la bitacora. Repetir el update se habria olvidado de las dos.
+   */
+  if v_cita.estado in ('pendiente', 'confirmada') then
+    perform cambiar_estado_cita(p_cita, 'completada', null);
+  end if;
+
+  return v_venta;
+end;
+$$;
+
+comment on function public.cobrar_cita is
+  'Cobra una cita en UNA transaccion: registra la venta con registrar_venta, la ata a la cita y la '
+  'deja completada. Que una cita se cobre dos veces lo impide el indice unico venta_una_por_cita; '
+  'aqui solo se dice con palabras y con el folio delante.';
+
+revoke all on function public.cobrar_cita(text, uuid, jsonb, jsonb, uuid, uuid, bigint, bigint,
+                                          text, text, date) from public, anon;
+grant execute on function public.cobrar_cita(text, uuid, jsonb, jsonb, uuid, uuid, bigint, bigint,
+                                             text, text, date) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 3. LO QUE CAJA NECESITA PARA ABRIRSE YA LLENA
+-- ---------------------------------------------------------------------
+--
+-- Devuelve la cita convertida en lo que el mostrador entiende: el servicio con
+-- su precio, el paciente, el dia, la hora y quien la atendio. La pantalla solo
+-- revisa y confirma.
+--
+-- EL PRECIO QUE VIAJA AQUI ES PARA ENSEÑAR, NO PARA COBRAR. Quien pone el
+-- precio al cobrar sigue siendo `registrar_venta`, en el servidor. Si entre la
+-- cita y el cobro subio la tarifa, se cobra la de hoy — y esta pantalla la
+-- enseña antes de que nadie apriete nada.
+--
+-- EL VENDEDOR ARRANCA EN LA TERAPEUTA QUE ATENDIO. Es lo que casi siempre es
+-- verdad, y se puede cambiar. Arrancar vacio obligaba a escogerla cada vez.
+create or replace function public.cita_para_cobrar(
+  p_cita uuid, p_hoy date default current_date
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select jsonb_build_object(
+    'id', c.id,
+    'fecha', c.fecha,
+    'horaInicio', to_char(c.hora_inicio, 'HH24:MI'),
+    'horaFin', to_char(c.hora_fin, 'HH24:MI'),
+    'estado', c.estado,
+    'notas', c.notas,
+    'clienteId', c.cliente_id,
+    'cliente', cl.nombre,
+    'servicioId', c.servicio_id,
+    'servicio', s.nombre,
+    -- El precio de HOY, con la promocion aplicada si la hay. Es el mismo que
+    -- pondra el servidor al cobrar, calculado con la misma funcion.
+    'precioCentavos', app.precio_efectivo(s.precio_centavos, s.precio_promocional_centavos,
+                                          s.promocion_desde, s.promocion_hasta, p_hoy),
+    'servicioActivo', s.activo,
+    'profesionalId', c.profesional_id,
+    'profesional', m.nombre,
+    -- Si ya se cobro, con que venta. La pantalla no ofrece cobrar de nuevo: la
+    -- lleva a ver la que ya existe.
+    'ventaId', (
+      select v.id from venta v
+      where v.negocio_id = c.negocio_id and v.cita_id = c.id
+        and v.estado = 'cobrada' and not v.eliminado
+      limit 1
+    ),
+    'ventaFolio', (
+      select v.folio from venta v
+      where v.negocio_id = c.negocio_id and v.cita_id = c.id
+        and v.estado = 'cobrada' and not v.eliminado
+      limit 1
+    )
+  )
+  from cita c
+  join cliente cl on cl.id = c.cliente_id
+  join servicio s on s.id = c.servicio_id
+  left join membresia m on m.id = c.profesional_id
+  where c.id = p_cita and not c.eliminado;
+$$;
+
+comment on function public.cita_para_cobrar is
+  'La cita con la forma que el mostrador necesita para abrirse ya llena. Va security invoker a '
+  'proposito: mandan las reglas de fila, y un centro no puede pedir la cita de otro.';
+
+-- ---------------------------------------------------------------------
+-- 4. EL HISTORIAL POR MES, SEMANA Y DIA
+-- ---------------------------------------------------------------------
+--
+-- QUE PROBLEMA RESUELVE: el historial acumula cientos de ventas y hasta ahora
+-- solo se podia recorrer de diez en diez o buscar por texto. Buscar sirve
+-- cuando ya se sabe que se busca; para "a ver que se hizo la segunda semana de
+-- agosto" no sirve de nada.
+--
+-- POR QUE ES UNA FUNCION Y NO SE CUENTA EN EL NAVEGADOR: porque contar en el
+-- navegador exige traerse las quinientas ventas para pintar doce renglones de
+-- meses. Esto devuelve un renglon por DIA con venta —el nivel mas fino que
+-- hace falta— y las semanas y los meses se suman a partir de ahi. Un año
+-- entero de un centro ocupado son trescientos y pico renglones minusculos.
+--
+-- SOLO CUENTA LO COBRADO. Una venta cancelada no es actividad de ese dia: si
+-- contara, la semana diria seis ventas y al abrirla habria cinco.
+create or replace function public.ventas_por_dia(
+  p_negocio text,
+  p_desde date,
+  p_hasta date
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'fecha', d.fecha,
+           'cuantas', d.cuantas,
+           'totalCentavos', d.total
+         ) order by d.fecha desc), '[]'::jsonb)
+  from (
+    select v.fecha,
+           count(*)::int as cuantas,
+           coalesce(sum(v.total_centavos), 0)::bigint as total
+      from venta v
+     where v.negocio_id = p_negocio
+       and not v.eliminado
+       and v.estado = 'cobrada'
+       and v.fecha between p_desde and p_hasta
+     group by v.fecha
+  ) d;
+$$;
+
+comment on function public.ventas_por_dia is
+  'Un renglon por dia con ventas cobradas. De aqui salen los tres niveles del historial —mes, '
+  'semana y dia— sumando hacia arriba, sin traerse una sola venta al navegador.';
+
+-- ---------------------------------------------------------------------
+-- 5. EL PERMISO REGALADO, OTRA VEZ
+-- ---------------------------------------------------------------------
+--
+-- Este bloque NO crea tablas nuevas, asi que en rigor no hace falta. Se repite
+-- porque cuesta nada y porque el dia que alguien agregue una tabla aqui la
+-- linea ya esta puesta — que es justo lo que se olvida.
 revoke truncate, references, trigger on all tables in schema public from anon, authenticated;

@@ -30,11 +30,15 @@ function pintar(extra: Partial<React.ComponentProps<typeof CorteDeCaja>> = {}) {
   return render(<CorteDeCaja {...props} />);
 }
 
-/** Avanza del resumen al conteo y escribe una cantidad. */
+/**
+ * Avanza del resumen al conteo y escribe una cantidad.
+ *
+ * YA NO HAY UN TERCER PASO. El boton "Ver la diferencia" desaparecio el
+ * 17/08/2026: la resta se hace mientras se escribe, que es cuando sirve.
+ */
 async function contar(cuanto: string): Promise<void> {
   await userEvent.click(screen.getByRole('button', { name: /contar el efectivo/i }));
   await userEvent.type(screen.getByLabelText(/efectivo contado/i), cuanto);
-  await userEvent.click(screen.getByRole('button', { name: /ver la diferencia/i }));
 }
 
 describe('como se dice una diferencia', () => {
@@ -65,20 +69,40 @@ describe('el resumen, antes de contar', () => {
 });
 
 describe('el conteo', () => {
-  it('el esperado NO se enseña mientras se cuenta', async () => {
-    // Ver la cifra objetivo antes de contar hace que se "encuentre" justo esa
-    // cantidad, y entonces el conteo no comprueba nada.
+  it('con el campo vacio NO acusa de un faltante que nadie ha contado', async () => {
+    // Sin esto, abrir el conteo enseñaria de entrada "Faltan $1,650" —cero
+    // contra el esperado es un faltante completo—, y eso es una acusacion.
     pintar();
     await userEvent.click(screen.getByRole('button', { name: /contar el efectivo/i }));
-    expect(screen.queryByText('Efectivo esperado')).toBeNull();
-    expect(screen.getByText(/cuenta primero/i)).toBeTruthy();
+    expect(screen.queryByText('Falta dinero')).toBeNull();
+    expect(screen.getByText(/la diferencia aparece sola/i)).toBeTruthy();
   });
 
-  it('sin escribir nada no se avanza', async () => {
+  it('sin escribir nada no se puede cerrar', async () => {
     pintar();
     await userEvent.click(screen.getByRole('button', { name: /contar el efectivo/i }));
-    expect((screen.getByRole('button', { name: /ver la diferencia/i }) as HTMLButtonElement)
+    expect((screen.getByRole('button', { name: /cerrar la caja/i }) as HTMLButtonElement)
       .disabled).toBe(true);
+  });
+
+  /**
+   * EL CERO DE MAS SE VE AL TECLEARLO, no un paso despues.
+   *
+   * Es el caso que motivo el cambio: $850 esperados, se escribe $8,000, y la
+   * pantalla tenia un boton "Ver la diferencia" que habia que apretar para
+   * enterarse de que sobraban $7,150.
+   */
+  it('la diferencia se recalcula con cada tecla', async () => {
+    pintar();
+    await userEvent.click(screen.getByRole('button', { name: /contar el efectivo/i }));
+    const campo = screen.getByLabelText(/efectivo contado/i);
+
+    await userEvent.type(campo, '1600');
+    expect(screen.getByText('Falta dinero')).toBeTruthy();
+
+    // Un cero de mas, sin apretar nada: el veredicto cambia solo.
+    await userEvent.type(campo, '0');
+    expect(screen.getByText('Sobra dinero')).toBeTruthy();
   });
 });
 
@@ -131,11 +155,11 @@ describe('la diferencia', () => {
     expect(cerrados).toEqual([160000]);
   });
 
-  it('se puede volver atras a recontar', async () => {
+  it('se puede volver atras al resumen', async () => {
     pintar();
     await contar('1600');
     await userEvent.click(screen.getByRole('button', { name: /atrás/i }));
-    expect(screen.getByLabelText(/efectivo contado/i)).toBeTruthy();
+    expect(screen.getByText('Efectivo esperado')).toBeTruthy();
   });
 
   it('el error del servidor se pinta tal cual', async () => {

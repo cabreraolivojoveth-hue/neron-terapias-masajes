@@ -14,6 +14,7 @@
 
 import type { Fecha } from '@neron/base/utils';
 import { aBase, deBase, reventar } from './fechas-de-la-base.js';
+import { centavos, numero, objeto, opcional, texto } from './lo-que-llega-de-la-base.js';
 import { clienteParaLaBase, supabase } from '../supabase.js';
 
 /* ------------------------------------------------------------------ */
@@ -62,6 +63,62 @@ export interface CitaEnAgenda {
   readonly servicioPrecio: number;
   readonly profesionalId: string | null;
   readonly profesional: string | null;
+  /**
+   * LOS MINUTOS QUE LA SALA SIGUE OCUPADA ademas de la sesion.
+   *
+   * Salen del bloqueo que se guardo AL AGENDAR, no del servicio de hoy: subir
+   * la limpieza de un servicio de quince a treinta minutos no reescribe lo que
+   * ocupo la agenda del mes pasado.
+   */
+  readonly preparacionAntesMin: number;
+  readonly preparacionDespuesMin: number;
+  /**
+   * LA VENTA CON LA QUE SE COBRO ESTA CITA. `null` = todavia no se ha cobrado.
+   *
+   * No es un estado guardado en la cita: es la venta la que sabe de que cita
+   * nacio. De aqui sale la diferencia entre "Completada — pendiente de cobro"
+   * y "Completada — cobrada", que se calcula al leer y por eso no puede
+   * quedarse diciendo que si el dia que se cancele la venta.
+   */
+  readonly ventaId: string | null;
+}
+
+/**
+ * COMO ESTA UNA CITA DE VERDAD, contando el cobro.
+ *
+ * El encargo pedia "pendiente de cobro" y "cobrada" como estados. NO se
+ * agregaron a la tabla, y es a proposito: `cita.estado` tiene su restriccion de
+ * cinco valores, sus disparadores y sus reportes colgando. Un sexto y un
+ * septimo estado habrian obligado a tocar los tres — y ademas serian
+ * redundantes, porque "cobrada" ya se sabe mirando si existe la venta.
+ *
+ * Asi que el estado del cobro es una SEGUNDA dimension que se calcula. Una
+ * cita completada esta pendiente de cobro o cobrada; en cualquier otro estado
+ * la pregunta no aplica.
+ */
+export type CobroDeLaCita = 'no_aplica' | 'pendiente' | 'cobrada';
+
+export function cobroDeLaCita(cita: {
+  readonly estado: EstadoDeCita;
+  readonly ventaId: string | null;
+}): CobroDeLaCita {
+  if (cita.ventaId) return 'cobrada';
+  // Solo lo COMPLETADO se cobra. Una cita cancelada o a la que no se asistio no
+  // esta "pendiente de cobro": no hay nada que cobrar, y decirlo llenaria la
+  // agenda de avisos que nadie tiene que atender.
+  return cita.estado === 'completada' ? 'pendiente' : 'no_aplica';
+}
+
+/** Lo que se lee en la pastilla: "Completada — pendiente de cobro". */
+export function etiquetaConCobro(cita: {
+  readonly estado: EstadoDeCita;
+  readonly ventaId: string | null;
+}): string {
+  const cobro = cobroDeLaCita(cita);
+  if (cobro === 'no_aplica') return etiquetaDeEstado(cita.estado);
+  return cobro === 'cobrada'
+    ? `${etiquetaDeEstado(cita.estado)} — cobrada`
+    : `${etiquetaDeEstado(cita.estado)} — pendiente de cobro`;
 }
 
 export interface ClienteBreve {
@@ -146,7 +203,16 @@ export async function traerCitas(
   });
   reventar(error, 'cargar la agenda');
   const citas = ((data ?? []) as CitaEnAgenda[]).map((c) => ({
-    ...c, tipo: 'cita' as const, cursoId: null, fecha: deBase(c.fecha),
+    ...c,
+    tipo: 'cita' as const,
+    cursoId: null,
+    fecha: deBase(c.fecha),
+    // Una base que todavia no corrio el bloque 12 no manda estos tres. Caen en
+    // el valor neutro —sin preparacion, sin cobrar— en vez de dejar `undefined`
+    // suelto: `undefined` en una resta pinta "NaN min" en la agenda.
+    preparacionAntesMin: numero(c.preparacionAntesMin),
+    preparacionDespuesMin: numero(c.preparacionDespuesMin),
+    ventaId: c.ventaId ?? null,
   }));
 
   /**
@@ -214,6 +280,11 @@ export function comoCita(s: Record<string, unknown>): CitaEnAgenda {
     servicioPrecio: 0,
     profesionalId: t(s['profesionalId']) || null,
     profesional: t(s['profesional']) || null,
+    // Una sesion de curso no tiene preparacion ni se cobra desde la agenda: se
+    // cobra la INSCRIPCION, en el curso. Ver el panel de Agenda.
+    preparacionAntesMin: 0,
+    preparacionDespuesMin: 0,
+    ventaId: null,
   };
 }
 
@@ -248,7 +319,7 @@ export async function traerServicios(negocio: string): Promise<ServicioBreve[]> 
     id: String(s['id']),
     nombre: String(s['nombre']),
     duracionMin: Number(s['duracion_min']),
-    precioCentavos: Number(s['precio_centavos']),
+    precioCentavos: centavos(s['precio_centavos']),
     activo: Boolean(s['activo']),
   }));
 }
@@ -373,6 +444,74 @@ export async function cambiarEstado(
     p_motivo: motivo ?? null,
   });
   reventar(error, 'cambiar el estado de la cita');
+}
+
+/* ------------------------------------------------------------------ */
+/* La cita que se cobra                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * LO QUE LA CITA YA SABE Y CAJA NO TIENE POR QUE VOLVER A PREGUNTAR.
+ *
+ * Antes, cobrar una sesion que acababa de darse era: ir a Caja, buscar al
+ * paciente, buscar el servicio, comprobar el precio y escoger vendedor —cinco
+ * capturas de cinco datos que estaban en la cita desde que se agendo—.
+ */
+export interface CitaParaCobrar {
+  readonly id: string;
+  readonly fecha: Fecha;
+  readonly horaInicio: string;
+  readonly horaFin: string;
+  readonly estado: EstadoDeCita;
+  readonly notas: string | null;
+  readonly clienteId: string;
+  readonly cliente: string;
+  readonly servicioId: string;
+  readonly servicio: string;
+  /** El de HOY, con promocion si la hay. Es para enseñar: al cobrar manda el servidor. */
+  readonly precioCentavos: number;
+  readonly servicioActivo: boolean;
+  readonly profesionalId: string | null;
+  readonly profesional: string | null;
+  /** `null` = no se ha cobrado. Con valor, la pantalla lleva a verla en vez de cobrar. */
+  readonly ventaId: string | null;
+  readonly ventaFolio: string | null;
+}
+
+export function llaveDeLaCitaParaCobrar(citaId: string): string {
+  return `citas:cobrar:${citaId}`;
+}
+
+export async function traerCitaParaCobrar(
+  citaId: string,
+  hoy: Fecha,
+): Promise<CitaParaCobrar | null> {
+  const { data, error } = await supabase().rpc('cita_para_cobrar', {
+    p_cita: citaId,
+    p_hoy: aBase(hoy),
+  });
+  reventar(error, 'preparar el cobro de la cita');
+
+  const c = objeto(data);
+  if (!c || !c['id']) return null;
+  return {
+    id: texto(c['id']),
+    fecha: deBase(c['fecha']),
+    horaInicio: texto(c['horaInicio']).slice(0, 5),
+    horaFin: texto(c['horaFin']).slice(0, 5),
+    estado: texto(c['estado']) as EstadoDeCita,
+    notas: opcional(c['notas']),
+    clienteId: texto(c['clienteId']),
+    cliente: texto(c['cliente']),
+    servicioId: texto(c['servicioId']),
+    servicio: texto(c['servicio']),
+    precioCentavos: centavos(c['precioCentavos']),
+    servicioActivo: c['servicioActivo'] === true,
+    profesionalId: opcional(c['profesionalId']),
+    profesional: opcional(c['profesional']),
+    ventaId: opcional(c['ventaId']),
+    ventaFolio: opcional(c['ventaFolio']),
+  };
 }
 
 /**

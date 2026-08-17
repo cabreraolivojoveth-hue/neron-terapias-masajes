@@ -68,6 +68,11 @@ export function fichaAFormulario(f: FichaDeServicio): DatosDeServicio {
     promocionHasta: f.promocionHasta ?? '',
     color: f.color ?? '',
     requierePreparacion: f.requierePreparacion,
+    // Se copia LO ESCRITO, no lo efectivo: pasar lo efectivo convertiria un
+    // "heredo de mi categoria" en un numero propio la primera vez que alguien
+    // abriera el formulario y guardara sin tocar nada.
+    preparacionAntesMin: f.preparacionAntesMin,
+    preparacionDespuesMin: f.preparacionDespuesMin,
     preparacion: f.preparacion ?? '',
     notas: f.notas ?? '',
     diasDisponibles: f.diasDisponibles ?? '',
@@ -335,6 +340,8 @@ export function Catalogo() {
         abierto={categoriasAbiertas}
         titulo="Categorías de servicios"
         que="servicio"
+        // Solo aqui: un curso, un producto o un gasto no bloquean sala.
+        conPreparacion
         categorias={categorias.datos ?? []}
         cargando={categorias.estado === 'cargando' && categorias.datos === null}
         trabajando={categoria.trabajando || archivo.trabajando}

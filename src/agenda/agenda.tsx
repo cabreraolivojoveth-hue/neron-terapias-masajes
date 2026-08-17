@@ -66,10 +66,23 @@ export function Agenda() {
   const { ruta, ir } = useNavegacion();
   const negocio = acceso?.negocioId ?? '';
   const puedeGestionar = acceso?.permisos['gestionarAgenda'] === true;
+  // Cobrar es de Caja, y el permiso tambien: quien solo administra la agenda no
+  // ve las acciones de cobro. No se apagan — no salen.
+  const puedeCobrar = acceso?.permisos['cobrar'] === true;
 
   const [vista, setVista] = useState<Vista>('dia');
   const [fecha, setFecha] = useState<Fecha>(() => desdeDate(new Date()));
   const [seleccionada, setSeleccionada] = useState<string | null>(null);
+  /**
+   * LA CITA QUE SE ACABA DE COMPLETAR EN ESTA PANTALLA.
+   *
+   * Es lo unico que enciende la propuesta de cobrar, y por eso es un estado de
+   * aqui y no algo que se lea de la cita. "Completada y sin cobrar" lo estan
+   * tambien las del martes pasado: proponer el cobro cada vez que alguien
+   * abriera una de esas convertiria el aviso en ruido, y a los dos dias nadie
+   * lo lee. La propuesta aparece en el unico momento en que viene a cuento.
+   */
+  const [recienCompletada, setRecienCompletada] = useState<string | null>(null);
   const [filtros, setFiltros] = useState<FiltrosDeAgenda>({});
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
   const [formulario, setFormulario] = useState<{
@@ -203,6 +216,23 @@ export function Agenda() {
     // llegar. Volver a correrlo al cambiar de dia reabriria el formulario.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /**
+   * COMPLETAR UNA CITA PROPONE COBRARLA. Es la conexion del encargo.
+   *
+   * La propuesta se enciende SOLO si el cambio de estado de verdad ocurrio —si
+   * la base lo rechaza no hay nada que cobrar— y SOLO al completar: confirmar,
+   * cancelar o marcar que no asistio apagan la propuesta que hubiera.
+   */
+  async function alCambiarEstado(e: EstadoDeCita): Promise<void> {
+    if (!cita) return;
+    const id = cita.id;
+    const r = await estado.ejecutar(id, e);
+    if (r === null) return;
+    // Una cita que ya se cobro no se propone cobrar otra vez, aunque alguien la
+    // vuelva a marcar completada.
+    setRecienCompletada(e === 'completada' && !cita.ventaId ? id : null);
+  }
 
   async function alGuardar(v: ValoresDeCita): Promise<void> {
     if (formulario?.modo === 'reagendar' && formulario.citaId) {
@@ -383,7 +413,26 @@ export function Agenda() {
               },
             })
           }
-          onCambiarEstado={(e: EstadoDeCita) => void estado.ejecutar(cita!.id, e)}
+          puedeCobrar={puedeCobrar}
+          recienCompletada={recienCompletada !== null && recienCompletada === cita?.id}
+          onCambiarEstado={(e: EstadoDeCita) => void alCambiarEstado(e)}
+          onCobrar={() => {
+            if (!cita) return;
+            setRecienCompletada(null);
+            /*
+             * SE MANDA EL ID DE LA CITA, NO SUS DATOS.
+             *
+             * Caja los vuelve a pedir a la base con `cita_para_cobrar`, que es
+             * lo que hace que el precio sea el de HOY y no el que esta pantalla
+             * tenia cargado desde hace media hora. Copiar el precio en el
+             * recado seria cobrar una tarifa vieja sin que nadie lo notara.
+             */
+            ir('caja', { intencion: `ventas:cobrar-cita:${cita.id}` });
+          }}
+          onVerLaVenta={() => {
+            if (cita?.ventaId) ir('caja', { intencion: `ventas:abrir:${cita.ventaId}` });
+          }}
+          onAhoraNo={() => setRecienCompletada(null)}
           // La sesion se administra en CURSOS, no aqui: se navega con un
           // recado con su id. La agenda no conoce las tripas de Cursos.
           onVerCurso={() => {

@@ -25,6 +25,11 @@
 import type { Fecha } from '@neron/base/utils';
 import { supabase } from '../supabase.js';
 import { aBase, deBase, reventar } from './fechas-de-la-base.js';
+/* `texto` y `objeto` NO salen de la frontera compartida a proposito: aqui
+   `objeto` devuelve `{}` y no `null` —el reporte se arma leyendo campo a campo,
+   y un nulo obligaria a comprobar veinte veces— y `texto` exige que sea texto
+   de verdad. Son contratos distintos, no copias que se olvidaron. */
+import { numero, lista, centavos, centavosONulos } from './lo-que-llega-de-la-base.js';
 import { PREFIJO_DE_INICIO } from './tablero.js';
 
 /* ------------------------------------------------------------------ */
@@ -225,13 +230,11 @@ export interface ReporteGuardado {
 /* Ordenar lo que contesta el servidor                                 */
 /* ------------------------------------------------------------------ */
 
-const numero = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const opcionalNumero = (v: unknown): number | null =>
   typeof v === 'number' && Number.isFinite(v) ? v : null;
 const texto = (v: unknown): string => (typeof v === 'string' ? v : '');
 const objeto = (v: unknown): Record<string, unknown> =>
   v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
-const lista = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 
 /** Una fecha de la base, ya en el formato del producto. Vacia si no llega. */
 const fecha = (v: unknown): Fecha => (v ? deBase(String(v).slice(0, 10)) : ('' as Fecha));
@@ -256,7 +259,7 @@ export function ordenarReporte(crudo: unknown): Reporte {
         id: texto(y['id']),
         nombre: texto(y['nombre']),
         cantidad: numero(y['cantidad']),
-        ingresos: numero(y['ingresos']),
+        ingresos: centavos(y['ingresos']),
       };
     });
 
@@ -271,8 +274,8 @@ export function ordenarReporte(crudo: unknown): Reporte {
     },
     hayComparacion: r['hayComparacion'] === true,
     metricas: {
-      ingresos: numero(m['ingresos']),
-      ingresosAntes: numero(m['ingresosAntes']),
+      ingresos: centavos(m['ingresos']),
+      ingresosAntes: centavos(m['ingresosAntes']),
       ventas: numero(m['ventas']),
       ventasAntes: numero(m['ventasAntes']),
       clientes: numero(m['clientes']),
@@ -281,11 +284,11 @@ export function ordenarReporte(crudo: unknown): Reporte {
       serviciosAntes: numero(m['serviciosAntes']),
     },
     finanzas: {
-      ingresos: numero(f['ingresos']),
-      egresos: numero(f['egresos']),
-      utilidad: numero(f['utilidad']),
+      ingresos: centavos(f['ingresos']),
+      egresos: centavos(f['egresos']),
+      utilidad: centavos(f['utilidad']),
       margen: opcionalNumero(f['margen']),
-      promedioDiario: numero(f['promedioDiario']),
+      promedioDiario: centavos(f['promedioDiario']),
       clientesNuevos: numero(f['clientesNuevos']),
       serviciosRealizados: numero(f['serviciosRealizados']),
       cursosVendidos: numero(f['cursosVendidos']),
@@ -294,36 +297,36 @@ export function ordenarReporte(crudo: unknown): Reporte {
       const y = objeto(x);
       return {
         punto: fecha(y['punto']),
-        ingresos: numero(y['ingresos']),
-        egresos: numero(y['egresos']),
+        ingresos: centavos(y['ingresos']),
+        egresos: centavos(y['egresos']),
       };
     }),
     categorias: lista(r['categorias']).map((x) => {
       const y = objeto(x);
       return {
         clave: texto(y['clave']),
-        monto: numero(y['monto']),
+        monto: centavos(y['monto']),
         cuantos: numero(y['cuantos']),
       };
     }),
     ventas: {
       cobradas: numero(ve['cobradas']),
       canceladas: numero(ve['canceladas']),
-      ticket: opcionalNumero(ve['ticket']),
-      maxima: opcionalNumero(ve['maxima']),
-      minima: opcionalNumero(ve['minima']),
+      ticket: centavosONulos(ve['ticket']),
+      maxima: centavosONulos(ve['maxima']),
+      minima: centavosONulos(ve['minima']),
       porMetodo: lista(ve['porMetodo']).map((x) => {
         const y = objeto(x);
         return {
           metodo: texto(y['metodo']),
-          monto: numero(y['monto']),
+          monto: centavos(y['monto']),
           operaciones: numero(y['operaciones']),
         };
       }),
     },
     servicios: {
       realizados: numero(se['realizados']),
-      ingresos: numero(se['ingresos']),
+      ingresos: centavos(se['ingresos']),
       ranking: enRanking(se['ranking']),
     },
     clientes: {
@@ -338,20 +341,20 @@ export function ordenarReporte(crudo: unknown): Reporte {
           nombre: texto(y['nombre']),
           visitas: numero(y['visitas']),
           compras: numero(y['compras']),
-          gastado: numero(y['gastado']),
+          gastado: centavos(y['gastado']),
         };
       }),
     },
     productos: {
       unidades: numero(pr['unidades']),
-      ingresos: numero(pr['ingresos']),
+      ingresos: centavos(pr['ingresos']),
       bajos: numero(pr['bajos']),
       agotados: numero(pr['agotados']),
       ranking: enRanking(pr['ranking']),
     },
     cursos: {
       vendidos: numero(cu['vendidos']),
-      ingresos: numero(cu['ingresos']),
+      ingresos: centavos(cu['ingresos']),
       inscritos: numero(cu['inscritos']),
       proximos: numero(cu['proximos']),
       terminados: numero(cu['terminados']),
@@ -361,14 +364,14 @@ export function ordenarReporte(crudo: unknown): Reporte {
           id: texto(y['id']),
           nombre: texto(y['nombre']),
           cantidad: numero(y['cantidad']),
-          ingresos: numero(y['ingresos']),
+          ingresos: centavos(y['ingresos']),
           inscritos: numero(y['inscritos']),
           cupo: opcionalNumero(y['cupo']),
         };
       }),
     },
     gastos: {
-      total: numero(ga['total']),
+      total: centavos(ga['total']),
       cuantos: numero(ga['cuantos']),
       promedio: opcionalNumero(ga['promedio']),
       mayor: opcionalNumero(ga['mayor']),
@@ -377,7 +380,7 @@ export function ordenarReporte(crudo: unknown): Reporte {
         const y = objeto(x);
         return {
           categoria: texto(y['categoria']),
-          monto: numero(y['monto']),
+          monto: centavos(y['monto']),
           cuantos: numero(y['cuantos']),
         };
       }),

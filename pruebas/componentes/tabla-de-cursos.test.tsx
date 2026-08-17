@@ -27,7 +27,7 @@ const CURSO: CursoEnLista = {
   instructorId: null, instructor: null,
   fechaInicio: '15/07/2026', fechaFin: '16/07/2026', sesiones: 2,
   precioCentavos: 250000, cupo: 12, ocupados: 8,
-  modalidad: 'presencial', imagenUrl: null, vida: 'proximo', activo: true,
+  modalidad: 'presencial', imagenUrl: null, videoYoutube: null, vida: 'proximo', activo: true,
 };
 
 const TODO = { gestionarCatalogo: true };

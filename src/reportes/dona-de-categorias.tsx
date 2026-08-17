@@ -15,9 +15,11 @@
  * nada.
  */
 
+import { useState } from 'react';
 import { formatearDinero } from '../datos/moneda.js';
 import type { CategoriaDeIngreso } from '../datos/reportes.js';
 import { Icono } from '../ui/iconos.js';
+import { claseDeCifra } from './cifras-que-caben.js';
 
 /** El circulo completo, en unidades de trazo. */
 const VUELTA = 100;
@@ -98,6 +100,16 @@ export function DonaDeCategorias({
 }) {
   const total = categorias.reduce((s, c) => s + c.monto, 0);
   const partes = rebanadasDelReporte(categorias, total);
+  /**
+   * QUE REBANADA ESTA SEÑALADA. `null` = ninguna, y entonces el centro dice el
+   * total.
+   *
+   * El anillo no tenia ninguna forma de saber que rebanada era cual mas que
+   * cruzar el color con la leyenda de abajo — y con cinco tonos parecidos eso
+   * es exactamente lo que nadie hace. Al pasar por encima, el centro contesta.
+   */
+  const [senalada, setSenalada] = useState<number | null>(null);
+  const viva = senalada !== null ? partes[senalada] : null;
 
   return (
     <section className="pz-tarjeta" aria-labelledby="rep-dona-titulo">
@@ -121,29 +133,51 @@ export function DonaDeCategorias({
         </div>
       ) : (
         <div className="caja-pastel">
-          <div className="caja-anillo">
+          <div className="caja-anillo" onMouseLeave={() => setSenalada(null)}>
             <svg viewBox="0 0 42 42" role="img" aria-label="Reparto de ingresos por categoría">
               {partes.map((r, i) => (
                 <circle
                   key={r.clave}
+                  className={`rep-rebanada${senalada === i ? ' rep-rebanada--viva' : ''}`}
                   cx="21"
                   cy="21"
                   r="15.9155"
                   fill="transparent"
                   stroke={tonoDeLaRebanada(i)}
-                  strokeWidth="6"
+                  // La señalada engorda hacia adentro y hacia afuera: es la
+                  // unica forma de destacar un arco sin moverlo de sitio, y
+                  // mover algo que se esta apuntando hace fallar el clic.
+                  strokeWidth={senalada === i ? 8 : 6}
                   // El primer numero es lo que se pinta y el segundo lo que se
                   // salta: juntos dan la vuelta entera.
                   strokeDasharray={`${r.largo} ${VUELTA - r.largo}`}
                   // El menos 25 lleva el arranque de las tres en punto a las
                   // doce, que es donde el ojo espera que empiece.
                   strokeDashoffset={String(VUELTA - r.desde + 25)}
+                  onMouseEnter={() => setSenalada(i)}
                 />
               ))}
             </svg>
-            <div className="caja-anillo__centro">
-              <span className="tt-pie">Total</span>
-              <strong className="tt-dato">{formatearDinero(total)}</strong>
+            {/*
+              EL CENTRO CONTESTA LO QUE SE ESTA SEÑALANDO.
+
+              Sin esto, saber que rebanada es cual obligaba a cruzar un color
+              con la leyenda de abajo, y con cinco tonos de la misma familia eso
+              no lo hace nadie. Al salir el puntero vuelve el total.
+
+              LA CLASE DE LA CIFRA SALE DEL LARGO DEL TEXTO, y ese es el arreglo
+              de "$44,575.00 se sale del anillo": el tamaño no puede estar
+              escrito para una longitud cuando el centro que hoy factura
+              cuarenta mil facturara medio millon.
+            */}
+            <div className="caja-anillo__centro" role="status">
+              <span className="tt-pie">{viva ? viva.nombre : 'Total'}</span>
+              <strong
+                className={`tt-dato ${claseDeCifra(formatearDinero(viva ? viva.monto : total))}`}
+              >
+                {formatearDinero(viva ? viva.monto : total)}
+              </strong>
+              {viva ? <span className="tt-pie">{viva.parte}% del total</span> : null}
             </div>
           </div>
 
@@ -151,9 +185,15 @@ export function DonaDeCategorias({
               `caja-punto` y `caja-leyenda__nombre` —que NO existen— la leyenda
               salia como texto pegado sin punto de color: "Servicios$12,450.0050%".
               No fallaba nada; solo se veia rota. La guardia 17 lo vigila. */}
-          <ul className="caja-leyenda mv-escalonado">
+          {/* La leyenda tambien señala: apuntar el nombre resalta su rebanada.
+              Es el mismo puente en los dos sentidos, y cuesta una linea. */}
+          <ul className="caja-leyenda mv-escalonado" onMouseLeave={() => setSenalada(null)}>
             {partes.map((r, i) => (
-              <li key={r.clave} className="caja-leyenda__renglon">
+              <li
+                key={r.clave}
+                className={`caja-leyenda__renglon${senalada === i ? ' caja-leyenda__renglon--viva' : ''}`}
+                onMouseEnter={() => setSenalada(i)}
+              >
                 <span
                   className="caja-leyenda__punto"
                   aria-hidden="true"

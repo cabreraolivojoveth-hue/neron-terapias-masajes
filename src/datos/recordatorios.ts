@@ -27,6 +27,7 @@
 import { hora24aLegible, type Fecha, type Hora24 } from '@neron/base/utils';
 import { supabase } from '../supabase.js';
 import { aBase, deBase, reventar } from './fechas-de-la-base.js';
+import { numero, texto, opcional, lista } from './lo-que-llega-de-la-base.js';
 import { PREFIJO_DE_INICIO } from './tablero.js';
 
 /* ------------------------------------------------------------------ */
@@ -551,16 +552,6 @@ export function esAntes(a: Fecha, b: Fecha): boolean {
 /* ------------------------------------------------------------------ */
 /* La traduccion de lo que llega                                       */
 /* ------------------------------------------------------------------ */
-
-const texto = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
-const opcional = (v: unknown): string | null =>
-  v === null || v === undefined || v === '' ? null : String(v);
-const numero = (v: unknown): number => {
-  const n = Number(v);
-  // NaN NUNCA sale de aqui: se propaga sin reventar y termina impreso como
-  // "NaN" en la tarjeta de alguien.
-  return Number.isFinite(n) ? n : 0;
-};
 
 /**
  * La base devuelve `09:00:00`; adentro se usa `HH:mm`.

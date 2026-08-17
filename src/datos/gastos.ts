@@ -28,6 +28,7 @@
 import type { Fecha } from '@neron/base/utils';
 import { supabase } from '../supabase.js';
 import { aBase, deBase, reventar } from './fechas-de-la-base.js';
+import { centavos } from './lo-que-llega-de-la-base.js';
 import { PREFIJO_DE_INICIO } from './tablero.js';
 
 /* ------------------------------------------------------------------ */
@@ -329,9 +330,9 @@ function ordenarGasto(f: FilaDeGasto): GastoEnLista {
     fecha: deBase(f.fecha),
     concepto: f.descripcion,
     detalle: f.detalle,
-    montoCentavos: Number(f.monto_centavos),
+    montoCentavos: centavos(f.monto_centavos),
     metodo: (f.metodo as MetodoDeGasto) ?? 'efectivo',
-    efectivoCentavos: Number(f.efectivo_centavos ?? 0),
+    efectivoCentavos: centavos(f.efectivo_centavos ?? 0),
     metodoResto: (f.metodo_resto as MetodoDeGasto | null) ?? null,
     categoriaId: f.categoria_id,
     categoria: f.categoria,
@@ -383,33 +384,33 @@ export async function traerResumenDeGastos(
   const mayor = r['mayor'] as { descripcion?: string; centavos?: number } | null | undefined;
 
   return {
-    totalCentavos: Number(r['totalCentavos'] ?? 0),
+    totalCentavos: centavos(r['totalCentavos'] ?? 0),
     cuantos: Number(r['cuantos'] ?? 0),
     dias: Number(r['dias'] ?? 1),
-    promedioDiarioCentavos: Number(r['promedioDiarioCentavos'] ?? 0),
+    promedioDiarioCentavos: centavos(r['promedioDiarioCentavos'] ?? 0),
     mayor:
       mayor && mayor.descripcion
-        ? { concepto: mayor.descripcion, centavos: Number(mayor.centavos ?? 0) }
+        ? { concepto: mayor.descripcion, centavos: centavos(mayor.centavos ?? 0) }
         : null,
-    anteriorCentavos: Number(r['anteriorCentavos'] ?? 0),
+    anteriorCentavos: centavos(r['anteriorCentavos'] ?? 0),
     hayComparacion: r['hayComparacion'] === true,
     porCategoria: ((r['porCategoria'] ?? []) as Record<string, unknown>[]).map((c) => ({
       id: (c['id'] as string | null) ?? null,
       nombre: String(c['nombre'] ?? 'Sin categoría'),
       color: (c['color'] as string | null) ?? null,
-      centavos: Number(c['centavos'] ?? 0),
+      centavos: centavos(c['centavos'] ?? 0),
       cuantos: Number(c['cuantos'] ?? 0),
     })),
     porMetodo: ((r['porMetodo'] ?? []) as Record<string, unknown>[]).map((m) => ({
       metodo: (m['metodo'] as MetodoDeGasto) ?? 'efectivo',
-      centavos: Number(m['centavos'] ?? 0),
+      centavos: centavos(m['centavos'] ?? 0),
       cuantos: Number(m['cuantos'] ?? 0),
     })),
     porDia: ((r['porDia'] ?? []) as Record<string, unknown>[]).map((d) => ({
       fecha: deBase(d['fecha']),
-      centavos: Number(d['centavos'] ?? 0),
+      centavos: centavos(d['centavos'] ?? 0),
     })),
-    efectivoCentavos: Number(r['efectivoCentavos'] ?? 0),
+    efectivoCentavos: centavos(r['efectivoCentavos'] ?? 0),
   };
 }
 
@@ -445,9 +446,9 @@ export async function traerRecurrentes(negocio: string): Promise<GastoRecurrente
     id: f.id,
     concepto: f.descripcion,
     detalle: f.detalle,
-    montoCentavos: Number(f.monto_centavos),
+    montoCentavos: centavos(f.monto_centavos),
     metodo: (f.metodo as MetodoDeGasto) ?? 'efectivo',
-    efectivoCentavos: Number(f.efectivo_centavos ?? 0),
+    efectivoCentavos: centavos(f.efectivo_centavos ?? 0),
     metodoResto: (f.metodo_resto as MetodoDeGasto | null) ?? null,
     categoriaId: f.categoria_id,
     categoria: f.categoria,

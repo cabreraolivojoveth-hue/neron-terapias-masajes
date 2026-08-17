@@ -27,7 +27,26 @@ export const CATEGORIA_VACIA: DatosDeCategoria = {
   descripcion: '',
   color: '',
   activo: true,
+  // NULO Y NO CERO: una categoria nueva no impone nada a sus servicios. Cero
+  // significaria "ninguno de mis servicios lleva preparacion", que es una
+  // afirmacion, y nadie la hizo.
+  preparacionAntesMin: null,
+  preparacionDespuesMin: null,
 };
+
+/**
+ * Lo escrito en el campo → minutos, o `null` para no imponer nada.
+ *
+ * Es la misma cuenta que hace el formulario de servicio, y por eso vive donde
+ * la ven los dos: escribirla dos veces es como una acaba aceptando el cero y
+ * la otra no.
+ */
+export function minutosDeCategoria(escrito: string): number | null {
+  const limpio = escrito.trim();
+  if (limpio === '') return null;
+  const n = Number(limpio);
+  return Number.isFinite(n) && n >= 0 && n <= 240 ? Math.trunc(n) : null;
+}
 
 export function validarCategoria(datos: DatosDeCategoria): string | null {
   if (!datos.nombre.trim()) return 'Escribe el nombre de la categoría.';
@@ -47,6 +66,14 @@ export interface PropiedadesDeCategorias {
   readonly titulo: string;
   /** "servicio" o "curso" — solo cambia como se lee el aviso de uso. */
   readonly que: string;
+  /**
+   * SI ESTA CATEGORIA PUEDE IMPONER MINUTOS DE PREPARACION.
+   *
+   * Solo tiene sentido en Servicios: un curso o un gasto no bloquean sala. Se
+   * recibe como bandera en vez de mirar `que` para que la pantalla no tenga
+   * que adivinar a partir de una palabra que ademas se usa para el plural.
+   */
+  readonly conPreparacion?: boolean;
   readonly categorias: readonly Categoria[];
   readonly cargando: boolean;
   readonly trabajando: boolean;
@@ -60,6 +87,7 @@ export function AdministrarCategorias({
   abierto,
   titulo,
   que,
+  conPreparacion = false,
   categorias,
   cargando,
   trabajando,
@@ -131,6 +159,8 @@ export function AdministrarCategorias({
                           descripcion: c.descripcion ?? '',
                           color: c.color ?? '',
                           activo: c.activo,
+                          preparacionAntesMin: c.preparacionAntesMin,
+                          preparacionDespuesMin: c.preparacionDespuesMin,
                         },
                       })
                     }
@@ -176,6 +206,50 @@ export function AdministrarCategorias({
                 onChange={(e) => poner('color', e.target.value)}
               />
             </div>
+            {/*
+              LOS MINUTOS QUE HEREDAN SUS SERVICIOS.
+
+              Es donde de verdad se parecen: todos los masajes necesitan mas
+              limpieza que todas las lecturas. Ponerlo aqui evita repetir el
+              mismo numero en los doce servicios del grupo — y el dia que
+              cambie, cambia una vez.
+
+              Un servicio que escriba lo suyo manda sobre esto. La prioridad es
+              SERVICIO, luego CATEGORIA, luego nada.
+            */}
+            {conPreparacion ? (
+              <div className="pz-dos">
+                <Campo
+                  etiqueta="Preparación antes"
+                  type="number"
+                  min={0}
+                  max={240}
+                  value={
+                    editando.datos.preparacionAntesMin === null
+                      ? ''
+                      : String(editando.datos.preparacionAntesMin)
+                  }
+                  onChange={(e) => poner('preparacionAntesMin', minutosDeCategoria(e.target.value))}
+                  ayuda="Minutos por omisión de sus servicios. Vacío no impone nada."
+                />
+                <Campo
+                  etiqueta="Preparación después"
+                  type="number"
+                  min={0}
+                  max={240}
+                  value={
+                    editando.datos.preparacionDespuesMin === null
+                      ? ''
+                      : String(editando.datos.preparacionDespuesMin)
+                  }
+                  onChange={(e) =>
+                    poner('preparacionDespuesMin', minutosDeCategoria(e.target.value))
+                  }
+                  ayuda="Cada servicio puede poner el suyo y manda sobre este."
+                />
+              </div>
+            ) : null}
+
             <label className="srv-casilla">
               <input
                 type="checkbox"

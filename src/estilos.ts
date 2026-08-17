@@ -423,6 +423,32 @@ function loQueTodaviaEsDeUnModulo(): string {
 
 .agenda-columna { position: relative; flex: 1; min-width: 0; cursor: crosshair; }
 
+/*
+ * EL RATO EN QUE LA SALA SIGUE OCUPADA aunque la sesion ya termino.
+ *
+ * Es la respuesta visible a "por que no me deja agendar a las 11:00 si el
+ * masaje acaba a las 11:00": esos quince minutos son de limpiar, recoger las
+ * piedras y preparar la siguiente terapia. La base ya se negaba a poner nada
+ * ahi; lo que faltaba era que la pantalla lo dijera.
+ *
+ * "pointer-events: none" es OBLIGATORIO. La franja se dibuja encima del fondo
+ * de la columna, y sin esto se comeria el clic que abre "Nueva cita" en el
+ * hueco de al lado — el rayado se vuelve una zona muerta sin explicacion.
+ */
+.agenda-preparacion {
+  position: absolute;
+  pointer-events: none;
+  border-radius: ${v('radio-sistema')};
+  background: repeating-linear-gradient(
+    135deg,
+    ${v('superficie-tenue')},
+    ${v('superficie-tenue')} 5px,
+    transparent 5px,
+    transparent 10px
+  );
+  border: 1px dashed ${v('borde-suave')};
+}
+
 .agenda-cita {
   position: absolute;
   padding: ${v('espacio-2')} ${v('espacio-3')};
@@ -700,6 +726,44 @@ function loQueTodaviaEsDeUnModulo(): string {
 }
 .agenda-panel__cambio:hover { background: ${v('superficie-tenue')}; color: ${v('texto')}; }
 .agenda-panel__cambio:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- */
+/* El cobro de la cita                                               */
+/* ---------------------------------------------------------------- */
+/*
+ * LA PROPUESTA DE COBRO NO ES UN MODAL, Y ES LA DECISION DE DISEÑO DEL BLOQUE.
+ *
+ * Un modal tapa la agenda y obliga a contestar algo que muchas veces no toca
+ * contestar todavia —la paciente sigue vistiendose, o paga al salir—. Esto se
+ * lee, se aprieta o se ignora, y en los tres casos la cita queda marcada como
+ * pendiente de cobro con su boton a mano.
+ */
+.agenda-cobro {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: ${v('espacio-2')};
+  padding: ${v('espacio-3')};
+  border: 1px solid ${v('exito')};
+  border-radius: ${v('radio-sistema')};
+  background: ${v('exito-tenue')};
+}
+.agenda-cobro__texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.agenda-cobro__titulo { font-weight: 600; color: ${v('texto')}; font-size: ${v('texto-normal')}; }
+.agenda-cobro__pie { color: ${v('texto-suave')}; font-size: ${v('texto-micro')}; }
+.agenda-cobro__botones { display: flex; flex-wrap: wrap; gap: ${v('espacio-2')}; }
+.agenda-cobro__botones .neron-boton {
+  display: inline-flex; align-items: center; gap: ${v('espacio-1')};
+}
+/* Sin la variante no hay a que colgar el modificador, y la guardia 17 pide que
+   toda clase que se escribe exista aqui. Es la misma franja: la variante deja
+   sitio para la del cobro ya hecho, que llegara con los recibos. */
+.agenda-cobro--propuesta { border-style: solid; }
+
+/* El renglon de "Pendiente de cobro" bajo el estado. Se distingue por color y
+   TAMBIEN por la palabra: quien no distingue el verde del ambar lo lee igual. */
+.agenda-panel__cobro { font-size: ${v('texto-micro')}; margin-top: 2px; }
+.agenda-panel__cobro--pendiente { color: ${v('advertencia')}; font-weight: 600; }
+.agenda-panel__cobro--cobrada { color: ${v('exito')}; font-weight: 600; }
+.agenda-estado--por-cobrar { color: ${v('advertencia')}; }
 
 /* ---------------------------------------------------------------- */
 /* El formulario de cita                                             */
@@ -1591,6 +1655,23 @@ function loQueTodaviaEsDeUnModulo(): string {
 }
 .srv-casilla input { width: 18px; height: 18px; flex: none; accent-color: ${v('marca')}; }
 
+/*
+ * EL RESULTADO DE LA PREPARACION, EN PALABRAS.
+ *
+ * Se dice el total —"la agenda bloquea 75 minutos"— y no solo los sumandos,
+ * porque la suma de tres campos es justo el calculo que nadie hace antes de
+ * guardar, y equivocarse deja una agenda sin huecos que nadie sabe explicar.
+ */
+.srv-bloqueo {
+  margin: -${v('espacio-1')} 0 0;
+  padding: ${v('espacio-2')} ${v('espacio-3')};
+  border-left: 3px solid ${v('cat-citas')};
+  border-radius: ${v('radio-sistema')};
+  background: ${v('cat-citas-tenue')};
+  color: ${v('texto-suave')};
+  font-size: ${v('texto-micro')};
+}
+
 /* ---------------------------------------------------------------- */
 /* Las categorias                                                    */
 /* ---------------------------------------------------------------- */
@@ -1726,6 +1807,29 @@ function loQueTodaviaEsDeUnModulo(): string {
   object-fit: cover;
   border-radius: ${v('radio-tarjeta')};
   background: ${v('superficie-tenue')};
+  display: block;
+}
+
+/*
+ * EL VIDEO DE PRESENTACION, CON SU PROPORCION RESERVADA.
+ *
+ * "aspect-ratio: 16 / 9" con el marco en absoluto encima resuelve lo unico que
+ * de verdad falla con un video incrustado: sin altura reservada, el hueco mide
+ * cero hasta que YouTube contesta y toda la ficha da un brinco cuando el video
+ * aparece — justo cuando alguien esta leyendo el renglon de abajo.
+ */
+.cur-video {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: ${v('radio-tarjeta')};
+  overflow: hidden;
+  background: ${v('superficie-tenue')};
+}
+.cur-video__marco {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  border: 0;
   display: block;
 }
 .cur-cabecera__imagen--vacia {
@@ -1933,6 +2037,98 @@ function loQueTodaviaEsDeUnModulo(): string {
   display: flex; flex-direction: column; gap: ${v('espacio-4')}; min-width: 0;
 }
 
+/* ---------------------------------------------------------------- */
+/* El historial por mes, semana y dia                                */
+/* ---------------------------------------------------------------- */
+/*
+ * EL CALENDARIO A LA IZQUIERDA Y LA LISTA A LA DERECHA, y se apilan solos.
+ *
+ * En pantalla estrecha el calendario va ARRIBA a proposito: es el que decide
+ * que se ve abajo, y debajo de una lista de diez ventas nadie lo encontraria.
+ * En pantalla ancha son 240 y el resto, que es lo que hace falta para que
+ * quepan "Semana 2 · 10 Ago — 16 Ago" y el importe en la misma linea.
+ */
+.vta-historial {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: ${v('espacio-4')};
+  align-items: start;
+  min-width: 0;
+}
+@media (min-width: 900px) {
+  .vta-historial { grid-template-columns: 240px minmax(0, 1fr); }
+}
+
+.vta-calendario { display: flex; flex-direction: column; gap: ${v('espacio-3')}; }
+
+/*
+ * LA MIGA DE PAN: la forma de volver, y por eso va arriba del todo.
+ *
+ * Sin ella, bajar tres niveles deja sin salida mas que recargar — y perderse
+ * un nivel es lo primero que pasa en una lista jerarquica.
+ */
+.vta-miga {
+  display: flex; flex-wrap: wrap; align-items: center; gap: ${v('espacio-1')};
+  font-size: ${v('texto-micro')};
+}
+.vta-miga__paso {
+  border: none; background: transparent; padding: 2px 4px;
+  border-radius: ${v('radio-sistema')};
+  color: ${v('marca')};
+  font-family: ${v('familia')}; font-size: ${v('texto-micro')};
+  cursor: pointer;
+}
+.vta-miga__paso:hover:not(:disabled) { background: ${v('marca-tenue')}; }
+.vta-miga__paso:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+/* El paso donde estas parado no lleva a ningun lado: se apaga, y ademas deja
+   de parecer un enlace. Un enlace que no navega enseña a no confiar en ellos. */
+.vta-miga__paso:disabled { color: ${v('texto')}; font-weight: 600; cursor: default; }
+.vta-miga__separa { color: ${v('texto-tenue')}; }
+
+.vta-escalones { gap: 2px; }
+.vta-escalon {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  width: 100%; min-height: 44px;
+  padding: ${v('espacio-2')};
+  border: 1px solid transparent;
+  border-radius: ${v('radio-sistema')};
+  background: transparent;
+  text-align: left;
+  font-family: ${v('familia')};
+  cursor: pointer;
+  min-width: 0;
+}
+.vta-escalon:hover { background: ${v('superficie-tenue')}; }
+.vta-escalon:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
+.vta-escalon--puesto { border-color: ${v('marca')}; background: ${v('marca-tenue')}; }
+.vta-escalon__cuerpo { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.vta-escalon__titulo {
+  color: ${v('texto')}; font-size: ${v('texto-chico')}; font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.vta-escalon__pie {
+  color: ${v('texto-suave')}; font-size: ${v('texto-micro')};
+  overflow-wrap: anywhere;
+}
+/*
+ * "font-variant-numeric: tabular-nums" alinea las cifras en columna aunque el
+ * 1 sea mas angosto que el 8. Sin eso, dos importes de la misma longitud se ven
+ * desalineados y comparar dos semanas de un vistazo deja de funcionar.
+ */
+.vta-escalon__importe {
+  flex: none;
+  color: ${v('texto')}; font-size: ${v('texto-micro')};
+  font-variant-numeric: tabular-nums;
+}
+.vta-escalon__flecha { flex: none; color: ${v('texto-tenue')}; }
+
+.vta-calendario__nota {
+  display: flex; align-items: center; gap: ${v('espacio-1')};
+  margin: 0;
+  color: ${v('texto-suave')}; font-size: ${v('texto-micro')};
+}
+.vta-calendario__icono { display: inline-flex; color: ${v('marca')}; }
+
 /*
  * Dos tarjetas lado a lado que en pantalla chica se apilan solas.
  *
@@ -1977,6 +2173,46 @@ function loQueTodaviaEsDeUnModulo(): string {
   font-family: ${v('familia')}; font-size: ${v('texto-chico')};
 }
 .vta-fecha__campo:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- */
+/* De que cita sale este cobro                                       */
+/* ---------------------------------------------------------------- */
+/*
+ * NO ES DECORACION: es lo que deja comprobar de un vistazo que el carrito que
+ * aparecio lleno corresponde a la sesion que se acaba de dar —el dia, la hora
+ * y la terapeuta— antes de apretar cobrar. Sin esta franja, quien cobra ve un
+ * carrito que se armo solo y no sabe si es el de las 10:30 o el de las 11:00.
+ */
+.vta-cita {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  padding: ${v('espacio-2')} ${v('espacio-3')};
+  border: 1px solid ${v('cat-citas')};
+  border-radius: ${v('radio-sistema')};
+  background: ${v('cat-citas-tenue')};
+  min-width: 0;
+}
+.vta-cita__icono { display: inline-flex; color: ${v('cat-citas')}; flex: none; }
+.vta-cita__texto { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.vta-cita__titulo {
+  font-weight: 600; color: ${v('texto')}; font-size: ${v('texto-chico')};
+  overflow-wrap: anywhere;
+}
+.vta-cita__pie {
+  color: ${v('texto-suave')}; font-size: ${v('texto-micro')};
+  overflow-wrap: anywhere;
+}
+.vta-cita__quitar {
+  flex: none; width: 28px; height: 28px;
+  border: none; border-radius: ${v('radio-sistema')};
+  background: transparent; color: ${v('texto-suave')};
+  font-size: ${v('texto-normal')}; line-height: 1; cursor: pointer;
+}
+.vta-cita__quitar:hover { background: ${v('superficie-tenue')}; color: ${v('texto')}; }
+.vta-cita__quitar:focus-visible { outline: ${v('foco')}; outline-offset: 2px; }
+/* Ya cobrada: el aviso deja de ser una guia y pasa a ser un freno. */
+.vta-cita--cobrada { border-color: ${v('advertencia')}; background: ${v('advertencia-tenue')}; }
+.vta-cita--cobrada .vta-cita__icono { color: ${v('advertencia')}; }
+.vta-cita--cargando { color: ${v('texto-suave')}; font-size: ${v('texto-micro')}; }
 
 .vta-encontrados, .vta-catalogo {
   list-style: none; margin: 0; padding: 0;
@@ -2388,10 +2624,61 @@ function loQueTodaviaEsDeUnModulo(): string {
 }
 .caja-anillo { position: relative; flex: none; width: 150px; height: 150px; }
 .caja-anillo svg { width: 100%; height: 100%; }
+/*
+ * LAS REBANADAS ESCUCHAN AL PUNTERO y el grosor cambia con una transicion.
+ *
+ * Solo se anima el grosor del trazo, que no mueve nada de sitio: engordar un
+ * arco hacia adentro y hacia afuera lo destaca sin desplazarlo, y desplazar
+ * algo que se esta apuntando hace fallar el clic.
+ */
+.rep-rebanada {
+  transition: stroke-width ${v('movimiento-curva')} ${v('movimiento-instantaneo')};
+  cursor: default;
+}
+.rep-rebanada--viva { filter: brightness(1.05); }
 .caja-anillo__centro {
   position: absolute; inset: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; pointer-events: none;
+  /*
+   * EL CENTRO NO PUEDE PASAR DEL HUECO DEL ANILLO.
+   *
+   * El anillo mide 150 y su trazo se come 22 por lado: el cuadrado libre de
+   * dentro tiene unos 106 de lado, y por la curva solo se puede escribir en la
+   * franja central. 96 es ese ancho util. Sin este limite, "$44,575.00" se
+   * salia por los dos lados y se leia encima del arco.
+   */
+  max-width: 104px;
+  margin: 0 auto;
+  padding: 0 2px;
+}
+/*
+ * DENTRO DEL ANILLO LA CIFRA EMPIEZA MAS CHICA, y esto se midio.
+ *
+ * El hueco util son 104 pixeles. A "texto-titulo" —el tamaño de las tarjetas
+ * de arriba— "$24,850.00" mide 92 de ancho Y CINCUENTA DE ALTO: se partia en
+ * dos renglones a media cifra, "$24,850." arriba y "00" abajo. Que quepa
+ * partiendo un numero por la mitad no es que quepa.
+ *
+ * Asi que aqui la escala es otra —la misma que en el diseño de referencia— y
+ * "white-space: nowrap" impide el corte: si no cabe, encoge; nunca parte.
+ * Los tres escalones son los mismos que pone "claseDeCifra"; lo unico que
+ * cambia es de donde arrancan.
+ */
+.caja-anillo__centro .tt-dato {
+  font-size: ${v('texto-normal')};
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.caja-anillo__centro .pz-cifra--larga { font-size: ${v('texto-chico')}; }
+.caja-anillo__centro .pz-cifra--muy-larga { font-size: ${v('texto-micro')}; }
+/* Miles de millones dentro de un anillo de ciento cincuenta pixeles: aqui si
+   se deja partir, porque encogerlo mas seria ilegible. La leyenda de al lado
+   repite la cifra entera de todas formas. */
+.caja-anillo__centro .pz-cifra--enorme {
+  font-size: ${v('texto-micro')};
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .caja-anillo__que { font-size: ${v('texto-micro')}; color: ${v('texto-suave')}; }
 .caja-anillo__cuanto {
@@ -2412,7 +2699,14 @@ function loQueTodaviaEsDeUnModulo(): string {
 .caja-leyenda__renglon {
   display: flex; align-items: center; gap: ${v('espacio-2')};
   font-size: ${v('texto-chico')}; min-width: 0;
+  padding: 2px ${v('espacio-2')};
+  margin: 0 -${v('espacio-2')};
+  border-radius: ${v('radio-sistema')};
 }
+/* Apuntar el nombre resalta su rebanada, y al reves. Es el mismo puente en los
+   dos sentidos: sin el, saber que arco es cual obliga a cruzar cinco tonos de
+   la misma familia con cinco puntos de color, y eso no lo hace nadie. */
+.caja-leyenda__renglon--viva { background: ${v('superficie-tenue')}; }
 .caja-leyenda__punto { width: 10px; height: 10px; border-radius: ${v('radio-redondo')}; flex: none; }
 .caja-leyenda__punto--citas     { background: ${v('cat-citas')}; }
 .caja-leyenda__punto--ventas    { background: ${v('cat-ventas')}; }
@@ -2765,6 +3059,65 @@ function loQueTodaviaEsDeUnModulo(): string {
 .rep-linea--egresos { stroke: ${v('peligro')}; }
 .rep-marca--ingresos { fill: ${v('exito')}; }
 .rep-marca--egresos { fill: ${v('peligro')}; }
+
+/* ---------------------------------------------------------------- */
+/* El globito de la grafica                                          */
+/* ---------------------------------------------------------------- */
+/*
+ * POR QUE ES HTML ENCIMA DEL SVG Y NO TEXTO DENTRO.
+ *
+ * Un texto dentro del lienzo se escala con el: en una tarjeta angosta sale
+ * diminuto y en una ancha desproporcionado. Y no puede llevar bordes
+ * redondeados, sombra ni saltos de linea. Como el SVG conserva su proporcion,
+ * la coordenada del punto dividida entre el ancho del lienzo ES su posicion
+ * relativa, y el globito cae exactamente encima a cualquier tamaño.
+ */
+.rep-grafica { position: relative; min-width: 0; }
+
+/* La guia ata el globito a una fecha cuando hay treinta puntos juntos. */
+.rep-guia { stroke: ${v('borde')}; stroke-width: 1; stroke-dasharray: 3 3; }
+
+/* La marca señalada engorda EN EL SITIO. Moverla hace fallar el clic. */
+.rep-marca--viva { stroke: ${v('superficie')}; stroke-width: 2; }
+
+/* Las zonas que escuchan al puntero no se ven, pero SI se enfocan: quien
+   navega con el teclado recorre la serie punto por punto. */
+.rep-lienzo rect:focus-visible { outline: ${v('foco')}; outline-offset: -2px; }
+
+.rep-globito {
+  position: absolute;
+  z-index: 2;
+  /* NO RECIBE EL PUNTERO. Sin esto, el globito se mete debajo del cursor, la
+     zona de abajo pierde el "mouseenter", y el globito parpadea sin parar. */
+  pointer-events: none;
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 148px;
+  padding: ${v('espacio-2')} ${v('espacio-3')};
+  border: 1px solid ${v('borde-suave')};
+  border-radius: ${v('radio-sistema')};
+  background: ${v('superficie')};
+  box-shadow: ${v('sombra-flotante')};
+  font-size: ${v('texto-micro')};
+  /* Se levanta sobre el punto para no taparlo: la cifra que se esta mirando no
+     puede quedar debajo de la caja que la explica. */
+  transform: translateY(-100%);
+  margin-top: -10px;
+}
+.rep-globito--derecha { margin-left: 10px; }
+/* A partir de la mitad se abre hacia la izquierda: pegado siempre al mismo
+   lado, el ultimo punto de la serie se sale de la tarjeta y se corta. */
+.rep-globito--izquierda { transform: translate(-100%, -100%); margin-left: -10px; }
+.rep-globito__cuando {
+  font-weight: 600; color: ${v('texto')};
+  padding-bottom: 2px; margin-bottom: 2px;
+  border-bottom: 1px solid ${v('borde-tenue')};
+}
+.rep-globito__renglon { display: flex; align-items: center; gap: ${v('espacio-2')}; }
+.rep-globito__que { flex: 1; color: ${v('texto-suave')}; }
+.rep-globito__cuanto {
+  font-weight: 600; color: ${v('texto')};
+  font-variant-numeric: ${v('cifra-numeros')};
+}
 
 .rep-leyenda {
   list-style: none; margin: 0; padding: 0;

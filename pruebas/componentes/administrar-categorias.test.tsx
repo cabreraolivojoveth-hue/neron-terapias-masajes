@@ -22,7 +22,7 @@ import type { Categoria } from '../../src/datos/categorias.js';
 afterEach(cleanup);
 
 const UNA: Categoria = {
-  id: 'k1', nombre: 'Categoría Uno', descripcion: null, color: null, activo: true, enUso: 0,
+  id: 'k1', nombre: 'Categoría Uno', descripcion: null, color: null, activo: true, preparacionAntesMin: null, preparacionDespuesMin: null, enUso: 0,
 };
 
 function pintar(extra: Partial<React.ComponentProps<typeof AdministrarCategorias>> = {}) {

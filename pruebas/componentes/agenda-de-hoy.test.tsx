@@ -18,6 +18,7 @@ const cita = (c: Partial<CitaEnAgenda> = {}): CitaEnAgenda => ({
   clienteId: 'c1', cliente: 'Paciente Uno', clienteTelefono: null, clienteCorreo: null,
   servicioId: 's1', servicio: 'Sesión', servicioMinutos: 60, servicioPrecio: 80000,
   profesionalId: null, profesional: null,
+  preparacionAntesMin: 0, preparacionDespuesMin: 0, ventaId: null,
   ...c,
 });
 

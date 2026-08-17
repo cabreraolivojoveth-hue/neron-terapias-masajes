@@ -20,7 +20,7 @@ const SERVICIO: ServicioEnLista = {
   id: 's1', nombre: 'Sesión Uno', descripcion: null,
   categoriaId: null, categoria: null, categoriaColor: null,
   duracionMin: 60, precioCentavos: 50000, precioHoyCentavos: 50000,
-  enPromocion: false, activo: true, color: null,
+  enPromocion: false, preparacionAntesMin: 0, preparacionDespuesMin: 0, activo: true, color: null,
 };
 
 const TODO = { gestionarCatalogo: true };

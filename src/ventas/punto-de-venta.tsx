@@ -31,7 +31,12 @@
 import { tomarIntencion, useNavegacion } from '@neron/base/marco';
 import { hoy, uid, type Fecha } from '@neron/base/utils';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { traerProfesionales, type ProfesionalBreve } from '../datos/citas.js';
+import {
+  traerCitaParaCobrar,
+  traerProfesionales,
+  type CitaParaCobrar,
+  type ProfesionalBreve,
+} from '../datos/citas.js';
 import {
   LO_QUE_TOCA_UN_CLIENTE,
   buscarPosibleDuplicado,
@@ -56,6 +61,7 @@ import {
   LO_QUE_TOCA_UNA_VENTA,
   cancelarVenta,
   guardarCotizacion,
+  llaveDelCalendarioDeVentas,
   llaveDeCotizaciones,
   llaveDeLaFichaDeVenta,
   llaveDelCatalogo,
@@ -64,6 +70,7 @@ import {
   marcarCotizacion,
   marcarCotizacionConvertida,
   registrarVenta,
+  traerCalendarioDeVentas,
   traerCatalogoVendible,
   traerCotizaciones,
   traerFichaDeVenta,
@@ -73,6 +80,7 @@ import {
   totalDelCarrito,
   type ConceptoVendible,
   type CotizacionEnLista,
+  type DiaConVentas,
   type FichaDeVenta,
   type MetodoDePago,
   type PagoDelCarrito,
@@ -87,6 +95,7 @@ import { Carrito } from './carrito.js';
 import { AplicarDescuento, Cobro } from './cobro.js';
 import { EstadisticasDelDia } from './cifras-del-dia.js';
 import { DetalleDeVenta } from './detalle-de-venta.js';
+import { CalendarioDelHistorial, EN_NINGUN_LADO, type DondeEstoy } from './calendario-del-historial.js';
 import { Cotizaciones, Historial } from './historial.js';
 import { InformacionDelCliente, QuienCompra } from './quien-compra.js';
 
@@ -233,6 +242,19 @@ export function PuntoDeVenta({
   const [cobrada, setCobrada] = useState<string | null>(null);
 
   /**
+   * LA CITA DE LA QUE SALE ESTE COBRO. Vacio en una venta de mostrador.
+   *
+   * Viaja hasta `cobrar_cita`, que en la misma transaccion ata la venta a la
+   * cita y la deja completada. Es lo que impide que la misma sesion se cobre
+   * dos veces: sin el id, la segunda venta seria una venta suelta mas y nada
+   * la relacionaria con la primera.
+   */
+  const [citaDeOrigen, setCitaDeOrigen] = useState<string | null>(null);
+  const [cargandoCita, setCargandoCita] = useState(false);
+  /** Lo que se enseña arriba del carrito: de que sesion salio esto. */
+  const [citaCargada, setCitaCargada] = useState<CitaParaCobrar | null>(null);
+
+  /**
    * LA LLAVE DE IDEMPOTENCIA, UNA POR CARRITO.
    *
    * Se genera al montar y se renueva SOLO cuando la venta se cobro de verdad.
@@ -247,6 +269,16 @@ export function PuntoDeVenta({
   const [busquedaEnLista, setBusquedaEnLista] = useState('');
   const [estado, setEstado] = useState('');
   const [pagina, setPagina] = useState(1);
+
+  /**
+   * DONDE ESTOY DENTRO DEL HISTORIAL: mes, semana y dia.
+   *
+   * Vive aqui y no dentro del panel porque de esto depende QUE se le pide al
+   * servidor: escoger un dia cambia el rango de la consulta de ventas. Con el
+   * estado dentro del panel habria que subirlo por un callback para lo mismo,
+   * y ademas se perderia al cambiar de pestaña y volver.
+   */
+  const [donde, setDonde] = useState<DondeEstoy>(EN_NINGUN_LADO);
 
   /**
    * CUANTAS SE VEN DE GOLPE EN "VENTAS DEL DIA".
@@ -350,11 +382,38 @@ export function PuntoDeVenta({
     [busquedaEnLista, estado],
   );
 
+  /**
+   * EL CALENDARIO DEL HISTORIAL: un renglon por dia CON ventas.
+   *
+   * Un año de un centro ocupado son unos trescientos renglones minusculos, y
+   * de ahi salen los tres niveles —mes, semana y dia— sumando hacia arriba. La
+   * alternativa era traerse las quinientas ventas enteras para pintar doce
+   * renglones de meses.
+   *
+   * NO depende del buscador ni del filtro de estado: el calendario dice lo que
+   * HAY en cada periodo, y si se recortara con lo que hay escrito arriba, las
+   * cifras de los meses cambiarian mientras alguien escribe.
+   */
+  const calendario = useConsulta<DiaConVentas[]>(
+    negocio && pestana === 'historial'
+      ? llaveDelCalendarioDeVentas(negocio, desdeHistorial, dia)
+      : null,
+    () => traerCalendarioDeVentas(negocio, desdeHistorial, dia),
+  );
+
+  /*
+   * CON UN DIA ESCOGIDO SE LE PIDE AL SERVIDOR ESE DIA, no se filtra lo que ya
+   * llego: lo que llego son diez ventas de una pagina, y filtrar sobre eso
+   * diria que un dia no tiene ventas porque cayeron en la pagina cuatro.
+   */
+  const desdeLista = donde.dia || desdeHistorial;
+  const hastaLista = donde.dia || dia;
+
   const historial = useConsulta<PaginaDeVentas>(
     negocio && pestana === 'historial'
-      ? llaveDeVentas(negocio, desdeHistorial, dia, filtrosDeLista, pagina, porPagina)
+      ? llaveDeVentas(negocio, desdeLista, hastaLista, filtrosDeLista, pagina, porPagina)
       : null,
-    () => traerVentas(negocio, desdeHistorial, dia, filtrosDeLista, pagina, porPagina),
+    () => traerVentas(negocio, desdeLista, hastaLista, filtrosDeLista, pagina, porPagina),
   );
 
   const delDiaFiltrado = useConsulta<PaginaDeVentas>(
@@ -404,6 +463,11 @@ export function PuntoDeVenta({
       setPestana('nueva');
     } else if (recado.accion === 'cotizar') {
       setPestana('cotizaciones');
+    } else if (recado.accion === 'cobrar-cita' && recado.detalle) {
+      // Llega desde la Agenda, al completar una sesion. El carrito se arma
+      // solo con lo que la cita ya sabia.
+      setPestana('nueva');
+      void cargarLaCita(recado.detalle);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -426,9 +490,61 @@ export function PuntoDeVenta({
     setEscritoCliente('');
     setEscrito('');
     setCotizacionDeOrigen(null);
+    setCitaDeOrigen(null);
+    setCitaCargada(null);
     // Carrito nuevo, llave nueva: si no, la venta siguiente se confundiria con
     // la anterior y el servidor devolveria la vieja sin cobrar nada.
     llave.current = uid('venta');
+  }
+
+  /**
+   * ARMA EL CARRITO CON LO QUE LA CITA YA SABIA.
+   *
+   * Es la mitad de Caja del encargo "Agenda → cita completada → cobro". Se
+   * vuelve a preguntar a la base en vez de recibir los datos en el recado, y
+   * eso importa: asi el precio es el de HOY —con su promocion si la hay— y no
+   * el que la Agenda tenia cargado desde hace media hora.
+   *
+   * SI YA SE COBRO, NO SE ARMA NADA. Se dice con el folio delante y se deja el
+   * carrito vacio: llenarlo invitaria a cobrar la misma sesion dos veces, y
+   * aunque la base lo rechaza, el mejor error es el que no llega a intentarse.
+   */
+  async function cargarLaCita(citaId: string): Promise<void> {
+    setCargandoCita(true);
+    try {
+      const c = await traerCitaParaCobrar(citaId, dia);
+      if (!c) return;
+      setCitaCargada(c);
+      if (c.ventaId) return;
+
+      setRenglones([{
+        tipo: 'servicio',
+        id: c.servicioId,
+        nombre: c.servicio,
+        precioCentavos: c.precioCentavos,
+        cantidad: 1,
+        descuentoCentavos: 0,
+        // Un servicio no se agota: no hay un numero de sesiones en existencia.
+        disponible: null,
+      }]);
+      setClienteId(c.clienteId);
+      setClienteNombre(c.cliente);
+      setEscritoCliente(c.cliente);
+      setCitaDeOrigen(c.id);
+      /*
+       * EL VENDEDOR ARRANCA EN QUIEN DIO LA SESION, no en quien esta cobrando.
+       *
+       * Es lo que casi siempre es verdad —y lo que hace que la comision caiga
+       * donde toca—. Se marca como "tocado" para que el efecto que pone al
+       * usuario de la sesion no lo pise medio segundo despues.
+       */
+      if (c.profesionalId) {
+        setVendedorId(c.profesionalId);
+        setVendedorTocado(true);
+      }
+    } finally {
+      setCargandoCita(false);
+    }
   }
 
   /** Escoger un metodo pone el total completo en ese metodo. */
@@ -453,6 +569,9 @@ export function PuntoDeVenta({
         efectivoRecibido === '' ? null : Number(efectivoRecibido.replace(/[^\d]/g, '')) * 100,
       notas,
       llave: llave.current,
+      // Con cita, el servidor cobra con `cobrar_cita`: misma transaccion, mas
+      // el enlace con la cita y el estado completada.
+      ...(citaDeOrigen ? { citaId: citaDeOrigen } : {}),
     });
     // NO SE VACIA NADA hasta que el servidor confirma. Si fallo, todo sigue
     // puesto y el mensaje exacto —"Solo quedan 3 de X"— esta en pantalla.
@@ -620,6 +739,72 @@ export function PuntoDeVenta({
       {pestana === 'nueva' ? (
         <div className="pz-cuerpo">
           <div className="vta-columna">
+            {/*
+              DE DONDE VIENE ESTE COBRO, cuando viene de la Agenda.
+
+              No es decoracion: es lo que deja comprobar de un vistazo que el
+              carrito armado solo corresponde a la sesion que se acaba de dar
+              —el dia, la hora y la terapeuta— antes de apretar cobrar. Sin
+              esto, quien cobra ve un carrito que aparecio lleno y no sabe si
+              es el de la cita de las 10:30 o el de la de las 11:00.
+            */}
+            {cargandoCita ? (
+              <div className="vta-cita vta-cita--cargando" aria-busy="true">
+                Cargando los datos de la cita…
+              </div>
+            ) : citaCargada ? (
+              <div
+                className={`vta-cita${citaCargada.ventaId ? ' vta-cita--cobrada' : ''}`}
+                role="status"
+              >
+                <span className="vta-cita__icono" aria-hidden="true">
+                  <Icono nombre="calendario" lado={18} />
+                </span>
+                <div className="vta-cita__texto">
+                  {citaCargada.ventaId ? (
+                    <>
+                      <span className="vta-cita__titulo">Esta cita ya se cobró</span>
+                      <span className="vta-cita__pie">
+                        Venta {citaCargada.ventaFolio ?? ''} · {citaCargada.servicio} ·{' '}
+                        {citaCargada.cliente}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="vta-cita__titulo">
+                        Cobro de la cita del {citaCargada.fecha}, {citaCargada.horaInicio}
+                      </span>
+                      <span className="vta-cita__pie">
+                        {citaCargada.servicio} · {citaCargada.cliente}
+                        {citaCargada.profesional ? ` · ${citaCargada.profesional}` : ''}
+                      </span>
+                    </>
+                  )}
+                </div>
+                {citaCargada.ventaId ? (
+                  <button
+                    type="button"
+                    className="pz-boton"
+                    onClick={() => {
+                      setPestana('historial');
+                      setAbierta(citaCargada.ventaId);
+                    }}
+                  >
+                    Ver la venta
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="vta-cita__quitar"
+                    onClick={limpiarCarrito}
+                    aria-label="Quitar la cita y empezar una venta en blanco"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ) : null}
+
             <QuienCompra
               clienteId={clienteId}
               clienteNombre={clienteNombre}
@@ -767,6 +952,38 @@ export function PuntoDeVenta({
         />
       ) : (
         <div className="pz-cuerpo">
+          {/*
+            EL CALENDARIO Y LA LISTA VAN JUNTOS EN UNA COLUMNA, y esto no es
+            maquetacion caprichosa: `pz-cuerpo` es una rejilla de DOS columnas
+            —contenido y ficha de 340— y meterle un tercer hijo mandaba la lista
+            de ventas al hueco de la ficha. Envueltos, siguen siendo dos.
+          */}
+          <div className="vta-historial">
+          {/*
+            LA NAVEGACION POR PERIODOS, solo en el Historial.
+
+            En "Ventas del día" no pinta nada: ahi ya hay un solo dia, y una
+            columna para escoger entre un dia es ruido.
+
+            SE APARTA MIENTRAS SE BUSCA. Una busqueda ya es un recorte; dos
+            recortes encima —"agosto" y "Roberto"— se leen como una lista vacia
+            y hacen dudar de las dos herramientas. Al borrar el texto vuelve, y
+            vuelve donde estaba.
+          */}
+          {pestana === 'historial' && busquedaEnLista === '' ? (
+            <CalendarioDelHistorial
+              dias={calendario.datos ?? []}
+              donde={donde}
+              cargando={calendario.estado === 'cargando' && calendario.datos === null}
+              onIr={(d) => {
+                setDonde(d);
+                // Cambiar de periodo vuelve a la primera pagina: quedarse en la
+                // pagina cuatro de un dia que tiene tres ventas enseña un hueco.
+                setPagina(1);
+              }}
+            />
+          ) : null}
+
           <Historial
             ventas={listaDeLaPestana.datos?.filas ?? []}
             total={listaDeLaPestana.datos?.total ?? 0}
@@ -778,7 +995,13 @@ export function PuntoDeVenta({
             cargando={listaDeLaPestana.estado === 'cargando' && listaDeLaPestana.datos === null}
             error={listaDeLaPestana.error}
             vacioTexto={
-              pestana === 'dia' ? 'No hay ventas registradas hoy.' : 'Todavía no hay ventas.'
+              pestana === 'dia'
+                ? 'No hay ventas registradas hoy.'
+                : donde.dia
+                  // Con un dia escogido, "Todavia no hay ventas" se lee como que
+                  // el centro nunca ha vendido nada. Se dice de que dia se habla.
+                  ? `No hay ventas el ${donde.dia}.`
+                  : 'Todavía no hay ventas.'
             }
             onBuscar={setEscritoEnLista}
             onEstado={setEstado}
@@ -796,6 +1019,7 @@ export function PuntoDeVenta({
                 }
               : {})}
           />
+          </div>
           <DetalleDeVenta
             venta={abierta ? ficha.datos : null}
             cargando={Boolean(abierta) && ficha.estado === 'cargando' && ficha.datos === null}

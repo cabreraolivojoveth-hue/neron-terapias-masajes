@@ -80,6 +80,12 @@ function ColumnaDelDia({
 }) {
   const puestas = colocar(citas, abre, cierra);
   const linea = esHoy(dia, ahora) ? lineaDeAhora(ahora, abre, cierra) : null;
+  /*
+   * CUANTO MIDE UN MINUTO EN ESTA COLUMNA. Sirve para pintar la franja de
+   * preparacion con la misma escala que los bloques, sin recalcular la ventana
+   * dentro del bucle.
+   */
+  const porMinuto = 100 / Math.max(1, cierra - abre);
 
   return (
     <div
@@ -92,6 +98,34 @@ function ColumnaDelDia({
         onHueco(dia, horaDelClic((e.clientY - caja.top) / caja.height, abre, cierra));
       }}
     >
+      {/*
+        LA FRANJA DE PREPARACION, rayada y sin poder tocarse.
+
+        No es adorno: es la respuesta a "por que no puedo agendar a las 11:00
+        si la sesion termina a las 11:00". Ese rato la sala esta ocupada
+        limpiando y preparando, la base se niega a poner nada ahi, y hasta
+        ahora la pantalla no daba ninguna pista de por que.
+
+        Va DEBAJO del bloque de la cita —se pinta antes— y con `aria-hidden`:
+        quien navega con lector de pantalla ya lo escucha en el panel, y una
+        franja repetida por cada cita seria ruido.
+      */}
+      {puestas.map(({ cita, arriba, alto, carril, carriles }) =>
+        cita.preparacionAntesMin > 0 || cita.preparacionDespuesMin > 0 ? (
+          <span
+            key={`prep:${cita.id}`}
+            className="agenda-preparacion"
+            aria-hidden="true"
+            style={{
+              top: `${arriba - cita.preparacionAntesMin * porMinuto}%`,
+              height: `${alto + (cita.preparacionAntesMin + cita.preparacionDespuesMin) * porMinuto}%`,
+              left: `${(carril / carriles) * 100}%`,
+              width: `${(1 / carriles) * 100}%`,
+            }}
+          />
+        ) : null,
+      )}
+
       {puestas.map(({ cita, arriba, alto, carril, carriles }) => (
         <button
           key={cita.id}

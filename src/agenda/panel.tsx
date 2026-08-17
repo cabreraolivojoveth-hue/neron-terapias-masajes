@@ -23,16 +23,34 @@ import { formatearDinero } from '../datos/moneda.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
 import { duracionEnPalabras, fechaLarga } from '../ui/fechas-en-palabras.js';
 import type { CitaEnAgenda, EstadoDeCita, Historial } from '../datos/citas.js';
-import { etiquetaDeEstado } from '../datos/citas.js';
+import { cobroDeLaCita, etiquetaConCobro, etiquetaDeEstado } from '../datos/citas.js';
 
 export interface PropiedadesDelPanel {
   readonly cita: CitaEnAgenda | null;
   readonly historial: Historial | null;
   readonly cargandoHistorial: boolean;
   readonly puedeGestionar: boolean;
+  /** Quien no puede cobrar no ve las acciones de cobro. No se apagan: no salen. */
+  readonly puedeCobrar?: boolean;
+  /**
+   * SE ACABA DE MARCAR COMPLETADA, en esta pantalla y hace un momento.
+   *
+   * Es lo que enciende la propuesta de cobrar. No es lo mismo que "esta
+   * completada y sin cobrar": una cita del martes pasado tambien lo esta, y
+   * proponerle cobrar cada vez que alguien la abre seria un aviso que se
+   * aprende a ignorar en dos dias. La propuesta se ofrece en el momento en que
+   * viene a cuento — justo despues de terminar la sesion.
+   */
+  readonly recienCompletada?: boolean;
   onEditar(): void;
   onReagendar(): void;
   onCambiarEstado(estado: EstadoDeCita): void;
+  /** Lleva a Caja con esta cita ya cargada: paciente, servicio, precio y hora. */
+  onCobrar(): void;
+  /** Abre la venta con la que ya se cobro esta cita. */
+  onVerLaVenta(): void;
+  /** Quita la propuesta de cobro sin cobrar. La cita se queda pendiente de cobro. */
+  onAhoraNo(): void;
   /** Abre Mensajes con ESTE paciente y ESTA cita como contexto. */
   onEnviarMensaje(): void;
   /** Abre CURSOS con el curso de esta sesion. Solo aplica a las sesiones. */
@@ -88,9 +106,14 @@ export function PanelDeCita({
   historial,
   cargandoHistorial,
   puedeGestionar,
+  puedeCobrar = false,
+  recienCompletada = false,
   onEditar,
   onReagendar,
   onCambiarEstado,
+  onCobrar,
+  onVerLaVenta,
+  onAhoraNo,
   onEnviarMensaje,
   onVerCurso,
   onCerrar,
@@ -181,12 +204,28 @@ export function PanelDeCita({
   const viva = cita.estado === 'pendiente' || cita.estado === 'confirmada';
   const terminada = cita.estado === 'completada' || cita.estado === 'cancelada';
 
+  /**
+   * EL COBRO ES LA SEGUNDA DIMENSION DEL ESTADO, y no una columna mas.
+   *
+   * "Completada" y "cobrada" contestan dos preguntas distintas —se dio la
+   * sesion, se pago la sesion— y por eso se leen juntas: "Completada —
+   * pendiente de cobro". Guardar un sexto estado en la tabla habria hecho que
+   * cancelar la venta dejara la cita mintiendo.
+   */
+  const cobro = cobroDeLaCita(cita);
+
   return (
     <aside className="agenda-panel mv-panel" aria-label="Cita seleccionada">
       <div className="agenda-panel__barra">
         <span className="agenda-panel__titulo">Cita seleccionada</span>
-        <span className={`agenda-panel__estado agenda-estado--${cita.estado}`}>
-          {etiquetaDeEstado(cita.estado)}
+        <span
+          className={[
+            'agenda-panel__estado',
+            `agenda-estado--${cita.estado}`,
+            cobro === 'pendiente' ? 'agenda-estado--por-cobrar' : '',
+          ].filter(Boolean).join(' ')}
+        >
+          {etiquetaConCobro(cita)}
         </span>
         <button
           type="button"
@@ -197,6 +236,33 @@ export function PanelDeCita({
           ×
         </button>
       </div>
+
+      {/*
+        LA PROPUESTA DE COBRO, JUSTO DESPUES DE COMPLETAR LA SESION.
+        Va aqui arriba y dentro del panel, no en un modal: un modal tapa la
+        agenda y obliga a contestar. Esto se lee, se aprieta o se ignora, y la
+        cita se queda "pendiente de cobro" con su boton a mano mas abajo.
+      */}
+      {recienCompletada && puedeCobrar && cobro === 'pendiente' ? (
+        <div className="agenda-cobro agenda-cobro--propuesta" role="status">
+          <div className="agenda-cobro__texto">
+            <span className="agenda-cobro__titulo">Sesión completada</span>
+            <span className="agenda-cobro__pie">
+              {cita.servicioPrecio > 0
+                ? `Queda pendiente de cobro: ${formatearDinero(cita.servicioPrecio)}`
+                : 'Queda pendiente de cobro.'}
+            </span>
+          </div>
+          <div className="agenda-cobro__botones">
+            <Boton tono="principal" onClick={onCobrar}>
+              <Icono nombre="moneda" lado={16} /> Cobrar ahora
+            </Boton>
+            <Boton tono="contorno" onClick={onAhoraNo}>
+              Ahora no
+            </Boton>
+          </div>
+        </div>
+      ) : null}
 
       <div className="agenda-panel__persona">
         <Inicial nombre={cita.cliente} />
@@ -240,7 +306,27 @@ export function PanelDeCita({
         <span className={`agenda-panel__estado-texto agenda-estado-texto--${cita.estado}`}>
           {etiquetaDeEstado(cita.estado)}
         </span>
+        {/* El cobro se dice aparte y con sus palabras. Pegado al estado se leia
+            como un estado sexto, y no lo es: son dos preguntas distintas. */}
+        {cobro !== 'no_aplica' ? (
+          <div className={`agenda-panel__cobro agenda-panel__cobro--${cobro}`}>
+            {cobro === 'cobrada' ? 'Cobrada' : 'Pendiente de cobro'}
+          </div>
+        ) : null}
       </Renglon>
+
+      {/* LA FRANJA DE PREPARACION, cuando la hay. Explica por que el hueco
+          siguiente de la agenda no empieza donde termina la sesion. */}
+      {cita.preparacionAntesMin > 0 || cita.preparacionDespuesMin > 0 ? (
+        <Renglon icono="reloj" titulo="Preparación de la sala">
+          {cita.preparacionAntesMin > 0 ? `${cita.preparacionAntesMin} min antes` : null}
+          {cita.preparacionAntesMin > 0 && cita.preparacionDespuesMin > 0 ? ' · ' : null}
+          {cita.preparacionDespuesMin > 0 ? `${cita.preparacionDespuesMin} min después` : null}
+          <div className="agenda-panel__secundario">
+            La agenda mantiene ese tiempo bloqueado.
+          </div>
+        </Renglon>
+      ) : null}
 
       {cita.notas ? (
         <Renglon icono="nota" titulo="Notas">
@@ -291,6 +377,30 @@ export function PanelDeCita({
             nada desde aqui: abre Mensajes con el paciente y la cita como
             contexto. Agenda no es Mensajes.
           */}
+          {/*
+            EL COBRO ES LA ACCION PRINCIPAL DE UNA CITA COMPLETADA.
+            Antes habia que salir a Caja, buscar al paciente, buscar el
+            servicio y volver a escribir el precio — cuatro capturas de datos
+            que estaban en esta misma pantalla.
+          */}
+          {puedeCobrar && cobro === 'pendiente' ? (
+            <div className="agenda-panel__acciones">
+              <Boton tono="principal" onClick={onCobrar}>
+                <Icono nombre="moneda" lado={16} />
+                {cita.servicioPrecio > 0
+                  ? ` Cobrar ${formatearDinero(cita.servicioPrecio)}`
+                  : ' Cobrar'}
+              </Boton>
+            </div>
+          ) : null}
+          {puedeCobrar && cobro === 'cobrada' ? (
+            <div className="agenda-panel__acciones">
+              <Boton tono="contorno" onClick={onVerLaVenta}>
+                <Icono nombre="recibo" lado={16} /> Ver la venta
+              </Boton>
+            </div>
+          ) : null}
+
           <div className="agenda-panel__acciones">
             {viva ? (
               <Boton tono="principal" onClick={onEditar}>

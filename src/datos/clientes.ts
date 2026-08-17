@@ -22,6 +22,7 @@
 import type { Fecha } from '@neron/base/utils';
 import { supabase } from '../supabase.js';
 import { aBase, deBase, reventar } from './fechas-de-la-base.js';
+import { numero, texto, opcional, lista, centavos } from './lo-que-llega-de-la-base.js';
 import { PREFIJO_DE_INICIO } from './tablero.js';
 
 /* ------------------------------------------------------------------ */
@@ -180,16 +181,7 @@ export interface FiltrosDeClientes {
 /* Ordenar lo que contesta el servidor                                 */
 /* ------------------------------------------------------------------ */
 
-const numero = (v: unknown): number => {
-  const n = Number(v);
-  // NaN NUNCA sale de aqui: se propaga sin reventar y termina impreso.
-  return Number.isFinite(n) ? n : 0;
-};
-
-const texto = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
-const opcional = (v: unknown): string | null => (v === null || v === undefined || v === '' ? null : String(v));
 const fechaOpcional = (v: unknown): Fecha | null => (v === null || v === undefined ? null : deBase(v));
-const lista = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 
 export const RESUMEN_DE_CLIENTES_VACIO: ResumenDeClientes = {
   total: 0,
@@ -364,8 +356,8 @@ export async function traerExpediente(
         }
       : null,
     compras: numero(c['compras']),
-    totalGastado: numero(c['totalGastado']),
-    adeudo: numero(c['adeudo']),
+    totalGastado: centavos(c['totalGastado']),
+    adeudo: centavos(c['adeudo']),
     cursos: numero(c['cursos']),
     servicios: lista(c['servicios']).map((s) => {
       const x = s as Record<string, unknown>;

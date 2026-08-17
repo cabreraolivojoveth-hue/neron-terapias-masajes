@@ -18,8 +18,10 @@
  * semana por mes es un solo punto inutil.
  */
 
+import { useState } from 'react';
 import { formatearDinero } from '../datos/moneda.js';
 import type { PasoDeLaSerie, PuntoDeLaSerie } from '../datos/reportes.js';
+import { diaYMes } from '../ui/fechas-en-palabras.js';
 import { Icono } from '../ui/iconos.js';
 
 /** El ancho y el alto del lienzo. Son unidades del SVG, no pixeles. */
@@ -75,6 +77,36 @@ export function rotuloDelPunto(punto: string, paso: PasoDeLaSerie): string {
   return paso === 'mes' ? mes : `${Number(d)} ${mes}`;
 }
 
+/**
+ * EL TITULO DEL GLOBITO: la fecha completa, no la abreviada del eje.
+ *
+ * El eje dice "12 Ago" porque no cabe mas. El globito si tiene sitio, y ahi la
+ * pregunta que se contesta es "¿qué día fue?" — que un martes se lea "Martes 12
+ * de agosto" ahorra ir al calendario.
+ */
+export function tituloDelGlobito(punto: string, paso: PasoDeLaSerie): string {
+  if (paso === 'mes') {
+    const [, m, a] = punto.split('/');
+    const MESES = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+    ];
+    return `${MESES[Number(m) - 1] ?? ''} ${a ?? ''}`.trim();
+  }
+  return diaYMes(punto as never) || punto;
+}
+
+/**
+ * DE QUE LADO SE ABRE EL GLOBITO.
+ *
+ * Pegado siempre al mismo lado, en el ultimo punto de la serie se sale de la
+ * tarjeta y se corta. A partir de la mitad se abre hacia la izquierda, que es
+ * donde siempre hay sitio.
+ */
+export function ladoDelGlobito(x: number): 'izquierda' | 'derecha' {
+  return x > ANCHO * 0.6 ? 'izquierda' : 'derecha';
+}
+
 export function LineasDeIngresos({
   serie,
   paso,
@@ -84,6 +116,17 @@ export function LineasDeIngresos({
   readonly paso: PasoDeLaSerie;
   readonly cargando: boolean;
 }) {
+  /**
+   * QUE PUNTO ESTA SEÑALADO. `null` = el puntero no esta encima de ninguno.
+   *
+   * Antes cada marca llevaba un `<title>` de SVG: eso da el globito NATIVO del
+   * navegador —el de los `title` de toda la vida—, que tarda casi un segundo en
+   * aparecer, no se puede vestir, y enseña UNA sola serie. Para comparar
+   * ingresos contra egresos de un dia habia que apuntar a un punto, esperar,
+   * leer, apuntar al otro, esperar y acordarse del primero.
+   */
+  const [senalado, setSenalado] = useState<number | null>(null);
+
   const techo = techoDeLaSerie(serie);
   const hayAlgo = techo > 0;
   const ingresos = puntosDeLaLinea(serie.map((p) => p.ingresos), techo);
@@ -137,6 +180,20 @@ export function LineasDeIngresos({
             </li>
           </ul>
 
+          {/*
+            EL LIENZO VA DENTRO DE UN CONTENEDOR EN POSICION RELATIVA, y el
+            globito es HTML sobre el, no texto dentro del SVG.
+
+            Texto dentro del SVG se escalaria con el lienzo —en una tarjeta
+            angosta saldria diminuto— y no puede tener bordes redondeados,
+            sombra ni saltos de linea. Como el SVG conserva su proporcion, la
+            coordenada del punto se convierte en porcentaje del contenedor y el
+            globito cae exactamente encima.
+          */}
+          <div
+            className="rep-grafica"
+            onMouseLeave={() => setSenalado(null)}
+          >
           <svg
             className="rep-lienzo"
             viewBox={`0 0 ${ANCHO} ${ALTO}`}
@@ -164,24 +221,32 @@ export function LineasDeIngresos({
             <path className="rep-linea rep-linea--egresos" d={camino(egresos)} fill="none" />
             <path className="rep-linea rep-linea--ingresos" d={camino(ingresos)} fill="none" />
 
+            {/* LA GUIA VERTICAL del punto señalado. Es lo que ata el globito a
+                una fecha concreta cuando hay treinta puntos juntos. */}
+            {senalado !== null && ingresos[senalado] ? (
+              <line
+                className="rep-guia"
+                x1={ingresos[senalado]!.x}
+                y1={MARGEN.arriba}
+                x2={ingresos[senalado]!.x}
+                y2={MARGEN.arriba + alto}
+              />
+            ) : null}
+
             {serie.map((p, i) => (
               <g key={p.punto}>
                 <circle
-                  className="rep-marca rep-marca--egresos"
+                  className={`rep-marca rep-marca--egresos${senalado === i ? ' rep-marca--viva' : ''}`}
                   cx={egresos[i]?.x ?? 0}
                   cy={egresos[i]?.y ?? 0}
-                  r="3"
-                >
-                  <title>{`${p.punto}: ${formatearDinero(p.egresos)} de egresos`}</title>
-                </circle>
+                  r={senalado === i ? 5 : 3}
+                />
                 <circle
-                  className="rep-marca rep-marca--ingresos"
+                  className={`rep-marca rep-marca--ingresos${senalado === i ? ' rep-marca--viva' : ''}`}
                   cx={ingresos[i]?.x ?? 0}
                   cy={ingresos[i]?.y ?? 0}
-                  r="3"
-                >
-                  <title>{`${p.punto}: ${formatearDinero(p.ingresos)} de ingresos`}</title>
-                </circle>
+                  r={senalado === i ? 5 : 3}
+                />
                 {i % cada === 0 ? (
                   <text
                     className="rep-eje"
@@ -194,7 +259,80 @@ export function LineasDeIngresos({
                 ) : null}
               </g>
             ))}
+
+            {/*
+              LAS ZONAS QUE ESCUCHAN AL PUNTERO, una por punto y a lo alto de
+              toda la grafica.
+
+              Apuntar a un circulo de tres pixeles con el raton es imposible en
+              la practica y con el dedo mas: la franja completa se activa con
+              acercarse a esa columna. Van AL FINAL para quedar encima de todo
+              lo pintado, y `fill="transparent"` —no `fill="none"`— porque
+              "none" no recibe eventos.
+            */}
+            {serie.map((p, i) => {
+              const x = ingresos[i]?.x ?? 0;
+              const anterior = ingresos[i - 1]?.x ?? x;
+              const siguiente = ingresos[i + 1]?.x ?? x;
+              const izquierda = i === 0 ? MARGEN.izquierda : (x + anterior) / 2;
+              const derecha = i === serie.length - 1 ? ANCHO - MARGEN.derecha : (x + siguiente) / 2;
+              return (
+                <rect
+                  key={`zona:${p.punto}`}
+                  x={izquierda}
+                  y={MARGEN.arriba}
+                  width={Math.max(1, derecha - izquierda)}
+                  height={alto}
+                  fill="transparent"
+                  onMouseEnter={() => setSenalado(i)}
+                  onFocus={() => setSenalado(i)}
+                  onBlur={() => setSenalado(null)}
+                  tabIndex={0}
+                  role="img"
+                  aria-label={
+                    `${tituloDelGlobito(p.punto, paso)}: ${formatearDinero(p.ingresos)} de ingresos, ` +
+                    `${formatearDinero(p.egresos)} de egresos`
+                  }
+                />
+              );
+            })}
           </svg>
+
+          {/*
+            EL GLOBITO. Se posiciona en porcentaje del contenedor porque el SVG
+            escala conservando su proporcion: la coordenada del punto dividida
+            entre el ancho del lienzo ES su posicion relativa, a cualquier
+            tamaño de pantalla.
+          */}
+          {senalado !== null && serie[senalado] ? (
+            <div
+              className={`rep-globito rep-globito--${ladoDelGlobito(ingresos[senalado]?.x ?? 0)}`}
+              role="status"
+              style={{
+                left: `${((ingresos[senalado]?.x ?? 0) / ANCHO) * 100}%`,
+                top: `${((ingresos[senalado]?.y ?? 0) / ALTO) * 100}%`,
+              }}
+            >
+              <span className="rep-globito__cuando">
+                {tituloDelGlobito(serie[senalado]!.punto, paso)}
+              </span>
+              <span className="rep-globito__renglon">
+                <span className="rep-punto rep-punto--ingresos" aria-hidden="true" />
+                <span className="rep-globito__que">Ingresos</span>
+                <span className="rep-globito__cuanto">
+                  {formatearDinero(serie[senalado]!.ingresos)}
+                </span>
+              </span>
+              <span className="rep-globito__renglon">
+                <span className="rep-punto rep-punto--egresos" aria-hidden="true" />
+                <span className="rep-globito__que">Egresos</span>
+                <span className="rep-globito__cuanto">
+                  {formatearDinero(serie[senalado]!.egresos)}
+                </span>
+              </span>
+            </div>
+          ) : null}
+          </div>
         </>
       )}
     </section>

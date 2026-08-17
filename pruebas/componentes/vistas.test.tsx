@@ -14,7 +14,8 @@ const cita = (p: Partial<CitaEnAgenda> & { id: string }): CitaEnAgenda => ({
   fecha: '10/07/2026', horaInicio: '09:00', horaFin: '10:00', estado: 'confirmada',
   notas: null, clienteId: 'c1', cliente: 'Paciente Uno', clienteTelefono: null,
   clienteCorreo: null, servicioId: 's1', servicio: 'Sesión', servicioMinutos: 60,
-  servicioPrecio: 0, profesionalId: null, profesional: null, ...p,
+  servicioPrecio: 0, profesionalId: null, profesional: null,
+  preparacionAntesMin: 0, preparacionDespuesMin: 0, ventaId: null, ...p,
 });
 
 const base = {

@@ -1,5 +1,5 @@
 -- =====================================================================
--- PARTE 1 DE 3 — pegar en Supabase -> SQL Editor -> Run
+-- PARTE 3 DE 6 — pegar en Supabase -> SQL Editor -> Run
 -- =====================================================================
 --
 -- Proyecto: hgypobbanvkwnqmepqim (neron-terapias). MIRA EL REF EN LA BARRA
@@ -11,158 +11,164 @@
 -- Es seguro correrla las veces que haga falta: todo va con `if not exists`
 -- o `create or replace`.
 --
--- CUANDO ESTA DIGA "Success", SIGUE CON LA PARTE 2.
+-- CUANDO ESTA DIGA "Success", SIGUE CON LA PARTE 4.
 --
--- =====================================================================
--- ACTUALIZAR-BASE.sql — SOLO LO NUEVO
--- =====================================================================
---
--- Pegar en Supabase -> SQL Editor -> Run. Una sola vez basta.
---
--- Va al proyecto `hgypobbanvkwnqmepqim` (neron-terapias). MIRA EL REF EN LA
--- BARRA DE DIRECCIONES: hay otro que se llama casi igual y correr esto alli ya
--- costo una mañana.
---
--- Es seguro correrlo las veces que haga falta: no borra datos, no reescribe
--- filas, y todo va con `if not exists` o `create or replace`.
---
--- ARRIBA, UNA CORRECCION DE LO QUE YA CORRIA:
---
---   · `resumen_de_gastos` VUELVE A CREARSE. Su promedio diario salia con
---     decimales —`sum()` de un bigint devuelve numeric— y la guardia del
---     dinero tira la pantalla de Gastos entera en cuanto hay gastos de verdad:
---     "formatearMoneda() recibio 67222.58066516129". Con el centro vacio la
---     division daba cero clavado y no se veia.
---
--- Y DESPUES, EL BLOQUE 11: los datos de demostracion.
---
---   · Nace `dato_de_demostracion`, con sus reglas de fila y su permiso. Es el
---     rastro de que fila nacio de una demostracion, y es lo unico que permite
---     QUITARLA despues sin tocar lo que hayas capturado tu.
---   · `cargar_datos_de_demostracion` siembra cinco meses de uso en NUEVE pasos
---     —catalogo, pacientes, un mes por paso, y al final cursos, mensajes,
---     recordatorios y bitacora—. Cada paso es su propia llamada: de un viaje,
---     el tiempo limite de PostgREST la cortaria a la mitad.
---   · `quitar_datos_de_demostracion` borra exactamente lo sembrado, en el
---     orden de las llaves foraneas.
---   · `datos_de_demostracion` dice si hay algo cargado y cuanto.
---
--- SOLO DESDE LA CUENTA `cabreraolivojoveth@gmail.com`. El correo se compara
--- en la base, no en la pantalla: esconder la tarjeta es cortesia, y aqui hacia
--- falta seguridad. Cualquier otra cuenta recibe un error de permisos aunque
--- llame a la base a mano.
---
--- NO TOCA NI UNA FILA DE LO QUE YA HAY. Todo lo que crea es nuevo, y hasta que
--- alguien apriete el boton no escribe ni un renglon de datos.
---
--- Sin correr esto, el sitio se publica igual y la seccion "Datos de
--- demostracion" falla pidiendo funciones que la base no tiene. Vercel publica
--- el navegador, no la base.
---
--- Este archivo lo genera `scripts/actualizar-base.ts` a partir de
--- INSTALAR-EN-TERAPIAS.sql. No se edita a mano: se corre el guion.
-
--- =====================================================================
--- CORRECCIONES A LO QUE YA HABIAS CORRIDO
--- =====================================================================
---
--- Son `create or replace`: se pueden correr encima de las que ya existen.
-
-create or replace function public.resumen_de_gastos(
+create or replace function public.guardar_curso(
   p_negocio text,
-  p_desde   date,
-  p_hasta   date
+  p_id uuid,
+  p_nombre text,
+  p_subtitulo text default null,
+  p_descripcion text default null,
+  p_categoria uuid default null,
+  p_instructor uuid default null,
+  p_inicio date default null,
+  p_fin date default null,
+  p_precio bigint default 0,
+  p_cupo int default null,
+  p_modalidad text default 'presencial',
+  p_lugar text default null,
+  p_enlace text default null,
+  p_imagen text default null,
+  p_notas text default null,
+  p_activo boolean default true,
+  -- El enlace de YouTube tal cual lo pego la persona. Se valida y se normaliza
+  -- aqui abajo; lo que se GUARDA es el identificador del video, no la URL.
+  p_video text default null
 )
-returns jsonb
-language sql
-stable
-security invoker
+returns curso
+language plpgsql
+security definer
 set search_path = public, pg_temp
 as $$
-  with dias as (
-    select greatest((p_hasta - p_desde) + 1, 1) as n
-  ),
-  actual as (
-    select * from gasto
-     where negocio_id = p_negocio and not eliminado and fecha between p_desde and p_hasta
-  ),
-  anterior as (
-    select * from gasto
-     where negocio_id = p_negocio and not eliminado
-       and fecha between p_desde - (select n from dias) and p_desde - 1
-  ),
-  mayor as (
-    select descripcion, monto_centavos from actual order by monto_centavos desc, creado_en limit 1
-  )
-  select jsonb_build_object(
-    'totalCentavos', coalesce((select sum(monto_centavos) from actual), 0),
-    'cuantos', (select count(*) from actual),
-    'dias', (select n from dias),
-    -- El promedio se saca entre los DIAS del periodo, no entre los gastos: es
-    -- "cuanto sale al dia", que es la pregunta que se hace quien lo mira.
-    /*
-     * EL `round` NO SOBRA, Y SU FALTA TIRO LA PANTALLA DE GASTOS ENTERA:
-     *
-     *   formatearMoneda() recibio "67222.58066516129", que no son centavos
-     *   enteros. El dinero del sistema SIEMPRE es un entero de centavos.
-     *
-     * `sum()` de un `bigint` devuelve NUMERIC —no bigint—, asi que dividirlo
-     * entre los dias da decimales en cuanto no toca exacto. Con el centro
-     * vacio, cero entre sesenta y dos daba cero clavado y no se veia; con
-     * sesenta y cuatro gastos de verdad, la division cayo en un numero con doce
-     * decimales y la guardia de la base —que hace bien en existir— tumbo la
-     * pantalla.
-     *
-     * Se redondea AQUI, en el servidor, y no al pintar: el dinero sale entero
-     * de la base o no sale. Redondear en el navegador seria dejar que cada
-     * pantalla decidiera por su cuenta cuantos centavos son un centavo.
-     */
-    'promedioDiarioCentavos',
-      round(coalesce((select sum(monto_centavos) from actual), 0)
-            / (select n from dias))::bigint,
-    'mayor', case when exists (select 1 from mayor)
-      then (select jsonb_build_object('descripcion', descripcion, 'centavos', monto_centavos) from mayor)
-      end,
-    'anteriorCentavos', coalesce((select sum(monto_centavos) from anterior), 0),
-    -- SIN PERIODO ANTERIOR NO HAY PORCENTAJE. Dividir entre cero no da cero:
-    -- no da nada, y "+∞%" o "+5000%" es el numero que mas veces se ve mal
-    -- hecho en un tablero.
-    'hayComparacion', (select count(*) from anterior) > 0,
-    'porCategoria', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'id', t.categoria_id, 'nombre', t.nombre, 'color', t.color,
-        'centavos', t.centavos, 'cuantos', t.n
-      ) order by t.centavos desc)
-      from (
-        select a.categoria_id, coalesce(c.nombre, 'Sin categoría') as nombre, c.color,
-               sum(a.monto_centavos) as centavos, count(*) as n
-          from actual a
-          left join categoria c on c.id = a.categoria_id and c.negocio_id = p_negocio
-         group by a.categoria_id, c.nombre, c.color
-      ) t
-    ), '[]'::jsonb),
-    'porMetodo', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'metodo', t.metodo, 'centavos', t.centavos, 'cuantos', t.n
-      ) order by t.centavos desc)
-      from (
-        select metodo, sum(monto_centavos) as centavos, count(*) as n
-          from actual group by metodo
-      ) t
-    ), '[]'::jsonb),
-    'porDia', coalesce((
-      select jsonb_agg(jsonb_build_object('fecha', t.d, 'centavos', t.centavos) order by t.d)
-      from (
-        -- LOS DIAS SIN GASTOS VAN EN CERO, no ausentes: un hueco en la grafica
-        -- se lee como una caida en vez de como un dia tranquilo.
-        select s.d::date as d, coalesce(sum(a.monto_centavos), 0) as centavos
-          from generate_series(p_desde, p_hasta, interval '1 day') s(d)
-          left join actual a on a.fecha = s.d::date
-         group by s.d
-      ) t
-    ), '[]'::jsonb),
-    'efectivoCentavos', coalesce((select sum(efectivo_centavos) from actual), 0)
-  );
+declare
+  v_c      curso;
+  v_antes  jsonb;
+  v_quien  membresia;
+  v_ocupados int;
+  v_video  text;
+begin
+  -- Los porteros van AQUI: un `security definer` se salta las reglas de fila.
+  if not app.es_miembro(p_negocio) then
+    raise exception 'Ese centro no es el tuyo.' using errcode = 'insufficient_privilege';
+  end if;
+  if not app.tiene_permiso(p_negocio, 'gestionarCatalogo') then
+    raise exception 'No tienes permiso para administrar el catalogo.'
+      using errcode = 'insufficient_privilege';
+  end if;
+  if not app.licencia_permite(p_negocio) then
+    raise exception 'La licencia no permite registrar operaciones.'
+      using errcode = 'insufficient_privilege';
+  end if;
+
+  if coalesce(btrim(p_nombre), '') = '' then
+    raise exception 'El curso necesita un nombre.' using errcode = 'invalid_parameter_value';
+  end if;
+  if p_inicio is null then
+    raise exception 'El curso necesita una fecha de inicio.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+  if p_fin is not null and p_fin < p_inicio then
+    raise exception 'El curso no puede terminar antes de empezar.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+  if p_precio is null or p_precio < 0 then
+    raise exception 'El precio no puede ser negativo.' using errcode = 'invalid_parameter_value';
+  end if;
+  -- Un cupo en cero no es "sin limite": es un curso al que nadie puede entrar.
+  -- Sin limite se dice con NULO, nunca con 999999.
+  if p_cupo is not null and p_cupo <= 0 then
+    raise exception 'El cupo tiene que ser mayor que cero. Dejalo vacio si no hay limite.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  /*
+   * EL VIDEO SE VALIDA EN LA BASE, NO SOLO EN LA PANTALLA.
+   *
+   * Lo que se guarda es el IDENTIFICADOR de once caracteres, no la direccion
+   * que alguien pego. Dos razones, y la segunda es la que importa:
+   *
+   *   · Un mismo video llega escrito de seis formas —`watch?v=`, `youtu.be/`,
+   *     `/embed/`, `/shorts/`, con `&t=90`, con `?si=` de compartir—. Guardar
+   *     la cadena entera obligaria a que cada pantalla las entienda todas.
+   *   · Guardar una URL cualquiera y meterla despues en un `iframe` es dejar
+   *     que quien edite un curso incruste el sitio que quiera dentro del
+   *     sistema. Con el identificador, la direccion la ARMA el producto y
+   *     siempre apunta a YouTube.
+   *
+   * Cadena vacia y nulo son lo mismo aqui: quitar el video.
+   */
+  v_video := app.identificador_de_youtube(p_video);
+  if coalesce(btrim(p_video), '') <> '' and v_video is null then
+    raise exception 'Ese enlace no parece un video de YouTube.'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  select * into v_quien from membresia
+   where negocio_id = p_negocio and usuario_id = auth.uid() limit 1;
+
+  if p_id is null then
+    insert into curso (negocio_id, nombre, subtitulo, descripcion, categoria_id, instructor_id,
+                       fecha_inicio, fecha_fin, precio_centavos, cupo, modalidad, lugar,
+                       enlace, imagen_url, notas, activo, video_youtube)
+    values (p_negocio, btrim(p_nombre), p_subtitulo, p_descripcion, p_categoria, p_instructor,
+            p_inicio, p_fin, p_precio, p_cupo, coalesce(p_modalidad, 'presencial'), p_lugar,
+            p_enlace, p_imagen, p_notas, coalesce(p_activo, true), v_video)
+    returning * into v_c;
+
+    insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
+                           entidad, antes, despues)
+    values (p_negocio, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
+            coalesce((select r.etiqueta from rol r
+                       where r.negocio_id = v_quien.negocio_id and r.id = v_quien.rol),
+                      v_quien.rol, 'desconocido'),
+            'cursos', 'crear', v_c.id::text, null,
+            jsonb_build_object('nombre', v_c.nombre, 'precio', v_c.precio_centavos,
+                               'cupo', v_c.cupo, 'inicio', v_c.fecha_inicio));
+    return v_c;
+  end if;
+
+  select * into v_c from curso where id = p_id and negocio_id = p_negocio and not eliminado;
+  if v_c.id is null then
+    raise exception 'Ese curso no existe.' using errcode = 'no_data_found';
+  end if;
+
+  -- BAJAR EL CUPO POR DEBAJO DE LOS QUE YA ENTRARON deja gente inscrita en un
+  -- curso que dice estar lleno de mas, y nadie sabe a quien sacar.
+  v_ocupados := app.lugares_ocupados(p_id);
+  if p_cupo is not null and p_cupo < v_ocupados then
+    raise exception 'Ya hay % alumnos inscritos: el cupo no puede quedar en %.',
+      v_ocupados, p_cupo using errcode = 'invalid_parameter_value';
+  end if;
+
+  v_antes := jsonb_build_object('nombre', v_c.nombre, 'precio', v_c.precio_centavos,
+                                'cupo', v_c.cupo, 'inicio', v_c.fecha_inicio,
+                                'activo', v_c.activo, 'categoria', v_c.categoria_id,
+                                'instructor', v_c.instructor_id);
+
+  update curso
+     set nombre = btrim(p_nombre), subtitulo = p_subtitulo, descripcion = p_descripcion,
+         categoria_id = p_categoria, instructor_id = p_instructor,
+         fecha_inicio = p_inicio, fecha_fin = p_fin, precio_centavos = p_precio,
+         cupo = p_cupo, modalidad = coalesce(p_modalidad, 'presencial'), lugar = p_lugar,
+         enlace = p_enlace, imagen_url = p_imagen, notas = p_notas,
+         activo = coalesce(p_activo, v_c.activo), video_youtube = v_video,
+         actualizado_en = now()
+   where id = p_id
+  returning * into v_c;
+
+  insert into auditoria (negocio_id, usuario_id, usuario_nombre, rol_etiqueta, modulo, accion,
+                         entidad, antes, despues)
+  values (p_negocio, auth.uid(), coalesce(v_quien.nombre, 'desconocido'),
+          coalesce((select r.etiqueta from rol r
+                     where r.negocio_id = v_quien.negocio_id and r.id = v_quien.rol),
+                    v_quien.rol, 'desconocido'),
+          'cursos', 'editar', v_c.id::text, v_antes,
+          jsonb_build_object('nombre', v_c.nombre, 'precio', v_c.precio_centavos,
+                             'cupo', v_c.cupo, 'inicio', v_c.fecha_inicio,
+                             'activo', v_c.activo, 'categoria', v_c.categoria_id,
+                             'instructor', v_c.instructor_id));
+  return v_c;
+end;
 $$;
 
 -- =====================================================================
@@ -458,60 +464,3 @@ comment on function public.datos_de_demostracion(text) is
 
 revoke all on function public.datos_de_demostracion(text) from public, anon;
 grant execute on function public.datos_de_demostracion(text) to authenticated;
-
--- ---------------------------------------------------------------------
--- UN GASTO DE DEMOSTRACION, CON SU RASTRO EN CAJA
--- ---------------------------------------------------------------------
---
--- SE INSERTA EN `gasto` Y NO SE TOCA LA CAJA A MANO: el disparador
--- `app.gasto_a_caja` es el unico que escribe el movimiento, y se deja que lo
--- haga. Escribirlo aqui seria una segunda via que el dia que el disparador
--- cambie dejaria la demostracion contando el dinero de otra forma que el
--- sistema de verdad — que es exactamente lo que una demostracion no puede
--- permitirse.
---
--- Lo unico que hace falta despues es ANOTAR los movimientos que nacieron del
--- gasto, para que quitar la demostracion se los lleve tambien.
-create or replace function app.demo_gasto(
-  p_negocio     text,
-  p_descripcion text,
-  p_detalle     text,
-  p_categoria   text,
-  p_monto       bigint,
-  p_metodo      text,
-  p_fecha       date,
-  p_recurrente  uuid,
-  p_periodo     text,
-  p_quien       uuid
-)
-returns uuid
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-declare
-  v_id uuid;
-begin
-  insert into gasto (negocio_id, descripcion, detalle, categoria, categoria_id,
-                     monto_centavos, metodo, efectivo_centavos, fecha,
-                     recurrente_id, periodo, creado_por, creado_en)
-  values (p_negocio, p_descripcion, p_detalle, 'general',
-          (select c.id from categoria c
-            where c.negocio_id = p_negocio and c.ambito = 'gasto' and c.nombre = p_categoria),
-          p_monto, p_metodo,
-          case when p_metodo = 'efectivo' then p_monto else 0 end,
-          p_fecha, p_recurrente, p_periodo, p_quien,
-          p_fecha::timestamp + time '18:30')
-  returning id into v_id;
-
-  perform app.demo_anotar(p_negocio, 'gasto', v_id);
-
-  insert into dato_de_demostracion (negocio_id, tabla, fila_id)
-  select p_negocio, 'movimiento_caja', mc.id
-    from movimiento_caja mc
-   where mc.negocio_id = p_negocio and mc.origen = 'gasto' and mc.referencia_id = v_id
-  on conflict do nothing;
-
-  return v_id;
-end;
-$$;

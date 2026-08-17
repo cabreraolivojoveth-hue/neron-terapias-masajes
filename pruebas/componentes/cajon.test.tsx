@@ -203,7 +203,6 @@ describe('con caja abierta', () => {
     await userEvent.click(screen.getByRole('button', { name: /cerrar caja/i }));
     await userEvent.click(screen.getByRole('button', { name: /contar el efectivo/i }));
     await userEvent.type(screen.getByLabelText(/efectivo contado/i), '1600');
-    await userEvent.click(screen.getByRole('button', { name: /ver la diferencia/i }));
     await userEvent.click(screen.getByRole('button', { name: /cerrar la caja/i }));
 
     await waitFor(() => expect(datos.cierres).toHaveLength(1));
@@ -216,7 +215,6 @@ describe('con caja abierta', () => {
     await userEvent.click(screen.getByRole('button', { name: /cerrar caja/i }));
     await userEvent.click(screen.getByRole('button', { name: /contar el efectivo/i }));
     await userEvent.type(screen.getByLabelText(/efectivo contado/i), '1650');
-    await userEvent.click(screen.getByRole('button', { name: /ver la diferencia/i }));
     await userEvent.click(screen.getByRole('button', { name: /cerrar la caja/i }));
     expect(await screen.findByText(/el corte está en el historial/i)).toBeTruthy();
   });

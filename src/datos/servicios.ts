@@ -24,6 +24,9 @@
 import type { Fecha } from '@neron/base/utils';
 import { supabase } from '../supabase.js';
 import { aBase, deBase, reventar } from './fechas-de-la-base.js';
+import {
+  numero, numeroONulo, texto, opcional, lista, objeto, centavos,
+} from './lo-que-llega-de-la-base.js';
 // Las categorias las comparten Servicios y Cursos, asi que viven aparte. Se
 // re-exportan para que quien ya las pedia aqui las siga encontrando.
 export {
@@ -56,6 +59,14 @@ export interface ServicioEnLista {
   readonly enPromocion: boolean;
   readonly activo: boolean;
   readonly color: string | null;
+  /**
+   * LOS MINUTOS QUE LA SALA SIGUE OCUPADA, ya con la herencia resuelta.
+   *
+   * La lista enseña lo que VA A PASAR en la agenda, no lo que esta escrito en
+   * la fila: si el servicio no dice nada, aqui llega lo de su categoria.
+   */
+  readonly preparacionAntesMin: number;
+  readonly preparacionDespuesMin: number;
 }
 
 export interface PaginaDeServicios {
@@ -96,6 +107,20 @@ export interface FichaDeServicio {
   readonly color: string | null;
   readonly requierePreparacion: boolean;
   readonly preparacion: string | null;
+  /**
+   * LO ESCRITO EN EL SERVICIO. `null` es "lo que diga mi categoria", NO cero.
+   *
+   * Hacen falta los cuatro numeros y no dos: sin el par "efectiva" el
+   * formulario no puede enseñar que va a pasar de verdad, y sin el par de
+   * arriba no puede distinguir "no lo he puesto" de "lo puse en cero a
+   * proposito" — que son cosas distintas.
+   */
+  readonly preparacionAntesMin: number | null;
+  readonly preparacionDespuesMin: number | null;
+  readonly efectivaAntesMin: number;
+  readonly efectivaDespuesMin: number;
+  readonly categoriaAntesMin: number | null;
+  readonly categoriaDespuesMin: number | null;
   readonly diasDisponibles: string | null;
   readonly horaDesde: string | null;
   readonly horaHasta: string | null;
@@ -133,6 +158,9 @@ export interface DatosDeServicio {
   readonly color: string;
   readonly requierePreparacion: boolean;
   readonly preparacion: string;
+  /** Vacio = hereda de la categoria. Un cero escrito es un cero de verdad. */
+  readonly preparacionAntesMin: number | null;
+  readonly preparacionDespuesMin: number | null;
   readonly notas: string;
   readonly diasDisponibles: string;
   readonly horaDesde: string;
@@ -143,17 +171,6 @@ export interface DatosDeServicio {
 /* ------------------------------------------------------------------ */
 /* Ordenar lo que contesta el servidor                                 */
 /* ------------------------------------------------------------------ */
-
-const numero = (v: unknown): number => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-};
-const texto = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
-const opcional = (v: unknown): string | null =>
-  v === null || v === undefined || v === '' ? null : String(v);
-const lista = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
-const objeto = (v: unknown): Record<string, unknown> | null =>
-  v && typeof v === 'object' ? (v as Record<string, unknown>) : null;
 
 export const RESUMEN_DE_SERVICIOS_VACIO: ResumenDeServicios = {
   total: 0,
@@ -188,11 +205,13 @@ export function ordenarServicio(crudo: unknown): ServicioEnLista {
     categoria: opcional(s['categoria']),
     categoriaColor: opcional(s['categoriaColor']),
     duracionMin: numero(s['duracionMin']),
-    precioCentavos: numero(s['precioCentavos']),
-    precioHoyCentavos: numero(s['precioHoyCentavos']),
+    precioCentavos: centavos(s['precioCentavos']),
+    precioHoyCentavos: centavos(s['precioHoyCentavos']),
     enPromocion: Boolean(s['enPromocion']),
     activo: Boolean(s['activo']),
     color: opcional(s['color']),
+    preparacionAntesMin: numero(s['preparacionAntesMin']),
+    preparacionDespuesMin: numero(s['preparacionDespuesMin']),
   };
 }
 
@@ -273,17 +292,23 @@ export async function traerFichaDeServicio(servicioId: string): Promise<FichaDeS
     categoria: opcional(s['categoria']),
     categoriaColor: opcional(s['categoriaColor']),
     duracionMin: numero(s['duracionMin']),
-    precioCentavos: numero(s['precioCentavos']),
+    precioCentavos: centavos(s['precioCentavos']),
     precioPromocionalCentavos:
       s['precioPromocionalCentavos'] === null || s['precioPromocionalCentavos'] === undefined
         ? null
         : numero(s['precioPromocionalCentavos']),
     promocionDesde: s['promocionDesde'] ? deBase(s['promocionDesde']) : null,
     promocionHasta: s['promocionHasta'] ? deBase(s['promocionHasta']) : null,
-    precioHoyCentavos: numero(s['precioHoyCentavos']),
+    precioHoyCentavos: centavos(s['precioHoyCentavos']),
     color: opcional(s['color']),
     requierePreparacion: Boolean(s['requierePreparacion']),
     preparacion: opcional(s['preparacion']),
+    preparacionAntesMin: numeroONulo(s['preparacionAntesMin']),
+    preparacionDespuesMin: numeroONulo(s['preparacionDespuesMin']),
+    efectivaAntesMin: numero(s['efectivaAntesMin']),
+    efectivaDespuesMin: numero(s['efectivaDespuesMin']),
+    categoriaAntesMin: numeroONulo(s['categoriaAntesMin']),
+    categoriaDespuesMin: numeroONulo(s['categoriaDespuesMin']),
     diasDisponibles: opcional(s['diasDisponibles']),
     horaDesde: s['horaDesde'] ? texto(s['horaDesde']).slice(0, 5) : null,
     horaHasta: s['horaHasta'] ? texto(s['horaHasta']).slice(0, 5) : null,
@@ -329,6 +354,8 @@ export async function guardarServicio(
     p_color: datos.color || null,
     p_requiere_preparacion: datos.requierePreparacion,
     p_preparacion: datos.preparacion.trim() || null,
+    p_preparacion_antes: datos.preparacionAntesMin,
+    p_preparacion_despues: datos.preparacionDespuesMin,
     p_notas: datos.notas.trim() || null,
     p_dias: datos.diasDisponibles || null,
     p_hora_desde: datos.horaDesde || null,
@@ -362,6 +389,8 @@ export async function cambiarEstadoDeServicio(
     color: ficha.color ?? '',
     requierePreparacion: ficha.requierePreparacion,
     preparacion: ficha.preparacion ?? '',
+    preparacionAntesMin: ficha.preparacionAntesMin,
+    preparacionDespuesMin: ficha.preparacionDespuesMin,
     notas: ficha.notas ?? '',
     diasDisponibles: ficha.diasDisponibles ?? '',
     horaDesde: ficha.horaDesde ?? '',

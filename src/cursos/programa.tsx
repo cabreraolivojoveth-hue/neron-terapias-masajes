@@ -80,6 +80,9 @@ export function fichaAFormularioDeCurso(f: FichaDeCurso): DatosDeCurso {
     lugar: f.lugar ?? '',
     enlace: f.enlace ?? '',
     imagenUrl: f.imagenUrl ?? '',
+    // Vuelve el IDENTIFICADOR, que el campo tambien entiende: asi reabrir un
+    // curso y guardarlo sin tocar nada no pierde el video.
+    videoUrl: f.videoYoutube ?? '',
     notas: f.notas ?? '',
     activo: f.activo,
   };

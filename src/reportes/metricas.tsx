@@ -20,6 +20,7 @@ import { formatearDinero } from '../datos/moneda.js';
 import type { Categoria } from '../marca.js';
 import type { Reporte } from '../datos/reportes.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
+import { claseDeCifra } from './cifras-que-caben.js';
 import { compararConAntes } from './periodo-del-reporte.js';
 
 export interface CifraDelReporte {
@@ -112,8 +113,11 @@ export function MetricasDelReporte({ reporte }: { readonly reporte: Reporte | nu
           </span>
           <span className="pz-cifra__texto">
             <span className="pz-cifra__etiqueta">{c.etiqueta}</span>
+            {/* EL TAMAÑO SALE DEL LARGO DEL TEXTO. Escrito para una sola
+                longitud, "$1,500,000.00" se sale de la tarjeta — y el centro
+                que hoy factura cuarenta mil factura eso el año que viene. */}
             <span
-              className="pz-cifra__valor"
+              className={`pz-cifra__valor ${claseDeCifra(c.valor)}`}
               aria-busy={c.cargando ? 'true' : undefined}
               aria-label={c.cargando ? `${c.etiqueta}: cargando` : undefined}
             >

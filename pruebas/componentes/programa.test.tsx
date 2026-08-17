@@ -121,7 +121,7 @@ const FILA = {
   instructorId: null, instructor: null,
   fechaInicio: '15/07/2026', fechaFin: '16/07/2026', sesiones: 2,
   precioCentavos: 250000, cupo: 12, ocupados: 8,
-  modalidad: 'presencial', imagenUrl: null, vida: 'proximo', activo: true,
+  modalidad: 'presencial', imagenUrl: null, videoYoutube: null, vida: 'proximo', activo: true,
 };
 
 const FICHA: FichaDeCurso = {
@@ -131,7 +131,7 @@ const FICHA: FichaDeCurso = {
   instructorId: null, instructor: null,
   fechaInicio: '15/07/2026', fechaFin: '16/07/2026', precioCentavos: 250000,
   cupo: 12, ocupados: 8, enEspera: 0,
-  modalidad: 'presencial', lugar: 'Sala', enlace: null, imagenUrl: null,
+  modalidad: 'presencial', lugar: 'Sala', enlace: null, imagenUrl: null, videoYoutube: null,
   estado: 'programado', activo: true, vida: 'proximo',
   alumnos: [], sesiones: [], material: [],
 };

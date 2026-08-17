@@ -20,6 +20,7 @@ import { aCentavos, aPesos } from '@neron/base/utils';
 import { useState, type FormEvent } from 'react';
 import type { Categoria } from '../datos/categorias.js';
 import type { DatosDeCurso, Modalidad } from '../datos/cursos.js';
+import { direccionDelReproductor, elVideoSirve, identificadorDeYoutube } from './video.js';
 
 export type ErroresDeCurso = Partial<Record<keyof DatosDeCurso, string>>;
 
@@ -43,6 +44,7 @@ export const CURSO_VACIO: DatosDeCurso = {
   lugar: '',
   enlace: '',
   imagenUrl: '',
+  videoUrl: '',
   notas: '',
   activo: true,
 };
@@ -85,6 +87,17 @@ export function validarCurso(d: DatosDeCurso): ErroresDeCurso {
 
   if (necesitaEnlace(d.modalidad) && !d.enlace.trim()) {
     e.enlace = 'Un curso en línea necesita el enlace de conexión.';
+  }
+
+  /*
+   * UN ENLACE QUE NO SE RECONOCE SE DICE AQUI, no se guarda en silencio.
+   *
+   * La base lo rechaza igual —la validacion de verdad esta alla—, pero su
+   * error llega cuando ya se apreto Guardar y con veinte campos capturados
+   * detras. Vacio SI vale: es quitar el video.
+   */
+  if (!elVideoSirve(d.videoUrl)) {
+    e.videoUrl = 'No reconocemos ese enlace de YouTube. Pega la dirección del video.';
   }
 
   return e;
@@ -310,6 +323,45 @@ export function FormularioDeCurso({
               maxLength={500}
               ayuda="La dirección de una imagen. Sin ella se usa un icono neutro."
             />
+
+            {/*
+              EL VIDEO DE PRESENTACION.
+
+              Se acepta el enlace en cualquiera de sus formas —el de la barra,
+              el de compartir, el de insertar, los verticales— y lo que se
+              guarda es el identificador. La vista previa aparece en cuanto el
+              enlace se reconoce: sin ella, saber si te equivocaste de video
+              obligaba a guardar, salir, abrir la ficha y mirar.
+            */}
+            <Campo
+              etiqueta="Video de presentación"
+              value={v.videoUrl}
+              onChange={(e) => poner('videoUrl', e.target.value)}
+              maxLength={500}
+              {...(errores.videoUrl ? { error: errores.videoUrl } : {})}
+              ayuda="Pega el enlace de YouTube. Se muestra en la ficha del curso."
+            />
+            {identificadorDeYoutube(v.videoUrl) ? (
+              <div className="cur-video">
+                <iframe
+                  className="cur-video__marco"
+                  src={direccionDelReproductor(identificadorDeYoutube(v.videoUrl)!)}
+                  title="Vista previa del video de presentación"
+                  loading="lazy"
+                  /*
+                   * EL PERMISO MAS CORTO QUE DEJA VER UN VIDEO.
+                   *
+                   * `allow` no dice lo que el marco PUEDE hacer sino lo unico
+                   * que se le concede: sin esta lista, un `iframe` hereda
+                   * camara, microfono y ubicacion de la pagina que lo mete.
+                   * Aqui hace falta la pantalla completa y poco mas.
+                   */
+                  allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                  referrerPolicy="strict-origin-when-cross-origin"
+                />
+              </div>
+            ) : null}
 
             <AreaDeTexto
               etiqueta="Notas internas"

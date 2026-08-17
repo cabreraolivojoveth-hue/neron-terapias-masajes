@@ -24,6 +24,7 @@
 import type { Fecha } from '@neron/base/utils';
 import { supabase } from '../supabase.js';
 import { aBase, deBase, reventar } from './fechas-de-la-base.js';
+import { numero, texto, opcional, lista, objeto, centavos, centavosONulos } from './lo-que-llega-de-la-base.js';
 import { PREFIJO_DE_INICIO } from './tablero.js';
 
 /* ------------------------------------------------------------------ */
@@ -246,19 +247,6 @@ export function centavosDeLoEscrito(texto: string): number {
 /* Ordenar lo que contesta el servidor                                 */
 /* ------------------------------------------------------------------ */
 
-const numero = (v: unknown): number => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-};
-const texto = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
-const opcional = (v: unknown): string | null =>
-  v === null || v === undefined || v === '' ? null : String(v);
-const lista = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
-const objeto = (v: unknown): Record<string, unknown> | null =>
-  v && typeof v === 'object' ? (v as Record<string, unknown>) : null;
-const numeroONulo = (v: unknown): number | null =>
-  v === null || v === undefined ? null : numero(v);
-
 export function ordenarCaja(crudo: unknown): CajaAbierta | null {
   const c = objeto(crudo);
   if (!c || !c['id']) return null;
@@ -266,15 +254,15 @@ export function ordenarCaja(crudo: unknown): CajaAbierta | null {
     id: texto(c['id']),
     nombre: texto(c['nombre']),
     estado: (texto(c['estado']) || 'abierta') as 'abierta' | 'cerrada',
-    saldoInicialCentavos: numero(c['saldoInicialCentavos']),
+    saldoInicialCentavos: centavos(c['saldoInicialCentavos']),
     abiertaEn: texto(c['abiertaEn']),
     abiertaPor: opcional(c['abiertaPor']),
     observaciones: opcional(c['observaciones']),
-    ingresosCentavos: numero(c['ingresosCentavos']),
-    egresosCentavos: numero(c['egresosCentavos']),
-    efectivoEntroCentavos: numero(c['efectivoEntroCentavos']),
-    efectivoSalioCentavos: numero(c['efectivoSalioCentavos']),
-    efectivoEsperadoCentavos: numero(c['efectivoEsperadoCentavos']),
+    ingresosCentavos: centavos(c['ingresosCentavos']),
+    egresosCentavos: centavos(c['egresosCentavos']),
+    efectivoEntroCentavos: centavos(c['efectivoEntroCentavos']),
+    efectivoSalioCentavos: centavos(c['efectivoSalioCentavos']),
+    efectivoEsperadoCentavos: centavos(c['efectivoEsperadoCentavos']),
     movimientos: numero(c['movimientos']),
   };
 }
@@ -290,7 +278,7 @@ export function ordenarMovimiento(crudo: unknown): MovimientoDeCaja {
     concepto: texto(m['concepto']),
     metodo: (texto(m['metodo']) || 'efectivo') as MetodoDeCaja,
     categoria: opcional(m['categoria']),
-    montoCentavos: numero(m['montoCentavos']),
+    montoCentavos: centavos(m['montoCentavos']),
     usuario: opcional(m['usuario']),
     notas: opcional(m['notas']),
     ventaId: opcional(m['ventaId']),
@@ -310,12 +298,12 @@ export function ordenarResumenDeCaja(crudo: unknown): ResumenDeCaja {
   const r = objeto(crudo);
   if (!r) return RESUMEN_DE_CAJA_VACIO;
   return {
-    totalEntradasCentavos: numero(r['totalEntradasCentavos']),
+    totalEntradasCentavos: centavos(r['totalEntradasCentavos']),
     metodos: lista(r['metodos']).map((m) => {
       const x = objeto(m) ?? {};
       return {
         metodo: (texto(x['metodo']) || 'efectivo') as MetodoDeCaja,
-        centavos: numero(x['centavos']),
+        centavos: centavos(x['centavos']),
         movimientos: numero(x['movimientos']),
       };
     }),
@@ -324,11 +312,11 @@ export function ordenarResumenDeCaja(crudo: unknown): ResumenDeCaja {
       return {
         clase: (texto(x['clase']) || 'ingreso') as ClaseDeMovimiento,
         movimientos: numero(x['movimientos']),
-        centavos: numero(x['centavos']),
+        centavos: centavos(x['centavos']),
       };
     }),
     movimientos: numero(r['movimientos']),
-    netoCentavos: numero(r['netoCentavos']),
+    netoCentavos: centavos(r['netoCentavos']),
   };
 }
 
@@ -342,14 +330,14 @@ export function ordenarCajaDelHistorial(crudo: unknown): CajaDelHistorial {
     cerradaEn: opcional(c['cerradaEn']),
     abiertaPor: opcional(c['abiertaPor']),
     cerradaPor: opcional(c['cerradaPor']),
-    saldoInicialCentavos: numero(c['saldoInicialCentavos']),
-    ingresosCentavos: numero(c['ingresosCentavos']),
-    egresosCentavos: numero(c['egresosCentavos']),
-    esperadoCentavos: numero(c['esperadoCentavos']),
+    saldoInicialCentavos: centavos(c['saldoInicialCentavos']),
+    ingresosCentavos: centavos(c['ingresosCentavos']),
+    egresosCentavos: centavos(c['egresosCentavos']),
+    esperadoCentavos: centavos(c['esperadoCentavos']),
     // Se CONSERVA el nulo: una caja abierta todavia no se conto, y cero seria
     // decir que se conto y estaba vacia.
-    contadoCentavos: numeroONulo(c['contadoCentavos']),
-    diferenciaCentavos: numeroONulo(c['diferenciaCentavos']),
+    contadoCentavos: centavosONulos(c['contadoCentavos']),
+    diferenciaCentavos: centavosONulos(c['diferenciaCentavos']),
     movimientos: numero(c['movimientos']),
     observaciones: opcional(c['observaciones']),
     notasCierre: opcional(c['notasCierre']),
@@ -370,14 +358,14 @@ export function ordenarReporteDeCaja(crudo: unknown): ReporteDeCaja {
   const r = objeto(crudo);
   if (!r) return REPORTE_DE_CAJA_VACIO;
   return {
-    ingresosCentavos: numero(r['ingresosCentavos']),
-    egresosCentavos: numero(r['egresosCentavos']),
+    ingresosCentavos: centavos(r['ingresosCentavos']),
+    egresosCentavos: centavos(r['egresosCentavos']),
     movimientos: numero(r['movimientos']),
     porMetodo: lista(r['porMetodo']).map((m) => {
       const x = objeto(m) ?? {};
       return {
         metodo: (texto(x['metodo']) || 'efectivo') as MetodoDeCaja,
-        centavos: numero(x['centavos']),
+        centavos: centavos(x['centavos']),
         movimientos: numero(x['movimientos']),
       };
     }),
@@ -386,14 +374,14 @@ export function ordenarReporteDeCaja(crudo: unknown): ReporteDeCaja {
       return {
         clase: (texto(x['clase']) || 'ingreso') as ClaseDeMovimiento,
         movimientos: numero(x['movimientos']),
-        centavos: numero(x['centavos']),
+        centavos: centavos(x['centavos']),
       };
     }),
     porUsuario: lista(r['porUsuario']).map((u) => {
       const x = objeto(u) ?? {};
       return {
         usuario: texto(x['usuario']),
-        centavos: numero(x['centavos']),
+        centavos: centavos(x['centavos']),
         movimientos: numero(x['movimientos']),
       };
     }),
@@ -403,9 +391,9 @@ export function ordenarReporteDeCaja(crudo: unknown): ReporteDeCaja {
         id: texto(x['id']),
         nombre: texto(x['nombre']),
         cerradaEn: opcional(x['cerradaEn']),
-        esperadoCentavos: numeroONulo(x['esperadoCentavos']),
-        contadoCentavos: numeroONulo(x['contadoCentavos']),
-        diferenciaCentavos: numeroONulo(x['diferenciaCentavos']),
+        esperadoCentavos: centavosONulos(x['esperadoCentavos']),
+        contadoCentavos: centavosONulos(x['contadoCentavos']),
+        diferenciaCentavos: centavosONulos(x['diferenciaCentavos']),
       };
     }),
   };

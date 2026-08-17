@@ -50,6 +50,10 @@ export const SERVICIO_VACIO: DatosDeServicio = {
   color: '',
   requierePreparacion: false,
   preparacion: '',
+  // NULO Y NO CERO: un servicio nuevo hereda lo de su categoria mientras nadie
+  // escriba nada. Nacer en cero seria desobedecerla sin que nadie lo pidiera.
+  preparacionAntesMin: null,
+  preparacionDespuesMin: null,
   notas: '',
   diasDisponibles: '',
   horaDesde: '',
@@ -104,7 +108,61 @@ export function validarServicio(d: DatosDeServicio): ErroresDeServicio {
     e.preparacion = 'Si requiere preparación, escribe en qué consiste.';
   }
 
+  /*
+   * EL TOPE DE CUATRO HORAS ATRAPA EL CERO DE MAS.
+   *
+   * "150" en vez de "15" convierte un servicio de una hora en un bloque de dos
+   * y media, y lo que se ve despues es una agenda sin huecos sin ninguna pista
+   * de por que. La base lo rechaza igual; aqui se dice antes y mejor.
+   */
+  for (const [campo, valor] of [
+    ['preparacionAntesMin', d.preparacionAntesMin],
+    ['preparacionDespuesMin', d.preparacionDespuesMin],
+  ] as const) {
+    if (valor === null) continue;
+    if (!Number.isFinite(valor) || valor < 0) {
+      e[campo] = 'No puede ser negativo. Déjalo vacío para heredar la categoría.';
+    } else if (valor > 240) {
+      e[campo] = 'Son minutos: como mucho 240. ¿Escribiste un cero de más?';
+    }
+  }
+
   return e;
+}
+
+/**
+ * Lo escrito en el campo → minutos, o `null` para heredar.
+ *
+ * VACIO ES HEREDAR, no cero. Es toda la diferencia entre "sigo a mi categoria"
+ * y "yo no llevo preparacion aunque mi categoria si" — y las dos hacen falta.
+ */
+export function minutosOHereda(escrito: string): number | null {
+  const limpio = escrito.trim();
+  if (limpio === '') return null;
+  const n = Number(limpio);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+}
+
+/**
+ * EL RESULTADO, EN PALABRAS: cuanto ocupa la sala de verdad.
+ *
+ * Sin esta linea hay que sumar de cabeza tres campos para saber que va a
+ * bloquear la agenda, y ese es justo el calculo que nadie hace antes de
+ * guardar. Cuando los dos estan vacios no se afirma nada de la categoria: esta
+ * pantalla no la tiene cargada, y decir "heredarás 15" sin saberlo seria peor
+ * que no decir nada.
+ */
+export function leerElBloqueo(d: DatosDeServicio): string {
+  const antes = d.preparacionAntesMin;
+  const despues = d.preparacionDespuesMin;
+  if (antes === null && despues === null) {
+    return 'Sin minutos propios: se usan los de la categoría, o ninguno si no tiene.';
+  }
+  const total = d.duracionMin + (antes ?? 0) + (despues ?? 0);
+  const partes = [`${d.duracionMin} min de sesión`];
+  if (antes) partes.push(`${antes} antes`);
+  if (despues) partes.push(`${despues} después`);
+  return `La agenda bloquea ${total} minutos: ${partes.join(' + ')}.`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -253,6 +311,48 @@ export function FormularioDeServicio({
             opciones={DURACIONES.map((d) => ({ valor: String(d), texto: `${d} minutos` }))}
           />
         </div>
+
+        {/*
+          LA PREPARACION VA JUNTO A LA DURACION, y no plegada con lo opcional.
+
+          Es lo que bloquea agenda de verdad: un masaje con piedras de una hora
+          con quince minutos de limpieza ocupa hora y cuarto, y hasta ahora el
+          sistema ofrecia la hora siguiente como libre. Escondida detras de
+          "Información adicional" nadie la pone, y el problema se queda.
+
+          VACIO NO ES CERO. Vacio significa "lo que diga mi categoria"; un cero
+          escrito es "ninguno, y lo digo yo". Por eso el campo puede quedarse en
+          blanco y por eso debajo se dice cuanto se va a bloquear al final.
+        */}
+        <div className="pz-dos">
+          <Campo
+            etiqueta="Preparación antes"
+            type="number"
+            min={0}
+            max={240}
+            value={v.preparacionAntesMin === null ? '' : String(v.preparacionAntesMin)}
+            onChange={(e) => poner('preparacionAntesMin', minutosOHereda(e.target.value))}
+            {...(errores.preparacionAntesMin ? { error: errores.preparacionAntesMin } : {})}
+            ayuda="Minutos para acomodar antes. Vacío hereda de la categoría."
+          />
+          <Campo
+            etiqueta="Preparación después"
+            type="number"
+            min={0}
+            max={240}
+            value={v.preparacionDespuesMin === null ? '' : String(v.preparacionDespuesMin)}
+            onChange={(e) => poner('preparacionDespuesMin', minutosOHereda(e.target.value))}
+            {...(errores.preparacionDespuesMin ? { error: errores.preparacionDespuesMin } : {})}
+            ayuda="Minutos para limpiar y preparar después."
+          />
+        </div>
+
+        {/* SE DICE EL RESULTADO, no solo los ingredientes. Quien pone "15" en
+            un servicio de 60 minutos necesita leer que la sala queda ocupada 75
+            — que es lo que la agenda va a bloquear de verdad. */}
+        <p className="srv-bloqueo" role="status">
+          {leerElBloqueo(v)}
+        </p>
 
         <div className="pz-dos">
           <Campo

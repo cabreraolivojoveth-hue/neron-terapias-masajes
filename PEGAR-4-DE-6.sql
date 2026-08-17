@@ -1,5 +1,5 @@
 -- =====================================================================
--- PARTE 2 DE 3 — pegar en Supabase -> SQL Editor -> Run
+-- PARTE 4 DE 6 — pegar en Supabase -> SQL Editor -> Run
 -- =====================================================================
 --
 -- Proyecto: hgypobbanvkwnqmepqim (neron-terapias). MIRA EL REF EN LA BARRA
@@ -11,8 +11,65 @@
 -- Es seguro correrla las veces que haga falta: todo va con `if not exists`
 -- o `create or replace`.
 --
--- CUANDO ESTA DIGA "Success", SIGUE CON LA PARTE 3.
+-- CUANDO ESTA DIGA "Success", SIGUE CON LA PARTE 5.
 --
+-- ---------------------------------------------------------------------
+-- UN GASTO DE DEMOSTRACION, CON SU RASTRO EN CAJA
+-- ---------------------------------------------------------------------
+--
+-- SE INSERTA EN `gasto` Y NO SE TOCA LA CAJA A MANO: el disparador
+-- `app.gasto_a_caja` es el unico que escribe el movimiento, y se deja que lo
+-- haga. Escribirlo aqui seria una segunda via que el dia que el disparador
+-- cambie dejaria la demostracion contando el dinero de otra forma que el
+-- sistema de verdad — que es exactamente lo que una demostracion no puede
+-- permitirse.
+--
+-- Lo unico que hace falta despues es ANOTAR los movimientos que nacieron del
+-- gasto, para que quitar la demostracion se los lleve tambien.
+create or replace function app.demo_gasto(
+  p_negocio     text,
+  p_descripcion text,
+  p_detalle     text,
+  p_categoria   text,
+  p_monto       bigint,
+  p_metodo      text,
+  p_fecha       date,
+  p_recurrente  uuid,
+  p_periodo     text,
+  p_quien       uuid
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_id uuid;
+begin
+  insert into gasto (negocio_id, descripcion, detalle, categoria, categoria_id,
+                     monto_centavos, metodo, efectivo_centavos, fecha,
+                     recurrente_id, periodo, creado_por, creado_en)
+  values (p_negocio, p_descripcion, p_detalle, 'general',
+          (select c.id from categoria c
+            where c.negocio_id = p_negocio and c.ambito = 'gasto' and c.nombre = p_categoria),
+          p_monto, p_metodo,
+          case when p_metodo = 'efectivo' then p_monto else 0 end,
+          p_fecha, p_recurrente, p_periodo, p_quien,
+          p_fecha::timestamp + time '18:30')
+  returning id into v_id;
+
+  perform app.demo_anotar(p_negocio, 'gasto', v_id);
+
+  insert into dato_de_demostracion (negocio_id, tabla, fila_id)
+  select p_negocio, 'movimiento_caja', mc.id
+    from movimiento_caja mc
+   where mc.negocio_id = p_negocio and mc.origen = 'gasto' and mc.referencia_id = v_id
+  on conflict do nothing;
+
+  return v_id;
+end;
+$$;
+
 -- ---------------------------------------------------------------------
 -- UNA ANOTACION EN LA BITACORA, CON SU FECHA DE VERDAD
 -- ---------------------------------------------------------------------

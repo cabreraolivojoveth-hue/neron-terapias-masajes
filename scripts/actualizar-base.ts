@@ -105,7 +105,51 @@ const DESDE = '-- DATOS DE DEMOSTRACION — CINCO MESES DE USO, PARA ENSEÑAR EL
  * Sin sacarla por aqui, el arreglo no llegaria a la base y Gastos seguiria
  * cayendose con datos de verdad dentro.
  */
-const ADEMAS: string[] = ['public.resumen_de_gastos'];
+/*
+ * `resumen_de_gastos` VIAJA AQUI PORQUE TIRABA LA PANTALLA DE GASTOS.
+ *
+ * Vive en el bloque 7, muy por encima de la frontera, y aun asi cambio: su
+ * promedio diario salia con decimales —`sum()` de un bigint devuelve numeric—
+ * y la guardia de la base rechaza cualquier dinero que no sea un entero de
+ * centavos. Sin sacarla por aqui, el arreglo no llegaria a la base.
+ *
+ * Y LAS OCHO DEL BLOQUE 12 VIAJAN POR LO MISMO. Todas viven antes de la
+ * frontera y todas cambiaron: unas para devolver columnas nuevas —el bloqueo
+ * de la cita, el video del curso, la preparacion del servicio— y dos porque
+ * les cambio la FIRMA. A esas dos las precede un `drop function` que va en la
+ * region marcada del instalador: Postgres no sustituye una funcion cuando
+ * cambia su lista de argumentos, crea otra con el mismo nombre, y con dos
+ * PostgREST deja de saber a cual llamar.
+ */
+const ADEMAS: string[] = [
+  'public.resumen_de_gastos',
+  'app.cita_hora_fin',
+  'public.citas_del_rango',
+  'public.servicios_del_centro',
+  'public.ficha_del_servicio',
+  'public.guardar_servicio',
+  'public.cursos_del_centro',
+  'public.ficha_del_curso',
+  'public.guardar_curso',
+];
+
+/**
+ * LAS REGIONES MARCADAS: lo que vive antes de la frontera y hay que llevarse
+ * IGUAL, aunque no sea una funcion.
+ *
+ * POR QUE HIZO FALTA: el bloque 12 agrega columnas —`cita.bloqueo_inicio`,
+ * `venta.cita_id`, `curso.video_youtube`— y dos ayudantes de `app`. Todo eso
+ * tiene que existir ANTES que las funciones que lo usan, porque a las
+ * `language sql` Postgres si les valida el cuerpo al crearlas. Ponerlo al
+ * final del instalador tumbaba la instalacion mil lineas antes de llegar ahi,
+ * con un error que hablaba de una funcion que no existe y no del orden.
+ *
+ * Asi que vive arriba, en su sitio, y se marca para que el actualizador se lo
+ * lleve. La alternativa era escribirlo dos veces — y escribir dos veces la
+ * misma columna es como se desincronizan el instalador y el actualizador.
+ */
+const ABRE_REGION = '-- >>> LLEVAR AL ACTUALIZADOR';
+const CIERRA_REGION = '-- <<< LLEVAR AL ACTUALIZADOR';
 
 const CABECERA = `-- =====================================================================
 -- ACTUALIZAR-BASE.sql — SOLO LO NUEVO
@@ -188,17 +232,53 @@ function funcionSuelta(nombre: string): string[] {
   return lineas.slice(arranque, cierre + 1);
 }
 
+/** Todo lo que este entre las dos marcas, en el orden del instalador. */
+function regionesMarcadas(): string[] {
+  const salida: string[] = [];
+  let dentro = false;
+  for (const l of lineas) {
+    if (l.trim() === ABRE_REGION) { dentro = true; continue; }
+    if (l.trim() === CIERRA_REGION) { dentro = false; salida.push(''); continue; }
+    if (dentro) salida.push(l);
+  }
+  if (dentro) {
+    console.error(`  Una region abierta con "${ABRE_REGION}" no se cierra.`);
+    console.error('  Sin el cierre, el archivo saldria con medio instalador dentro.');
+    process.exit(1);
+  }
+  return salida;
+}
+
+const regiones = regionesMarcadas();
+
 const extras = ADEMAS.length === 0 ? [] : [
   '-- =====================================================================',
   '-- CORRECCIONES A LO QUE YA HABIAS CORRIDO',
   '-- =====================================================================',
   '--',
   '-- Son `create or replace`: se pueden correr encima de las que ya existen.',
+  '-- Van DESPUES de las columnas de arriba porque varias las usan.',
   '',
   ...ADEMAS.flatMap((n) => [...funcionSuelta(n), '']),
 ];
 
-const salida = [...CABECERA.split('\n'), ...extras, ...lineas.slice(desde)];
+/*
+ * EL ORDEN NO ES DECORATIVO, y cambio el 17/08/2026.
+ *
+ * Antes las correcciones iban las primeras. Dejaron de poder ir: ahora varias
+ * leen columnas que nacen en las regiones marcadas —`cita.bloqueo_inicio`,
+ * `venta.cita_id`, `curso.video_youtube`— y a las funciones `language sql`
+ * Postgres si les valida el cuerpo al crearlas. Puestas delante, el archivo
+ * moria en la primera con "column does not exist".
+ *
+ * Columnas y ayudantes → correcciones → lo nuevo desde la frontera.
+ */
+const salida = [
+  ...CABECERA.split('\n'),
+  ...regiones,
+  ...extras,
+  ...lineas.slice(desde),
+];
 writeFileSync(join(RAIZ, 'ACTUALIZAR-BASE.sql'), salida.join(fin));
 
 console.log(`  ACTUALIZAR-BASE.sql regenerado: ${salida.length} lineas`);

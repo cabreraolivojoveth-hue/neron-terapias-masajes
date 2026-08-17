@@ -15,6 +15,7 @@ const CITA: CitaEnAgenda = {
   notas: null, clienteId: 'c1', cliente: 'Paciente Uno', clienteTelefono: '6461234567',
   clienteCorreo: 'uno@correo.mx', servicioId: 's1', servicio: 'Sesión', servicioMinutos: 60,
   servicioPrecio: 80000, profesionalId: 'p1', profesional: 'Terapeuta A',
+  preparacionAntesMin: 0, preparacionDespuesMin: 0, ventaId: null,
 };
 
 const HISTORIAL: Historial = {
@@ -29,6 +30,7 @@ const pintar = (props: Record<string, unknown> = {}) =>
       cita={CITA} historial={HISTORIAL} cargandoHistorial={false} puedeGestionar
       onEditar={vi.fn()} onReagendar={vi.fn()} onCambiarEstado={vi.fn()}
       onEnviarMensaje={vi.fn()} onVerCurso={vi.fn()} onCerrar={vi.fn()}
+      onCobrar={vi.fn()} onVerLaVenta={vi.fn()} onAhoraNo={vi.fn()}
       {...props}
     />,
   );

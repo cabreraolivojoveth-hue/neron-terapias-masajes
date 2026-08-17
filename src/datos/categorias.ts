@@ -12,10 +12,7 @@
 
 import { supabase } from '../supabase.js';
 import { reventar } from './fechas-de-la-base.js';
-
-const texto = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
-const opcional = (v: unknown): string | null =>
-  v === null || v === undefined || v === '' ? null : String(v);
+import { numeroONulo, opcional, texto } from './lo-que-llega-de-la-base.js';
 
 /**
  * A que catalogo pertenece una categoria.
@@ -43,6 +40,19 @@ export interface Categoria {
   readonly activo: boolean;
   /** Cuantos servicios o cursos la usan. Se cuenta, no se guarda. */
   readonly enUso: number;
+  /**
+   * LOS MINUTOS DE PREPARACION POR OMISION DE SUS SERVICIOS.
+   *
+   * Es donde de verdad se parecen: todos los masajes necesitan mas limpieza
+   * que todas las lecturas. `null` = la categoria no dice nada, y entonces sus
+   * servicios no heredan nada. Un servicio que escriba lo suyo manda sobre
+   * esto — la prioridad es SERVICIO, luego CATEGORIA, luego cero.
+   *
+   * Solo tiene sentido en el ambito `servicio`; en los otros cinco se queda en
+   * nulo y la pantalla no lo pregunta.
+   */
+  readonly preparacionAntesMin: number | null;
+  readonly preparacionDespuesMin: number | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -66,7 +76,7 @@ export async function traerCategorias(
   const bd = supabase();
   const { data, error } = await bd
     .from('categoria')
-    .select('id, nombre, descripcion, color, activo')
+    .select('id, nombre, descripcion, color, activo, preparacion_antes_min, preparacion_despues_min')
     .eq('negocio_id', negocio)
     .eq('ambito', ambito)
     .eq('eliminado', false)
@@ -99,6 +109,8 @@ export async function traerCategorias(
     color: opcional(c['color']),
     activo: Boolean(c['activo']),
     enUso: cuenta.get(texto(c['id'])) ?? 0,
+    preparacionAntesMin: numeroONulo(c['preparacion_antes_min']),
+    preparacionDespuesMin: numeroONulo(c['preparacion_despues_min']),
   }));
 }
 
@@ -107,6 +119,9 @@ export interface DatosDeCategoria {
   readonly descripcion: string;
   readonly color: string;
   readonly activo: boolean;
+  /** Solo del ambito `servicio`. Vacio = la categoria no impone nada. */
+  readonly preparacionAntesMin: number | null;
+  readonly preparacionDespuesMin: number | null;
 }
 
 export async function guardarCategoria(
@@ -120,6 +135,10 @@ export async function guardarCategoria(
     descripcion: datos.descripcion.trim() || null,
     color: datos.color.trim() || null,
     activo: datos.activo,
+    // NULO Y NO CERO: nulo es "no impongo nada" y cero seria "impongo que
+    // ninguno de mis servicios lleve preparacion". Son cosas distintas.
+    preparacion_antes_min: datos.preparacionAntesMin,
+    preparacion_despues_min: datos.preparacionDespuesMin,
   };
   const bd = supabase();
   const { error } = id

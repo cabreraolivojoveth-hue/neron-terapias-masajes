@@ -30,6 +30,30 @@ const PESTANAS: readonly { clave: Pestana; etiqueta: string }[] = [
 ];
 
 /**
+ * CUANTO OCUPA LA SALA DE VERDAD.
+ *
+ * Es la suma que nadie hace de cabeza y la que explica por que la agenda no
+ * ofrece la hora siguiente: un masaje de 60 minutos con 15 de limpieza ocupa
+ * 75, y ese es el numero que la restriccion de la base compara.
+ *
+ * Se usan los minutos EFECTIVOS —ya con la herencia de la categoria resuelta—
+ * porque es lo que de verdad va a pasar. Los escritos en el servicio solo
+ * sirven para decir, debajo, si vienen heredados.
+ */
+export function comoSeLeeElBloqueo(f: {
+  readonly duracionMin: number;
+  readonly efectivaAntesMin: number;
+  readonly efectivaDespuesMin: number;
+}): string {
+  const extra = f.efectivaAntesMin + f.efectivaDespuesMin;
+  if (extra === 0) return `${f.duracionMin} minutos, sin preparación`;
+  const partes: string[] = [];
+  if (f.efectivaAntesMin > 0) partes.push(`${f.efectivaAntesMin} antes`);
+  if (f.efectivaDespuesMin > 0) partes.push(`${f.efectivaDespuesMin} después`);
+  return `${f.duracionMin + extra} minutos: ${f.duracionMin} de sesión + ${partes.join(' + ')}`;
+}
+
+/**
  * Como se lee la disponibilidad.
  *
  * Sin dias marcados NO se inventa "Lunes a Domingo": se dice que sigue el
@@ -242,6 +266,17 @@ export function DetalleDeServicio({
 
               <Renglon icono="calendario" titulo="Disponibilidad">
                 {comoSeLeeLaDisponibilidad(ficha.diasDisponibles, ficha.horaDesde, ficha.horaHasta)}
+              </Renglon>
+
+              {/* LO QUE OCUPA DE VERDAD, que es lo que la agenda bloquea. Se
+                  dice el total y de donde sale: quien mira una agenda sin
+                  huecos necesita poder llegar hasta el numero que la aprieta. */}
+              <Renglon icono="reloj" titulo="Tiempo que bloquea la agenda">
+                {comoSeLeeElBloqueo(ficha)}
+                {ficha.preparacionAntesMin === null && ficha.preparacionDespuesMin === null
+                  && (ficha.efectivaAntesMin > 0 || ficha.efectivaDespuesMin > 0) ? (
+                  <div className="tt-secundario">Heredado de la categoría.</div>
+                ) : null}
               </Renglon>
 
               <Renglon icono="alerta" titulo="Requiere preparación">

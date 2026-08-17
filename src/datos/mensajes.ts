@@ -29,6 +29,10 @@
 import type { Fecha } from '@neron/base/utils';
 import { supabase } from '../supabase.js';
 import { aBase, reventar } from './fechas-de-la-base.js';
+/* `texto`, `opcional` y `objeto` se quedan locales: aqui exigen que el valor SEA
+   texto —un numero colado en el cuerpo de un mensaje se leeria como mensaje— y
+   `objeto` devuelve `{}` en vez de nulo. Contratos distintos, no copias. */
+import { numero, lista } from './lo-que-llega-de-la-base.js';
 import { PREFIJO_DE_INICIO } from './tablero.js';
 
 /* ------------------------------------------------------------------ */
@@ -217,7 +221,6 @@ export const BANDEJAS: ReadonlyArray<{ readonly clave: Bandeja; readonly etiquet
 /* Lo que llega del servidor, ordenado                                 */
 /* ------------------------------------------------------------------ */
 
-const numero = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const opcionalNumero = (v: unknown): number | null =>
   typeof v === 'number' && Number.isFinite(v) ? v : null;
 const texto = (v: unknown): string => (typeof v === 'string' ? v : '');
@@ -226,7 +229,6 @@ const opcional = (v: unknown): string | null =>
 const bandera = (v: unknown): boolean => v === true;
 const objeto = (v: unknown): Record<string, unknown> =>
   v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
-const lista = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 
 function ordenarEtiqueta(x: unknown): EtiquetaBreve {
   const y = objeto(x);

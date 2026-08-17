@@ -6,10 +6,20 @@
  * el esperado incluyera la tarjeta, el sistema pediría contar dinero que nunca
  * estuvo ahí y todos los cortes saldrían con un faltante inventado.
  *
- * EL NUMERO ESPERADO SE ENSEÑA ANTES DE PEDIR EL CONTEO, y a propósito: quien
- * ya vio la cifra objetivo tiende a "encontrar" justo esa cantidad. Por eso el
- * flujo es en dos pasos y el esperado no aparece hasta que el conteo ya está
- * escrito.
+ * LA DIFERENCIA SE CALCULA MIENTRAS SE ESCRIBE, y esto cambió el 17/08/2026.
+ *
+ * Antes había un tercer paso con un botón "Ver la diferencia": se escribía
+ * $8,000 sobre $850 esperados y había que apretar un botón para enterarse de
+ * que sobraban $7,150 — un error de tecleo que se descubría un paso tarde y con
+ * el formulario ya avanzado.
+ *
+ * Aquí había un argumento en contra que hay que dejar dicho, porque era bueno:
+ * quien ve la cifra objetivo antes de contar tiende a "encontrar" justo esa
+ * cantidad, y entonces el conteo no comprueba nada. Lo que pasa es que **ese
+ * argumento ya no se sostenía en esta pantalla**: el paso del resumen enseña
+ * "Efectivo esperado" en grande, y para llegar al conteo hay que pasar por ahí.
+ * El número ya estaba a la vista. Esconder la RESTA de un número que sí se
+ * enseña no protege de nada — solo cuesta un paso y un botón.
  *
  * UNA CAJA CERRADA NO SE REABRE. Lo impide la base, no esta pantalla: reabrir
  * un corte firmado para arreglar un faltante es exactamente lo que un registro
@@ -66,7 +76,7 @@ export function CorteDeCaja({
   onCerrarCaja,
   onCerrar,
 }: PropiedadesDelCorte) {
-  const [paso, setPaso] = useState<'resumen' | 'conteo' | 'confirmar'>('resumen');
+  const [paso, setPaso] = useState<'resumen' | 'conteo'>('resumen');
   const [contado, setContado] = useState('');
   const [notas, setNotas] = useState('');
 
@@ -74,6 +84,14 @@ export function CorteDeCaja({
   const contadoCentavos = centavosDeLoEscrito(contado);
   const diferencia = diferenciaDelCorte(contadoCentavos, esperado);
   const como = comoSeLeeLaDiferencia(diferencia);
+  /*
+   * CON EL CAMPO VACIO NO SE DICE NADA.
+   *
+   * Sin esto, abrir el conteo enseñaria de entrada "Faltan $1,650" —porque cero
+   * contra el esperado es un faltante completo—, y eso es una acusacion, no un
+   * calculo. El veredicto aparece con la primera cifra escrita.
+   */
+  const hayConteo = contado !== '';
 
   return (
     <Modal abierto={abierto} titulo={`Corte de ${caja.nombre}`} onCerrar={onCerrar}>
@@ -118,7 +136,7 @@ export function CorteDeCaja({
               </Boton>
             </div>
           </>
-        ) : paso === 'conteo' ? (
+        ) : (
           <>
             <Campo
               etiqueta="Efectivo contado"
@@ -131,90 +149,83 @@ export function CorteDeCaja({
               ayuda="Cuenta los billetes y las monedas del cajón y escribe el total."
             />
 
-            {/* EL ESPERADO NO SE ENSEÑA TODAVIA: ver la cifra objetivo antes de
-                contar hace que se "encuentre" justo esa cantidad. */}
-            <p className="tt-secundario">
-              Cuenta primero. El sistema te dice la diferencia después — así el conteo es de verdad.
-            </p>
+            {/*
+              EL VEREDICTO, MIENTRAS SE ESCRIBE.
+
+              Es el cambio del encargo: escribir $8,000 donde iban $850 se ve al
+              teclear el primer cero de mas, no un paso despues. No hay boton
+              que apretar y no hay nada que esperar — es la misma resta que ya
+              se hacia, hecha en el momento en que sirve.
+
+              `role="status"` y no `alert`: un lector de pantalla lo anuncia sin
+              interrumpir lo que se esta escribiendo. Con `alert`, cada tecla
+              cortaria a la anterior.
+            */}
+            {hayConteo ? (
+              <>
+                <div className={`caja-veredicto caja-veredicto--${como}`} role="status">
+                  <span className="caja-veredicto__marca" aria-hidden="true">
+                    <Icono
+                      nombre={como === 'cuadra' ? 'palomita' : como === 'sobra' ? 'mas' : 'alerta'}
+                      lado={26}
+                    />
+                  </span>
+                  <span className="caja-veredicto__texto">
+                    <span className="caja-veredicto__que">{tituloDelVeredicto(como)}</span>
+                    {como === 'cuadra' ? (
+                      <span className="tt-secundario">
+                        Lo que contaste es exactamente lo que se esperaba.
+                      </span>
+                    ) : (
+                      <>
+                        <span className="caja-veredicto__cuanto">
+                          {formatearDinero(Math.abs(diferencia))}
+                        </span>
+                        <span className="tt-secundario">
+                          Contaste {formatearDinero(contadoCentavos)} y se esperaban{' '}
+                          {formatearDinero(esperado)}.
+                        </span>
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                {/* El detalle queda, pero debajo y en pequeño: es la
+                    comprobacion de donde salio el veredicto, no la noticia. */}
+                <dl className="vta-totales">
+                  <div>
+                    <dt>Esperado</dt>
+                    <dd>{formatearDinero(esperado)}</dd>
+                  </div>
+                  <div>
+                    <dt>Contado</dt>
+                    <dd>{formatearDinero(contadoCentavos)}</dd>
+                  </div>
+                  <div className="vta-totales__total">
+                    <dt>Diferencia</dt>
+                    <dd className={`caja-diferencia--${como}`}>
+                      {diferencia < 0
+                        ? `−${formatearDinero(-diferencia)}`
+                        : formatearDinero(diferencia)}
+                    </dd>
+                  </div>
+                </dl>
+              </>
+            ) : (
+              <p className="tt-secundario">
+                Cuenta los billetes y escribe el total: la diferencia aparece sola.
+              </p>
+            )}
 
             <Campo
               etiqueta="Notas del cierre"
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
               maxLength={300}
+              {...(hayConteo && como !== 'cuadra'
+                ? { ayuda: 'Si sabes de dónde sale la diferencia, escríbelo aquí. Después ya no se puede.' }
+                : {})}
             />
-
-            <div className="pz-ficha__pie">
-              <Boton tono="contorno" type="button" onClick={() => setPaso('resumen')}>
-                Atrás
-              </Boton>
-              <Boton
-                tono="principal"
-                type="button"
-                disabled={contado === ''}
-                onClick={() => setPaso('confirmar')}
-              >
-                Ver la diferencia
-              </Boton>
-            </div>
-          </>
-        ) : (
-          <>
-            {/*
-              EL VEREDICTO ES EL PROTAGONISTA DEL PASO, no una tirita al final.
-              Antes la diferencia era un renglon mas de una lista de tres y la
-              frase iba debajo en letra chica: quien acaba de contar el cajon
-              tenia que leer tres numeros y restarlos con la vista para saber lo
-              unico que le importa — si cuadra, si sobra o si falta.
-              Ahora se lee de un golpe y sin restar nada.
-            */}
-            <div className={`caja-veredicto caja-veredicto--${como} mv-entra`} role="status">
-              <span className="caja-veredicto__marca" aria-hidden="true">
-                <Icono
-                  nombre={como === 'cuadra' ? 'palomita' : como === 'sobra' ? 'mas' : 'alerta'}
-                  lado={26}
-                />
-              </span>
-              <span className="caja-veredicto__texto">
-                <span className="caja-veredicto__que">{tituloDelVeredicto(como)}</span>
-                {como === 'cuadra' ? (
-                  <span className="tt-secundario">
-                    Lo que contaste es exactamente lo que se esperaba.
-                  </span>
-                ) : (
-                  <>
-                    <span className="caja-veredicto__cuanto">
-                      {formatearDinero(Math.abs(diferencia))}
-                    </span>
-                    <span className="tt-secundario">
-                      Contaste {formatearDinero(contadoCentavos)} y se esperaban{' '}
-                      {formatearDinero(esperado)}.
-                    </span>
-                  </>
-                )}
-              </span>
-            </div>
-
-            {/* El detalle queda, pero debajo y en pequeño: es la comprobacion de
-                donde salio el veredicto, no la noticia. */}
-            <dl className="vta-totales">
-              <div>
-                <dt>Esperado</dt>
-                <dd>{formatearDinero(esperado)}</dd>
-              </div>
-              <div>
-                <dt>Contado</dt>
-                <dd>{formatearDinero(contadoCentavos)}</dd>
-              </div>
-              <div className="vta-totales__total">
-                <dt>Diferencia</dt>
-                <dd className={`caja-diferencia--${como}`}>
-                  {diferencia < 0
-                    ? `−${formatearDinero(-diferencia)}`
-                    : formatearDinero(diferencia)}
-                </dd>
-              </div>
-            </dl>
 
             <p className="tt-secundario">
               Al cerrar, esta caja deja de recibir movimientos: no se podrá cobrar en efectivo hasta
@@ -228,14 +239,14 @@ export function CorteDeCaja({
             ) : null}
 
             <div className="pz-ficha__pie">
-              <Boton tono="contorno" type="button" onClick={() => setPaso('conteo')}>
+              <Boton tono="contorno" type="button" onClick={() => setPaso('resumen')}>
                 Atrás
               </Boton>
               <Boton
                 tono="principal"
                 type="button"
                 trabajando={trabajando}
-                disabled={trabajando}
+                disabled={trabajando || !hayConteo}
                 onClick={() => onCerrarCaja(contadoCentavos, notas)}
               >
                 {trabajando ? 'Cerrando…' : 'Cerrar la caja'}

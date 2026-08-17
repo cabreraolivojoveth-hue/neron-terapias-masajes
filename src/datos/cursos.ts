@@ -27,6 +27,7 @@
 import type { Fecha } from '@neron/base/utils';
 import { supabase } from '../supabase.js';
 import { aBase, deBase, reventar } from './fechas-de-la-base.js';
+import { numero, numeroONulo, texto, opcional, lista, objeto, centavos } from './lo-que-llega-de-la-base.js';
 import { PREFIJO_DE_INICIO } from './tablero.js';
 
 /* ------------------------------------------------------------------ */
@@ -65,6 +66,8 @@ export interface CursoEnLista {
   readonly ocupados: number;
   readonly modalidad: Modalidad;
   readonly imagenUrl: string | null;
+  /** El identificador de once caracteres, NUNCA la URL. Ver `cursos/video.ts`. */
+  readonly videoYoutube: string | null;
   readonly vida: VidaDeCurso;
   readonly activo: boolean;
 }
@@ -138,6 +141,14 @@ export interface FichaDeCurso {
   readonly lugar: string | null;
   readonly enlace: string | null;
   readonly imagenUrl: string | null;
+  /**
+   * EL IDENTIFICADOR DEL VIDEO, no su direccion.
+   *
+   * La direccion la arma la pantalla con `direccionDelReproductor`, y por eso
+   * siempre apunta a YouTube: guardar una URL cualquiera y meterla en un
+   * `iframe` dejaria incrustar el sitio que fuera dentro del sistema.
+   */
+  readonly videoYoutube: string | null;
   readonly estado: string;
   readonly activo: boolean;
   readonly vida: VidaDeCurso;
@@ -170,6 +181,8 @@ export interface DatosDeCurso {
   readonly lugar: string;
   readonly enlace: string;
   readonly imagenUrl: string;
+  /** Lo que la persona PEGO. La base lo convierte en identificador al guardar. */
+  readonly videoUrl: string;
   readonly notas: string;
   readonly activo: boolean;
 }
@@ -209,20 +222,7 @@ export interface CursoDelCliente {
 /* Ordenar lo que contesta el servidor                                 */
 /* ------------------------------------------------------------------ */
 
-const numero = (v: unknown): number => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-};
-const texto = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
-const opcional = (v: unknown): string | null =>
-  v === null || v === undefined || v === '' ? null : String(v);
-const lista = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
-const objeto = (v: unknown): Record<string, unknown> | null =>
-  v && typeof v === 'object' ? (v as Record<string, unknown>) : null;
 const fecha = (v: unknown): Fecha | null => (v ? deBase(v) : null);
-/** Un numero que puede NO existir. `null` no se convierte en cero. */
-const numeroONulo = (v: unknown): number | null =>
-  v === null || v === undefined ? null : numero(v);
 
 export const RESUMEN_DE_CURSOS_VACIO: ResumenDeCursos = {
   total: 0,
@@ -272,13 +272,14 @@ export function ordenarCurso(crudo: unknown): CursoEnLista {
     fechaInicio: fecha(c['fechaInicio']),
     fechaFin: fecha(c['fechaFin']),
     sesiones: numero(c['sesiones']),
-    precioCentavos: numero(c['precioCentavos']),
+    precioCentavos: centavos(c['precioCentavos']),
     // El cupo nulo es "sin limite" y se CONSERVA nulo: convertirlo en cero
     // diria que no cabe nadie, que es justo lo contrario.
     cupo: numeroONulo(c['cupo']),
     ocupados: numero(c['ocupados']),
     modalidad: comoModalidad(c['modalidad']),
     imagenUrl: opcional(c['imagenUrl']),
+    videoYoutube: opcional(c['videoYoutube']),
     vida: comoVida(c['vida']),
     activo: Boolean(c['activo']),
   };
@@ -385,7 +386,7 @@ export async function traerFichaDeCurso(cursoId: string): Promise<FichaDeCurso |
     instructor: opcional(c['instructor']),
     fechaInicio: fecha(c['fechaInicio']),
     fechaFin: fecha(c['fechaFin']),
-    precioCentavos: numero(c['precioCentavos']),
+    precioCentavos: centavos(c['precioCentavos']),
     cupo: numeroONulo(c['cupo']),
     ocupados: numero(c['ocupados']),
     enEspera: numero(c['enEspera']),
@@ -393,6 +394,7 @@ export async function traerFichaDeCurso(cursoId: string): Promise<FichaDeCurso |
     lugar: opcional(c['lugar']),
     enlace: opcional(c['enlace']),
     imagenUrl: opcional(c['imagenUrl']),
+    videoYoutube: opcional(c['videoYoutube']),
     estado: texto(c['estado']),
     activo: Boolean(c['activo']),
     vida: comoVida(c['vida']),
@@ -489,6 +491,7 @@ export async function guardarCurso(
     p_lugar: datos.lugar.trim() || null,
     p_enlace: datos.enlace.trim() || null,
     p_imagen: datos.imagenUrl.trim() || null,
+    p_video: datos.videoUrl.trim() || null,
     p_notas: datos.notas.trim() || null,
     p_activo: datos.activo,
   });
@@ -521,6 +524,10 @@ export async function cambiarEstadoDeCurso(
     lugar: ficha.lugar ?? '',
     enlace: ficha.enlace ?? '',
     imagenUrl: ficha.imagenUrl ?? '',
+    // Vuelve el IDENTIFICADOR, no la direccion. El campo lo acepta tal cual
+    // —es una de las formas que entiende— y asi reabrir y guardar sin tocar
+    // nada no pierde el video.
+    videoUrl: ficha.videoYoutube ?? '',
     notas: ficha.notas ?? '',
     activo,
   });

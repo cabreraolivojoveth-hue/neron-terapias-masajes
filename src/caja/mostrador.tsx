@@ -90,7 +90,12 @@ export function pestanasQuePuedeVer(
  */
 export function pestanaDelRecado(recado: Intencion): string | null {
   if (recado.modulo === 'ventas') {
-    if (recado.accion === 'nueva' || recado.accion === 'pago') return 'cobrar';
+    // `cobrar-cita` llega desde la Agenda al completar una sesion. Cae en la
+    // misma pestaña que una venta nueva porque ES una venta nueva: lo unico
+    // distinto es que llega con el carrito ya armado.
+    if (recado.accion === 'nueva' || recado.accion === 'pago' || recado.accion === 'cobrar-cita') {
+      return 'cobrar';
+    }
     if (recado.accion === 'abrir') return 'historial';
     if (recado.accion === 'cotizar') return 'cotizaciones';
     return null;

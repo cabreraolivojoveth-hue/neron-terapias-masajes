@@ -219,7 +219,35 @@ export function piezas(): string {
   font-variant-numeric: ${v('cifra-numeros')};
   letter-spacing: -0.02em;
   line-height: 1.15;
+  /* Una cifra larguisima parte antes de desbordar la tarjeta. Es el ultimo
+     seguro, por debajo de los tres escalones de abajo. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
+
+/* ---------------------------------------------------------------- */
+/* LAS CIFRAS QUE CABEN                                              */
+/* ---------------------------------------------------------------- */
+/*
+ * TRES ESCALONES SEGUN CUANTO OCUPA EL TEXTO. Los pone "claseDeCifra"
+ * (src/reportes/cifras-que-caben.ts) contando caracteres.
+ *
+ * QUE PASO: el centro de la dona de Reportes decia "$44,575.00" y el texto se
+ * salia del anillo. El tamaño estaba escrito para UNA longitud — y el centro
+ * que hoy factura cuarenta mil facturara medio millon, que son cinco
+ * caracteres mas.
+ *
+ * POR QUE NO BASTA "clamp()": clamp adapta al ancho del CONTENEDOR, no al largo
+ * del TEXTO. Dos cifras distintas en la misma caja reciben el mismo tamaño y la
+ * larga se sale igual.
+ *
+ * Se escriben aqui —en la pieza compartida— y no en el modulo que lo pidio
+ * primero: las cifras de arriba son las mismas en Reportes, en Gastos y en
+ * Inicio, y una tarjeta que se rompe con un millon se rompe en las tres.
+ */
+.pz-cifra--larga { font-size: ${v('texto-grande')}; }
+.pz-cifra--muy-larga { font-size: ${v('texto-normal')}; letter-spacing: -0.01em; }
+.pz-cifra--enorme { font-size: ${v('texto-chico')}; letter-spacing: 0; }
 .pz-cifra__pie {
   font-size: ${v('texto-micro')};
   display: inline-flex;
@@ -357,6 +385,32 @@ export function piezas(): string {
 .pz-tabla tbody tr { transition: background ${v('movimiento-curva')} ${v('movimiento-instantaneo')}; }
 .pz-tabla tbody tr:hover { background: ${v('superficie-tenue')}; }
 .pz-tabla tbody tr:last-child td { border-bottom: none; }
+/*
+ * EN UNA TARJETA ANGOSTA, EL AIRE DE LAS CELDAS SE APRIETA ANTES QUE LA CIFRA.
+ *
+ * QUE PASO, medido en la captura de Reportes: las tres tarjetas de ranking del
+ * resumen tienen un marco de 258 pixeles y la tabla de dentro pedia 277. El
+ * marco desplaza —lleva "overflow-x: auto"—, asi que no rompia nada: lo que se
+ * veia era "$3,960.0". El ultimo cero, cortado contra el borde. Ni un error en
+ * la consola, ni una prueba en rojo; solo una cifra que dice otra cosa.
+ *
+ * Se recorta el RELLENO, que no significa nada, en vez de la cifra, que lo
+ * significa todo. Doce pixeles por lado en tres columnas son setenta y dos de
+ * ancho gastados en nada; a ocho, la tabla entra sobrada.
+ *
+ * Va por consulta de CONTENEDOR y no de ventana: la misma tabla vive en una
+ * tarjeta de 258 dentro del resumen y en una de 890 en su pestaña. Preguntarle
+ * a la ventana apretaria las dos o ninguna.
+ *
+ * Y VA DESPUES de las reglas base, no antes: una consulta de contenedor no
+ * sube la especificidad, asi que puesta arriba la pisaba el ".pz-tabla" de
+ * abajo y no hacia absolutamente nada.
+ */
+@container (max-width: 340px) {
+  .pz-tabla { font-size: ${v('texto-micro')}; }
+  .pz-tabla th { padding-left: ${v('espacio-2')}; padding-right: ${v('espacio-2')}; }
+  .pz-tabla td { padding-left: ${v('espacio-2')}; padding-right: ${v('espacio-2')}; }
+}
 /*
  * UN RENGLON DENTRO DE UNA CELDA NO VUELVE A PONER SU AIRE.
  *

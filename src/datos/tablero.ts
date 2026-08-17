@@ -28,6 +28,7 @@
 import { aISO, desdeISO, hoy as hoyDe, type Fecha } from '@neron/base/utils';
 import { supabase } from '../supabase.js';
 import { aBase, deBase, reventar } from './fechas-de-la-base.js';
+import { numero, texto, lista, centavos } from './lo-que-llega-de-la-base.js';
 
 /**
  * El prefijo de todo lo que Inicio y el buscador global leen.
@@ -134,17 +135,6 @@ export interface RecordatorioCercano {
 /* Lo que llega del servidor, ordenado                                 */
 /* ------------------------------------------------------------------ */
 
-const numero = (v: unknown): number => {
-  const n = Number(v);
-  // NaN NUNCA sale de aqui. Un NaN se propaga sin reventar: se suma, se
-  // formatea, y termina impreso en la tarjeta del dueño como "$NaN".
-  return Number.isFinite(n) ? n : 0;
-};
-
-const texto = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
-
-const lista = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
-
 /**
  * El resumen vacio: TODO EN CERO, ninguna lista con nada dentro.
  *
@@ -191,7 +181,7 @@ export function ordenarResumen(crudo: unknown): ResumenDeInicio {
     recordatoriosVencidos: numero(r['recordatoriosVencidos']),
     ingresosSemana: lista(r['ingresosSemana']).map((d) => {
       const x = d as Record<string, unknown>;
-      return { fecha: deBase(x['fecha']), total: numero(x['total']) };
+      return { fecha: deBase(x['fecha']), total: centavos(x['total']) };
     }),
     topServicios: lista(r['topServicios']).map((s) => {
       const x = s as Record<string, unknown>;

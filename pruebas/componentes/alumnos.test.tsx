@@ -31,7 +31,7 @@ const FICHA: FichaDeCurso = {
   instructorId: null, instructor: null,
   fechaInicio: '15/07/2026', fechaFin: null, precioCentavos: 0,
   cupo: 2, ocupados: 0, enEspera: 0,
-  modalidad: 'presencial', lugar: null, enlace: null, imagenUrl: null,
+  modalidad: 'presencial', lugar: null, enlace: null, imagenUrl: null, videoYoutube: null,
   estado: 'programado', activo: true, vida: 'proximo',
   alumnos: [], sesiones: [], material: [],
 };

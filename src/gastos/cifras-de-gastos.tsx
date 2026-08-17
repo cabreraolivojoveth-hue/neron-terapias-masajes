@@ -19,6 +19,7 @@ import { formatearDinero } from '../datos/moneda.js';
 import type { Categoria } from '../marca.js';
 import type { ResumenDeGastos } from '../datos/gastos.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
+import { claseDeCifra } from '../reportes/cifras-que-caben.js';
 import { compararGasto } from './periodos.js';
 
 export interface CifraDeGasto {
@@ -108,8 +109,9 @@ export function CifrasDeGastos({ resumen }: { readonly resumen: ResumenDeGastos 
           </span>
           <span className="pz-cifra__texto">
             <span className="pz-cifra__etiqueta">{c.etiqueta}</span>
+            {/* El tamaño sale del largo del texto: ver `cifras-que-caben`. */}
             <span
-              className="pz-cifra__valor"
+              className={`pz-cifra__valor ${claseDeCifra(c.valor)}`}
               aria-busy={c.cargando ? 'true' : undefined}
               aria-label={c.cargando ? `${c.etiqueta}: cargando` : undefined}
             >

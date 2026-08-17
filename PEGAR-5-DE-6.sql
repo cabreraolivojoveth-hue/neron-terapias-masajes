@@ -1,5 +1,5 @@
 -- =====================================================================
--- PARTE 3 DE 3 — pegar en Supabase -> SQL Editor -> Run
+-- PARTE 5 DE 6 — pegar en Supabase -> SQL Editor -> Run
 -- =====================================================================
 --
 -- Proyecto: hgypobbanvkwnqmepqim (neron-terapias). MIRA EL REF EN LA BARRA
@@ -11,7 +11,7 @@
 -- Es seguro correrla las veces que haga falta: todo va con `if not exists`
 -- o `create or replace`.
 --
--- ESTA ES LA ULTIMA. Con esta ya esta todo.
+-- CUANDO ESTA DIGA "Success", SIGUE CON LA PARTE 6.
 --
 comment on function public.cargar_datos_de_demostracion(text, int, date) is
   'Siembra cinco meses de uso en NUEVE llamadas, una por paso. Solo la cuenta de demostracion, '
@@ -299,3 +299,193 @@ grant execute on function public.quitar_datos_de_demostracion(text) to authentic
 -- defensa contra un permiso que se regala solo es preguntarle a la base.
 revoke truncate, references, trigger on all tables in schema public from anon, authenticated;
 
+-- =====================================================================
+-- BLOQUE 12 — EL SISTEMA COMO UNO SOLO
+-- =====================================================================
+--
+-- Este bloque no agrega una pantalla: agrega las CONEXIONES que faltaban entre
+-- las que ya habia. Todo lo que hay aqui existe para que un dato que el sistema
+-- ya conoce no se le vuelva a pedir a nadie.
+--
+--   1. El bloqueo real de la agenda: una cita ocupa su duracion MAS su
+--      preparacion, y la restriccion de choque pasa a mirar eso.
+--   2. `cobrar_cita`: completar una cita y cobrarla son un solo viaje, con la
+--      venta atada a la cita para que no se pueda cobrar dos veces.
+--   3. `cita_para_cobrar`: lo que Caja necesita para abrirse ya llena.
+--   4. `ventas_por_dia`: los conteos que sostienen el historial por mes,
+--      semana y dia sin traerse quinientas ventas al navegador.
+--
+-- LAS COLUMNAS NUEVAS NO ESTAN AQUI, estan mil lineas mas arriba y marcadas
+-- para que el actualizador se las lleve: las funciones "language sql" que las
+-- usan se validan al crearse, y a esas les toca antes que a este bloque.
+--
+-- NO BORRA NI REESCRIBE NADA. Lo unico que toca de lo que ya habia es rellenar
+-- el bloqueo de las citas existentes, y lo rellena con lo que esas citas ya
+-- ocupaban.
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- 1. LA AGENDA BLOQUEA LO QUE DE VERDAD SE OCUPA
+-- ---------------------------------------------------------------------
+--
+-- LAS CITAS QUE YA EXISTEN SE RELLENAN CON SU PROPIO HORARIO, ni un minuto
+-- mas. Aplicarles la preparacion de hoy moveria hacia atras el bloqueo de una
+-- cita de la semana que viene y podria hacerla chocar con la de al lado — una
+-- cita que alguien ya agendo, que ya se confirmo, y que de pronto la base
+-- declara imposible. La preparacion empieza a contar en lo que se agende de
+-- ahora en adelante.
+update cita
+   set bloqueo_inicio = hora_inicio, bloqueo_fin = hora_fin
+ where bloqueo_inicio is null or bloqueo_fin is null;
+
+/**
+ * LA RESTRICCION DE CHOQUE PASA A MIRAR EL BLOQUEO.
+ *
+ * Es la misma de siempre —la de exclusion, la que aguanta que dos personas
+ * guarden en el mismo milisegundo— con una diferencia: compara lo que la sala
+ * esta ocupada de verdad, no lo que dura la sesion. Con eso, un masaje de
+ * 10:00 a 11:00 con quince minutos de limpieza deja la sala libre a las 11:15,
+ * y la base se niega a guardar una cita a las 11:00.
+ *
+ * EL "coalesce" NO SOBRA. Una cita cuyo bloqueo fuera nulo produciria un rango
+ * nulo, y un rango nulo no choca con nada: esa cita dejaria de reservar su
+ * horario sin que nada avisara. Con el coalesce, lo peor que puede pasar es
+ * que reserve exactamente lo que dura — que es como funcionaba antes.
+ */
+alter table cita drop constraint if exists cita_sin_choque;
+alter table cita add constraint cita_sin_choque
+  exclude using gist (
+    negocio_id with =,
+    coalesce(profesional_id, '00000000-0000-0000-0000-000000000000'::uuid) with =,
+    tsrange(fecha + coalesce(bloqueo_inicio, hora_inicio),
+            fecha + coalesce(bloqueo_fin, hora_fin)) with &&
+  )
+  where (not eliminado and estado in ('pendiente', 'confirmada', 'completada'));
+
+comment on constraint cita_sin_choque on cita is
+  'Impide dos citas encimadas para el mismo profesional, contando la preparacion. Es una '
+  'restriccion de la base y no una comprobacion previa: por eso aguanta que dos personas guarden '
+  'al mismo tiempo.';
+
+-- ---------------------------------------------------------------------
+-- 2. COBRAR UNA CITA — un solo viaje, y una sola vez
+-- ---------------------------------------------------------------------
+--
+-- POR QUE ES UNA FUNCION APARTE Y NO UN ARGUMENTO MAS DE `registrar_venta`:
+--
+-- Porque `registrar_venta` la llaman sitios que no tienen nada que ver con la
+-- agenda, y porque cambiarle la firma a la funcion que mueve TODO el dinero
+-- del sistema para agregarle un caso de uso es la clase de cambio que se paga
+-- meses despues. Esta la envuelve: una funcion es una transaccion, asi que la
+-- venta, el enlace con la cita y el cambio de estado pasan enteros o no pasa
+-- ninguno.
+--
+-- LO QUE RESUELVE, CONTADO COMO PASA EN EL MOSTRADOR: la sesion termino, se
+-- marca la cita completada, y hasta hoy habia que ir a Caja, buscar al
+-- paciente, buscar el servicio y volver a escribir un precio que el sistema ya
+-- sabia. Ahora se cobra desde la propia cita y no se vuelve a capturar nada.
+create or replace function public.cobrar_cita(
+  p_negocio text,
+  p_cita uuid,
+  p_items jsonb,
+  p_pagos jsonb default '[]'::jsonb,
+  p_cliente uuid default null,
+  p_vendedor uuid default null,
+  p_descuento bigint default 0,
+  p_efectivo_recibido bigint default null,
+  p_notas text default null,
+  p_llave text default null,
+  p_fecha date default current_date
+)
+returns venta
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_cita  cita;
+  v_venta venta;
+  v_ya    venta;
+begin
+  -- Los porteros van AQUI: un `security definer` se salta las reglas de fila.
+  -- `registrar_venta` vuelve a comprobar los suyos, y esta bien que lo haga:
+  -- llegar hasta alla con una cita ajena ya seria tarde.
+  if not app.es_miembro(p_negocio) then
+    raise exception 'Ese centro no es el tuyo.' using errcode = 'insufficient_privilege';
+  end if;
+
+  select * into v_cita from cita
+   where id = p_cita and negocio_id = p_negocio and not eliminado;
+  if v_cita.id is null then
+    raise exception 'Esa cita no existe en este centro.' using errcode = 'no_data_found';
+  end if;
+
+  /*
+   * NO SE COBRA DOS VECES LA MISMA SESION.
+   *
+   * El indice unico es la defensa de verdad —aguanta dos mostradores a la
+   * vez—, pero su error habla de un indice y no le dice nada a quien esta
+   * cobrando. Aqui se comprueba para poder decirlo con palabras y con el folio
+   * delante.
+   *
+   * SE PERDONA EL REINTENTO: si la venta que ya existe trae ESTA misma llave,
+   * es la misma peticion llegando dos veces —una red lenta, un doble clic— y
+   * lo correcto es devolver la que ya se hizo, no gritar.
+   */
+  select * into v_ya from venta
+   where negocio_id = p_negocio and cita_id = p_cita
+     and estado = 'cobrada' and not eliminado
+   limit 1;
+  if v_ya.id is not null then
+    if p_llave is not null and v_ya.llave_idempotencia is not distinct from p_llave then
+      return v_ya;
+    end if;
+    raise exception 'Esa cita ya se cobro con la venta %.', v_ya.folio
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  /*
+   * EL PACIENTE SALE DE LA CITA SI NADIE MANDA OTRO.
+   *
+   * Es el corazon de todo esto: la cita ya sabe de quien es. Volver a pedirlo
+   * es exactamente el trabajo manual que este bloque existe para quitar. Se
+   * deja mandar otro por un caso real —viene la mama a pagar la sesion de su
+   * hija— y entonces manda quien cobra.
+   */
+  v_venta := registrar_venta(
+    p_negocio,
+    p_items,
+    p_pagos,
+    coalesce(p_cliente, v_cita.cliente_id),
+    p_vendedor,
+    p_descuento,
+    p_efectivo_recibido,
+    p_notas,
+    p_llave,
+    p_fecha
+  );
+
+  -- El enlace va DESPUES de la venta y dentro de la misma transaccion. Si
+  -- `registrar_venta` hubiera fallado —sin stock, sin caja abierta, pagos que
+  -- no cuadran— aqui no se llega y la cita se queda exactamente como estaba.
+  update venta set cita_id = p_cita where id = v_venta.id
+  returning * into v_venta;
+
+  /*
+   * COBRADA ES COMPLETADA. Si se pago, la sesion se dio.
+   *
+   * Solo se mueve desde los dos estados vivos: una cita cancelada o marcada
+   * como que no asistio no revive por cobrarla —eso borraria el motivo por el
+   * que se cancelo— y una que ya estaba completada se queda igual.
+   *
+   * Se llama a `cambiar_estado_cita` en vez de hacer el update aqui porque esa
+   * funcion ademas apaga los recordatorios pendientes de la cita y deja el
+   * rastro en la bitacora. Repetir el update se habria olvidado de las dos.
+   */
+  if v_cita.estado in ('pendiente', 'confirmada') then
+    perform cambiar_estado_cita(p_cita, 'completada', null);
+  end if;
+
+  return v_venta;
+end;
+$$;

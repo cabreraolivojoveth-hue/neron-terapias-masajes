@@ -19,6 +19,7 @@
 import type { Fecha } from '@neron/base/utils';
 import { supabase } from '../supabase.js';
 import { aBase, deBase, reventar } from './fechas-de-la-base.js';
+import { numero, numeroONulo, texto, opcional, lista, objeto, centavos, centavosONulos } from './lo-que-llega-de-la-base.js';
 import { PREFIJO_DE_INICIO } from './tablero.js';
 
 /* ------------------------------------------------------------------ */
@@ -236,19 +237,6 @@ export function puedeSubir(r: RenglonDelCarrito): boolean {
 /* Ordenar lo que contesta el servidor                                 */
 /* ------------------------------------------------------------------ */
 
-const numero = (v: unknown): number => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-};
-const texto = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
-const opcional = (v: unknown): string | null =>
-  v === null || v === undefined || v === '' ? null : String(v);
-const lista = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
-const objeto = (v: unknown): Record<string, unknown> | null =>
-  v && typeof v === 'object' ? (v as Record<string, unknown>) : null;
-const numeroONulo = (v: unknown): number | null =>
-  v === null || v === undefined ? null : numero(v);
-
 export const RESUMEN_DE_VENTAS_VACIO: ResumenDeVentas = {
   ventas: 0,
   totalCentavos: 0,
@@ -266,13 +254,13 @@ export function ordenarResumenDeVentas(crudo: unknown): ResumenDeVentas {
   if (!r) return RESUMEN_DE_VENTAS_VACIO;
   return {
     ventas: numero(r['ventas']),
-    totalCentavos: numero(r['totalCentavos']),
+    totalCentavos: centavos(r['totalCentavos']),
     servicios: numero(r['servicios']),
-    serviciosCentavos: numero(r['serviciosCentavos']),
+    serviciosCentavos: centavos(r['serviciosCentavos']),
     productos: numero(r['productos']),
-    productosCentavos: numero(r['productosCentavos']),
+    productosCentavos: centavos(r['productosCentavos']),
     cursos: numero(r['cursos']),
-    cursosCentavos: numero(r['cursosCentavos']),
+    cursosCentavos: centavos(r['cursosCentavos']),
     // Se CONSERVA el nulo: sin ventas no hay ticket promedio, y cero seria
     // una respuesta falsa.
     ticketPromedio: numeroONulo(r['ticketPromedio']),
@@ -287,7 +275,7 @@ export function ordenarConcepto(crudo: unknown): ConceptoVendible {
     id: texto(c['id']),
     nombre: texto(c['nombre']),
     detalle: opcional(c['detalle']),
-    precioCentavos: numero(c['precioCentavos']),
+    precioCentavos: centavos(c['precioCentavos']),
     // `null` = sin limite. Cero SI es cero: agotado.
     disponible: numeroONulo(c['disponible']),
     codigo: opcional(c['codigo']),
@@ -304,9 +292,9 @@ export function ordenarVenta(crudo: unknown): VentaEnLista {
     cliente: opcional(v['cliente']),
     vendedor: opcional(v['vendedor']),
     renglones: numero(v['renglones']),
-    subtotalCentavos: numero(v['subtotalCentavos']),
-    descuentoCentavos: numero(v['descuentoCentavos']),
-    totalCentavos: numero(v['totalCentavos']),
+    subtotalCentavos: centavos(v['subtotalCentavos']),
+    descuentoCentavos: centavos(v['descuentoCentavos']),
+    totalCentavos: centavos(v['totalCentavos']),
     metodos: opcional(v['metodos']),
     estado: (texto(v['estado']) || 'borrador') as EstadoDeVenta,
     creadoEn: texto(v['creadoEn']),
@@ -368,6 +356,52 @@ export function llaveDeVentas(
   ].join(':');
 }
 
+/* ------------------------------------------------------------------ */
+/* El calendario del historial                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * UN DIA CON VENTAS. Es el ladrillo del historial por mes, semana y dia.
+ *
+ * Solo llegan los dias que TIENEN algo: un año son unos trescientos renglones
+ * minusculos en vez de las quinientas ventas enteras, y los meses y las
+ * semanas se suman a partir de estos sin volver al servidor.
+ */
+export interface DiaConVentas {
+  readonly fecha: Fecha;
+  readonly cuantas: number;
+  readonly totalCentavos: number;
+}
+
+export function llaveDelCalendarioDeVentas(
+  negocio: string,
+  desde: Fecha,
+  hasta: Fecha,
+): string {
+  return `ventas:calendario:${negocio}:${desde}:${hasta}`;
+}
+
+export async function traerCalendarioDeVentas(
+  negocio: string,
+  desde: Fecha,
+  hasta: Fecha,
+): Promise<DiaConVentas[]> {
+  const { data, error } = await supabase().rpc('ventas_por_dia', {
+    p_negocio: negocio,
+    p_desde: aBase(desde),
+    p_hasta: aBase(hasta),
+  });
+  reventar(error, 'armar el calendario de ventas');
+  return lista(data).map((d) => {
+    const x = objeto(d) ?? {};
+    return {
+      fecha: deBase(x['fecha']),
+      cuantas: numero(x['cuantas']),
+      totalCentavos: centavos(x['totalCentavos']),
+    };
+  });
+}
+
 export async function traerVentas(
   negocio: string,
   desde: Fecha,
@@ -425,11 +459,11 @@ export async function traerFichaDeVenta(ventaId: string): Promise<FichaDeVenta |
     clienteTelefono: opcional(v['clienteTelefono']),
     vendedorId: opcional(v['vendedorId']),
     vendedor: opcional(v['vendedor']),
-    subtotalCentavos: numero(v['subtotalCentavos']),
-    descuentoCentavos: numero(v['descuentoCentavos']),
-    impuestoCentavos: numero(v['impuestoCentavos']),
-    totalCentavos: numero(v['totalCentavos']),
-    efectivoRecibidoCentavos: numeroONulo(v['efectivoRecibidoCentavos']),
+    subtotalCentavos: centavos(v['subtotalCentavos']),
+    descuentoCentavos: centavos(v['descuentoCentavos']),
+    impuestoCentavos: centavos(v['impuestoCentavos']),
+    totalCentavos: centavos(v['totalCentavos']),
+    efectivoRecibidoCentavos: centavosONulos(v['efectivoRecibidoCentavos']),
     notas: opcional(v['notas']),
     canceladaMotivo: opcional(v['canceladaMotivo']),
     creadoEn: texto(v['creadoEn']),
@@ -441,10 +475,10 @@ export async function traerFichaDeVenta(ventaId: string): Promise<FichaDeVenta |
         tipo: texto(x['tipo']) as TipoDeConcepto,
         descripcion: texto(x['descripcion']),
         cantidad: numero(x['cantidad']),
-        precioUnitario: numero(x['precioUnitario']),
-        descuento: numero(x['descuento']),
-        subtotal: numero(x['subtotal']),
-        costoUnitario: numeroONulo(x['costoUnitario']),
+        precioUnitario: centavos(x['precioUnitario']),
+        descuento: centavos(x['descuento']),
+        subtotal: centavos(x['subtotal']),
+        costoUnitario: centavosONulos(x['costoUnitario']),
       };
     }),
     pagos: lista(v['pagos']).map((p) => {
@@ -452,7 +486,7 @@ export async function traerFichaDeVenta(ventaId: string): Promise<FichaDeVenta |
       return {
         id: texto(x['id']),
         metodo: texto(x['metodo']) as MetodoDePago,
-        montoCentavos: numero(x['montoCentavos']),
+        montoCentavos: centavos(x['montoCentavos']),
       };
     }),
   };
@@ -475,7 +509,7 @@ export async function traerCotizaciones(negocio: string): Promise<CotizacionEnLi
       clienteId: opcional(x['clienteId']),
       cliente: opcional(x['cliente']),
       vendedor: opcional(x['vendedor']),
-      totalCentavos: numero(x['totalCentavos']),
+      totalCentavos: centavos(x['totalCentavos']),
       estado: (texto(x['estado']) || 'abierta') as CotizacionEnLista['estado'],
       ventaId: opcional(x['ventaId']),
       renglones: numero(x['renglones']),
@@ -494,9 +528,9 @@ export async function traerItemsDeCotizacion(cotizacionId: string): Promise<Reng
       tipo: texto(x['tipo']) as TipoDeConcepto,
       id: texto(x['id']),
       nombre: texto(x['descripcion']),
-      precioCentavos: numero(x['precioUnitario']),
+      precioCentavos: centavos(x['precioUnitario']),
       cantidad: numero(x['cantidad']),
-      descuentoCentavos: numero(x['descuento']),
+      descuentoCentavos: centavos(x['descuento']),
       // Al convertir se vuelve a consultar el catalogo: entre la propuesta y
       // el sí pudo acabarse el producto.
       disponible: null,
@@ -518,6 +552,16 @@ export interface LoQueSeCobra {
   readonly notas: string;
   /** La llave que impide que el doble clic cobre dos veces. */
   readonly llave: string;
+  /**
+   * DE QUE CITA SALE ESTE COBRO. Vacio en una venta de mostrador.
+   *
+   * Con una cita puesta se llama a `cobrar_cita` en vez de a `registrar_venta`:
+   * es la MISMA transaccion mas dos cosas —atar la venta a la cita y dejarla
+   * completada—. Hacerlo con dos llamadas desde aqui dejaba el hueco de que la
+   * segunda fallara: la venta cobrada y la cita diciendo que sigue pendiente,
+   * que es exactamente como se cobra dos veces la misma sesion.
+   */
+  readonly citaId?: string;
 }
 
 /**
@@ -527,7 +571,7 @@ export interface LoQueSeCobra {
  * viajara desde aqui, el cliente decidiria cuanto paga.
  */
 export async function registrarVenta(negocio: string, v: LoQueSeCobra): Promise<string> {
-  const { data, error } = await supabase().rpc('registrar_venta', {
+  const comun = {
     p_negocio: negocio,
     p_items: v.renglones.map((r) => ({
       tipo: r.tipo,
@@ -542,9 +586,34 @@ export async function registrarVenta(negocio: string, v: LoQueSeCobra): Promise<
     p_efectivo_recibido: v.efectivoRecibidoCentavos,
     p_notas: v.notas.trim() || null,
     p_llave: v.llave,
-  });
+  };
+
+  /*
+   * DOS FUNCIONES, UNA SOLA LLAMADA DESDE AQUI.
+   *
+   * `cobrar_cita` ENVUELVE a `registrar_venta` en el servidor: mismos
+   * argumentos, misma transaccion, y ademas ata la venta a la cita y la deja
+   * completada. Por eso aqui solo cambia a cual se llama y no hay ni un
+   * duplicado del armado de renglones — que es donde vive el error de mandar
+   * el descuento en un sitio y no en el otro.
+   */
+  const { data, error } = v.citaId
+    ? await supabase().rpc('cobrar_cita', { ...comun, p_cita: v.citaId })
+    : await supabase().rpc('registrar_venta', comun);
   reventar(error, 'registrar la venta');
   return texto(objeto(data)?.['id']);
+}
+
+/**
+ * Si lo que fallo fue que esa cita ya se habia cobrado.
+ *
+ * Pasa de verdad: dos pestañas abiertas, o alguien que ya cobro desde el
+ * mostrador y despues aprieta "Cobrar ahora" en la agenda. La base lo impide
+ * con un indice unico; la pantalla lo traduce a "esta cita ya se cobro" y
+ * ofrece ver la venta en vez de dejar un error de base a la vista.
+ */
+export function citaYaCobrada(error: string | null): boolean {
+  return error !== null && /ya se cobro|venta_una_por_cita/i.test(error);
 }
 
 /**
@@ -611,7 +680,14 @@ export async function marcarCotizacionConvertida(id: string, ventaId: string): P
  *
  * Es la lista mas larga del sistema, y con razon: una venta toca el
  * inventario, los cursos, el expediente del cliente, la caja y el tablero.
+ *
+ * `citas` ENTRO CON EL COBRO DESDE LA AGENDA. Sin ella, cobrar una cita
+ * dejaba la agenda de la pestaña de al lado diciendo "pendiente de cobro"
+ * hasta que alguien recargara — y el boton de cobrar seguia ahi, invitando a
+ * cobrarla otra vez. La base lo habria impedido, pero el error correcto es el
+ * que no llega a ocurrir.
  */
 export const LO_QUE_TOCA_UNA_VENTA = [
-  'ventas', 'cotizaciones', 'productos', 'cursos', 'clientes', 'caja', PREFIJO_DE_INICIO,
+  'ventas', 'cotizaciones', 'productos', 'cursos', 'clientes', 'caja', 'citas',
+  PREFIJO_DE_INICIO,
 ] as const;

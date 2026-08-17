@@ -20,6 +20,7 @@
 
 import { supabase } from '../supabase.js';
 import { reventar } from './fechas-de-la-base.js';
+import { numero, texto, opcional, lista, objeto, centavos, centavosONulos } from './lo-que-llega-de-la-base.js';
 import { PREFIJO_DE_INICIO } from './tablero.js';
 
 /* ------------------------------------------------------------------ */
@@ -195,20 +196,6 @@ export interface DatosDeProveedor {
 /* Ordenar lo que contesta el servidor                                 */
 /* ------------------------------------------------------------------ */
 
-const numero = (v: unknown): number => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-};
-const texto = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
-const opcional = (v: unknown): string | null =>
-  v === null || v === undefined || v === '' ? null : String(v);
-const lista = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
-const objeto = (v: unknown): Record<string, unknown> | null =>
-  v && typeof v === 'object' ? (v as Record<string, unknown>) : null;
-/** Un numero que puede NO existir. `null` no se convierte en cero. */
-const numeroONulo = (v: unknown): number | null =>
-  v === null || v === undefined ? null : numero(v);
-
 export const RESUMEN_DE_PRODUCTOS_VACIO: ResumenDeProductos = {
   total: 0,
   valorCentavos: null,
@@ -223,7 +210,7 @@ export function ordenarResumenDeProductos(crudo: unknown): ResumenDeProductos {
     total: numero(r['total']),
     // Se CONSERVA el nulo: significa "no puedes ver costos", que es otra cosa
     // que "el inventario vale cero".
-    valorCentavos: numeroONulo(r['valorCentavos']),
+    valorCentavos: centavosONulos(r['valorCentavos']),
     bajos: numero(r['bajos']),
     agotados: numero(r['agotados']),
   };
@@ -246,8 +233,8 @@ export function ordenarProducto(crudo: unknown): ProductoEnLista {
     categoriaId: opcional(p['categoriaId']),
     categoria: opcional(p['categoria']),
     categoriaColor: opcional(p['categoriaColor']),
-    precioCentavos: numero(p['precioCentavos']),
-    costoCentavos: numeroONulo(p['costoCentavos']),
+    precioCentavos: centavos(p['precioCentavos']),
+    costoCentavos: centavosONulos(p['costoCentavos']),
     stockActual: numero(p['stockActual']),
     stockMinimo: numero(p['stockMinimo']),
     unidad: texto(p['unidad']) || 'pieza',
@@ -359,8 +346,8 @@ export async function traerFichaDeProducto(productoId: string): Promise<FichaDeP
     categoriaId: opcional(p['categoriaId']),
     categoria: opcional(p['categoria']),
     categoriaColor: opcional(p['categoriaColor']),
-    precioCentavos: numero(p['precioCentavos']),
-    costoCentavos: numeroONulo(p['costoCentavos']),
+    precioCentavos: centavos(p['precioCentavos']),
+    costoCentavos: centavosONulos(p['costoCentavos']),
     puedeVerCostos: Boolean(p['puedeVerCostos']),
     stockActual: numero(p['stockActual']),
     stockMinimo: numero(p['stockMinimo']),
@@ -370,7 +357,7 @@ export async function traerFichaDeProducto(productoId: string): Promise<FichaDeP
     notas: opcional(p['notas']),
     activo: Boolean(p['activo']),
     inventario: comoEstado(p['inventario']),
-    valorCentavos: numeroONulo(p['valorCentavos']),
+    valorCentavos: centavosONulos(p['valorCentavos']),
     movimientos: lista(p['movimientos']).map((m) => {
       const x = objeto(m) ?? {};
       return {
@@ -409,7 +396,7 @@ export async function traerFichaDeProducto(productoId: string): Promise<FichaDeP
         correo: opcional(x['correo']),
         codigo: opcional(x['codigo']),
         preferido: Boolean(x['preferido']),
-        costoCentavos: numeroONulo(x['costoCentavos']),
+        costoCentavos: centavosONulos(x['costoCentavos']),
       };
     }),
   };

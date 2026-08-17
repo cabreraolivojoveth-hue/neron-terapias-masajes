@@ -22,6 +22,7 @@ import type {
 import { ocupacionDe } from '../datos/cursos.js';
 import { fechaConMes } from '../ui/fechas-en-palabras.js';
 import { Icono, type NombreDeIcono } from '../ui/iconos.js';
+import { direccionDelReproductor } from './video.js';
 import { Pista } from '../ui/pista.js';
 import { Alumnos } from './alumnos.js';
 import { Material } from './material.js';
@@ -224,6 +225,35 @@ export function PanelDelCurso({
 
           {pestana === 'informacion' ? (
             <div className="srv-detalle__cuerpo">
+              {/*
+                EL VIDEO DE PRESENTACION, ARRIBA DE TODO.
+
+                Va antes que la categoria y el instructor porque contesta la
+                pregunta que trae quien abre la ficha —"de que va esto"— mejor
+                que ningun renglon de texto. Y va aqui, en la ficha, porque es
+                lo que se le enseña a alguien que pregunta por el taller: el
+                producto todavia no tiene una pagina publica de curso, y eso se
+                dice en el resumen en vez de fingir que la tiene.
+
+                La direccion la ARMA `direccionDelReproductor` con el
+                identificador guardado. Nunca sale de la base una URL que se
+                meta tal cual en el marco: eso dejaria incrustar cualquier
+                sitio dentro del sistema.
+              */}
+              {ficha.videoYoutube ? (
+                <div className="cur-video">
+                  <iframe
+                    className="cur-video__marco"
+                    src={direccionDelReproductor(ficha.videoYoutube)}
+                    title={`Video de presentación de ${ficha.nombre}`}
+                    loading="lazy"
+                    allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                </div>
+              ) : null}
+
               <Renglon icono="cuadricula" titulo="Categoría">
                 {ficha.categoria ? (
                   <span
