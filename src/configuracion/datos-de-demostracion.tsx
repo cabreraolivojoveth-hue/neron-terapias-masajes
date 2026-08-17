@@ -119,8 +119,22 @@ export function DatosDeDemostracion({
   }
 
   const cargada = estado?.cargada === true;
+  const completa = estado?.completa === true;
+  /*
+   * "A MEDIAS" ES UN ESTADO PROPIO, y llamarlo "cargada" fue el primer error de
+   * esta pantalla: la carga de verdad murio en el paso 3 —habia una caja
+   * abierta— y la tarjeta dijo "Ya está cargada. Para volver a cargarla hay que
+   * quitarla primero", que es la peor respuesta posible cuando faltan siete
+   * novenas partes.
+   */
+  const aMedias = cargada && !completa;
   const corriendo = trabajando === 'cargando';
-  const hechos = progreso?.paso ?? 0;
+  /*
+   * Los pasos hechos: el que acaba de terminar en esta pantalla, o el que la
+   * base tenga anotado. Lo segundo es lo que hace que recargar la pagina no
+   * borre el avance de la vista.
+   */
+  const hechos = Math.max(progreso?.paso ?? 0, estado?.ultimoPaso ?? 0);
 
   return (
     <div className="cfg-demo">
@@ -164,7 +178,13 @@ export function DatosDeDemostracion({
             <div className="pz-dato pz-dato--renglon">
               <dt className="tt-etiqueta">Estado</dt>
               <dd className="pz-dato__valor">
-                <span className="pz-pastilla pz-pastilla--marca">Cargada</span>
+                {aMedias ? (
+                  <span className="pz-pastilla pz-pastilla--aviso">
+                    A medias: {hechos} de {PASOS_DE_LA_DEMOSTRACION.length} pasos
+                  </span>
+                ) : (
+                  <span className="pz-pastilla pz-pastilla--marca">Cargada</span>
+                )}
               </dd>
             </div>
             <div className="pz-dato pz-dato--renglon">
@@ -216,6 +236,37 @@ export function DatosDeDemostracion({
               Cargar los datos de demostración
             </Boton>
           </div>
+        ) : aMedias && hechos >= 1 ? (
+          <>
+            {/*
+              SE CONTINUA, NO SE EMPIEZA DE CERO. Cada paso es su propia
+              transacción: los que entraron están completos y volver a
+              sembrarlos duplicaría esos meses. Lo que falta es de ahí en
+              adelante.
+            */}
+            <p className="cfg-respaldos__ultima" role="status">
+              La carga se detuvo en el paso {hechos + 1}. Lo que ya entró está completo — cada
+              paso es su propia transacción — así que se puede seguir desde ahí. Si el error de
+              arriba dice que hay una caja abierta, haz su corte en Caja y vuelve a intentarlo.
+            </p>
+            <div className="pz-ficha__pie">
+              <Boton trabajando={corriendo} disabled={trabajando !== null} onClick={onCargar}>
+                Continuar desde el paso {hechos + 1}
+              </Boton>
+            </div>
+          </>
+        ) : aMedias ? (
+          /*
+            HAY FILAS PERO NINGUNA MARCA DE PASO: no se sabe hasta dónde llegó.
+            Le pasa a una carga hecha con la versión anterior, que todavía no
+            anotaba los pasos. Adivinar y seguir desde el uno sembraría dos
+            veces lo que ya está; lo honesto es decir que no se sabe.
+          */
+          <p className="cfg-respaldos__ultima" role="status">
+            Hay datos sembrados pero sin la marca de hasta dónde llegó la carga, así que no se
+            puede continuar sin arriesgarse a sembrar dos veces lo mismo. Quítala aquí abajo y
+            vuelve a cargarla desde el principio.
+          </p>
         ) : (
           <p className="cfg-respaldos__ultima" role="status">
             Ya está cargada. Para volver a cargarla hay que quitarla primero: dos cargas encima

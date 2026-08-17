@@ -13146,6 +13146,7 @@ as $$
 declare
   v_cuantas bigint;
   v_cuando  timestamptz;
+  v_ultimo  int;
 begin
   if not app.es_miembro(p_negocio) then
     raise exception 'No perteneces a este centro.' using errcode = 'insufficient_privilege';
@@ -13158,11 +13159,21 @@ begin
   select count(*), min(sembrado_en) into v_cuantas, v_cuando
     from dato_de_demostracion where negocio_id = p_negocio;
 
+  -- HASTA DONDE LLEGO LA CARGA. Se lee de las marcas que deja cada paso, no de
+  -- cuantas filas hay: una carga que se corto en el paso 3 tiene cientos de
+  -- filas y no esta completa, y decirle "cargada" a eso es la mentira que
+  -- obliga a quitarla entera sin saber por que.
+  select coalesce(max(nullif(llave, '')::int), 0) into v_ultimo
+    from dato_de_demostracion
+   where negocio_id = p_negocio and tabla = 'paso';
+
   return jsonb_build_object(
     'puede', app.es_la_cuenta_de_demostracion(),
     'cargada', v_cuantas > 0,
     'filas', v_cuantas,
     'sembradaEn', v_cuando,
+    'ultimoPaso', v_ultimo,
+    'completa', v_ultimo >= 9,
     'pasos', 9,
     'porTabla', coalesce((
       select jsonb_object_agg(t.tabla, t.cuantas)
@@ -13399,6 +13410,37 @@ begin
   if p_paso = 1 and exists (select 1 from dato_de_demostracion where negocio_id = p_negocio) then
     raise exception 'Este centro ya tiene datos de demostracion. Quitalos antes de volver a cargarlos.'
       using errcode = 'unique_violation';
+  end if;
+
+  /*
+   * UNA CAJA ABIERTA QUE NO ES DE LA DEMOSTRACION LA PARA EN SECO, Y ESTO SE
+   * APRENDIO CARO: la primera carga de verdad murio en el paso 3 con
+   *
+   *   duplicate key value violates unique constraint "sesion_caja_una_abierta"
+   *
+   * La demostracion abre y cierra la caja de cada dia, uno por uno —es lo que
+   * hace que el corte de cada dia cuadre con lo que se cobro ese dia— y la base
+   * solo permite UNA caja abierta por centro. Si ya habia una del uso normal,
+   * el primer dia sembrado choca contra ella.
+   *
+   * SE COMPRUEBA ANTES DE ESCRIBIR NADA, y el mensaje dice que hacer. Dejar que
+   * reviente en el paso 3 significa dos pasos ya sembrados, un error que habla
+   * de un indice y ninguna pista de que la culpa era de una caja abierta hace
+   * semanas.
+   *
+   * NO SE CIERRA SOLA, y eso es a proposito: un corte de caja es un documento
+   * firmado —quien lo cierra dice cuanto conto— y esta funcion no tiene ni idea
+   * de cuanto dinero hay en ese cajon. Lo unico honesto es pararse y decirlo.
+   */
+  if (p_paso = 1 or p_paso between 3 and 8)
+     and exists (
+       select 1 from sesion_caja s
+        where s.negocio_id = p_negocio and s.estado = 'abierta'
+          and s.id not in (select d.fila_id from dato_de_demostracion d
+                            where d.negocio_id = p_negocio and d.tabla = 'sesion_caja'
+                              and d.fila_id is not null)) then
+    raise exception 'Hay una caja abierta en este centro y la demostracion abre y cierra la de cada dia. Haz su corte en Caja -> Corte de caja y vuelve a intentarlo.'
+      using errcode = 'invalid_parameter_value';
   end if;
 
   select m.id, m.nombre, coalesce(r2.etiqueta, m.rol)
@@ -14695,6 +14737,20 @@ begin
 
     v_hechas := (select count(*) from dato_de_demostracion where negocio_id = p_negocio);
   end if;
+
+  /*
+   * QUEDA ESCRITO QUE ESTE PASO TERMINO, y hace falta por una razon concreta:
+   * si la carga se corta a la mitad —una caja abierta, la pestaña cerrada, la
+   * red— al volver a abrir la pantalla lo unico que se sabe es que hay filas
+   * sembradas, no CUANTAS de las nueve tandas entraron. Sin esto, la unica
+   * salida honesta seria "quitalo todo y empieza de nuevo"; con esto se puede
+   * seguir desde donde se quedo.
+   *
+   * Se anota en la misma tabla del rastro y con `llave` en vez de `fila_id`,
+   * asi que se va sola cuando se quita la demostracion.
+   */
+  insert into dato_de_demostracion (negocio_id, tabla, llave)
+  values (p_negocio, 'paso', p_paso::text);
 
   return jsonb_build_object(
     'paso', p_paso,

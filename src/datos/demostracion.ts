@@ -86,6 +86,16 @@ export interface EstadoDeLaDemostracion {
   readonly cargada: boolean;
   readonly filas: number;
   readonly sembradaEn: string | null;
+  /**
+   * HASTA DONDE LLEGO LA CARGA, de 0 a 9.
+   *
+   * Lo guarda la base, un renglon por paso terminado, y no se deduce de cuantas
+   * filas hay: una carga cortada en el paso 3 tiene cientos de filas y no esta
+   * completa. Sin este numero, la unica salida despues de un corte seria
+   * quitarlo todo y empezar de cero.
+   */
+  readonly ultimoPaso: number;
+  readonly completa: boolean;
   readonly pasos: number;
   /** Cuantas filas por tabla. Es lo que se enseña al ofrecer quitarla. */
   readonly porTabla: Readonly<Record<string, number>>;
@@ -106,6 +116,8 @@ export const DEMOSTRACION_VACIA: EstadoDeLaDemostracion = {
   cargada: false,
   filas: 0,
   sembradaEn: null,
+  ultimoPaso: 0,
+  completa: false,
   pasos: PASOS_DE_LA_DEMOSTRACION.length,
   porTabla: {},
 };
@@ -132,6 +144,8 @@ export function ordenarEstado(dato: unknown): EstadoDeLaDemostracion {
     sembradaEn: d['sembradaEn'] === null || d['sembradaEn'] === undefined
       ? null
       : String(d['sembradaEn']),
+    ultimoPaso: comoNumero(d['ultimoPaso']),
+    completa: d['completa'] === true,
     pasos: comoNumero(d['pasos']) || PASOS_DE_LA_DEMOSTRACION.length,
     porTabla,
   };
@@ -178,12 +192,18 @@ export async function cargarPasoDeDemostracion(
  * significaria que el dia que se agregue un paso decimo, la pantalla se pare en
  * el noveno y deje la carga a medias sin fallar.
  *
+ * `desde` ES PARA CONTINUAR UNA CARGA QUE SE CORTO, y hace falta de verdad: la
+ * primera carga real murio en el paso 3 —habia una caja abierta del uso normal,
+ * y la demostracion abre y cierra la de cada dia—. Sin poder continuar, dos
+ * pasos ya sembrados obligaban a quitarlo todo y empezar de cero.
+ *
  * El tope de vueltas es un seguro contra una base que contestara siempre lo
  * mismo: un ciclo infinito en el navegador cuelga la pestaña entera.
  */
 export async function cargarDemostracionCompleta(
   negocio: string,
   avisar: (paso: PasoDeLaDemostracion) => void,
+  desde = 1,
   /*
    * QUIEN DA CADA PASO SE PUEDE CAMBIAR, y es lo unico que permite probar este
    * ciclo sin una base de datos. No es un adorno de pruebas: el ciclo es la
@@ -193,7 +213,7 @@ export async function cargarDemostracionCompleta(
   pedir: (negocio: string, paso: number) => Promise<PasoDeLaDemostracion> =
     cargarPasoDeDemostracion,
 ): Promise<number> {
-  let cual: number | null = 1;
+  let cual: number | null = Math.max(1, desde);
   let vueltas = 0;
   let filas = 0;
 

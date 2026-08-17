@@ -98,11 +98,63 @@ describe('mientras carga', () => {
   });
 });
 
+describe('cuando la carga se quedo a MEDIAS', () => {
+  /*
+   * Paso con la carga de verdad: murio en el paso 3 —habia una caja abierta del
+   * uso normal— y la tarjeta dijo "Ya está cargada. Para volver a cargarla hay
+   * que quitarla primero", que es la peor respuesta posible cuando faltan siete
+   * novenas partes.
+   */
+  const aMedias = {
+    ...DEMOSTRACION_VACIA,
+    puede: true,
+    cargada: true,
+    completa: false,
+    ultimoPaso: 2,
+    filas: 172,
+    sembradaEn: '2026-08-17T02:40:00Z',
+  };
+
+  it('lo dice con esas palabras, y no "cargada"', () => {
+    pintar({ estado: aMedias });
+    expect(screen.getByText(/A medias: 2 de 9 pasos/)).toBeDefined();
+    expect(screen.queryByText(/Ya está cargada/)).toBeNull();
+  });
+
+  it('ofrece CONTINUAR desde donde se quedo, no volver a empezar', () => {
+    // Cada paso es su propia transacción: lo que entró está completo y volver a
+    // sembrarlo duplicaría esos meses.
+    pintar({ estado: aMedias });
+    expect(screen.getByRole('button', { name: /Continuar desde el paso 3/ })).toBeDefined();
+  });
+
+  it('sin marca de paso NO adivina: pide quitarla y empezar de nuevo', () => {
+    /*
+     * Le pasa a una carga hecha con la version que todavia no anotaba los
+     * pasos. Seguir desde el uno sembraria dos veces el catalogo y los
+     * pacientes, y eso no se ve hasta que un reporte no cuadra.
+     */
+    pintar({ estado: { ...aMedias, ultimoPaso: 0 } });
+    expect(screen.queryByRole('button', { name: /Continuar/ })).toBeNull();
+    expect(screen.getByText(/sin la marca de hasta dónde llegó/i)).toBeDefined();
+  });
+
+  it('el avance sobrevive a recargar la pagina', () => {
+    // El numero de pasos hechos sale de la base, no de lo que vio esta
+    // pantalla: sin eso, recargar borraria las palomitas y parecería que no se
+    // hizo nada.
+    pintar({ estado: aMedias, progreso: null });
+    expect(screen.getByText(/A medias: 2 de 9 pasos/)).toBeDefined();
+  });
+});
+
 describe('cuando ya esta cargada', () => {
   const cargada = {
     ...DEMOSTRACION_VACIA,
     puede: true,
     cargada: true,
+    completa: true,
+    ultimoPaso: 9,
     filas: 6812,
     sembradaEn: '2026-08-16T10:00:00Z',
   };

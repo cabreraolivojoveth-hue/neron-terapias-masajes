@@ -125,7 +125,8 @@ describe('el ciclo de los nueve pasos', () => {
     const filas = await cargarDemostracionCompleta(
       't_c',
       (p) => avisos.push(p.paso),
-      async (_negocio, paso) => {
+      1,
+      async (_negocio: string, paso: number) => {
         vistos.push(paso);
         return {
           paso, pasos: 9, titulo: 'x', hechas: 10,
@@ -145,8 +146,30 @@ describe('el ciclo de los nueve pasos', () => {
       paso: 1, pasos: 9, titulo: 'x', hechas: 1, siguiente: 1, filas: 1,
     }));
 
-    await cargarDemostracionCompleta('t_c', () => {}, pedir);
+    await cargarDemostracionCompleta('t_c', () => {}, 1, pedir);
     expect(pedir.mock.calls.length).toBeLessThanOrEqual(20);
     expect(pedir.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('se puede CONTINUAR donde se corto, sin volver a sembrar lo que ya entro', async () => {
+    /*
+     * La primera carga de verdad murio en el paso 3: habia una caja abierta del
+     * uso normal y la demostracion abre y cierra la de cada dia. Empezar otra
+     * vez en el uno habria sembrado dos veces el catalogo y los pacientes.
+     */
+    const vistos: number[] = [];
+    await cargarDemostracionCompleta(
+      't_c',
+      () => {},
+      3,
+      async (_negocio: string, paso: number) => {
+        vistos.push(paso);
+        return {
+          paso, pasos: 9, titulo: 'x', hechas: 1,
+          siguiente: paso < 4 ? paso + 1 : null, filas: 1,
+        };
+      },
+    );
+    expect(vistos).toEqual([3, 4]);
   });
 });

@@ -746,6 +746,8 @@ const RESPUESTAS: Readonly<Record<string, unknown>> = {
     cargada: false,
     filas: 0,
     sembradaEn: null,
+    ultimoPaso: 0,
+    completa: false,
     pasos: 9,
     porTabla: {},
   },

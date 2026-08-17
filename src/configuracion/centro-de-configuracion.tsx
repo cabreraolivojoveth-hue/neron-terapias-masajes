@@ -319,7 +319,7 @@ export function CentroDeConfiguracion() {
    * enseñaria quinientas citas y la Agenda seguiria vacia en la misma pantalla.
    */
   const siembra = useOperacion(
-    () => cargarDemostracionCompleta(negocio, setProgresoDemo),
+    (desde: number) => cargarDemostracionCompleta(negocio, setProgresoDemo, desde),
     [...LO_QUE_TOCA_LA_DEMOSTRACION],
   );
   const retiro = useOperacion(() => quitarDemostracion(negocio), [
@@ -758,8 +758,16 @@ export function CentroDeConfiguracion() {
                   siembra.trabajando ? 'cargando' : retiro.trabajando ? 'quitando' : null
                 }
                 onCargar={() => {
+                  /*
+                   * SE SIGUE DESDE DONDE SE QUEDO, y el numero lo da la base.
+                   * Empezar siempre en el uno volveria a sembrar los meses que
+                   * ya entraron: cada paso es su propia transaccion, asi que lo
+                   * que esta, esta completo.
+                   */
                   setProgresoDemo(null);
-                  void siembra.ejecutar().then(() => demostracion.recargar());
+                  void siembra
+                    .ejecutar((demostracion.datos?.ultimoPaso ?? 0) + 1)
+                    .then(() => demostracion.recargar());
                 }}
                 onQuitar={() => {
                   void retiro.ejecutar().then(() => {
