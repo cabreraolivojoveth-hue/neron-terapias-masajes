@@ -35,12 +35,44 @@ select 'y tiene sus reglas de fila encendidas y FORZADAS',
 union all
 -- Las reglas de fila RECORTAN; el grant es el permiso de partida. Con politicas
 -- y sin grant no se lee ni una fila, y el error sale en la pantalla, no aqui.
-select 'authenticated puede LEERLA y nada mas',
+--
+-- EL RENGLON DICE QUE TIENE, no solo si esta bien: la primera vez salio MAL y
+-- "MAL" a secas no decia si faltaba `select` o si sobraba algo. Sobraban tres
+-- —truncate, references y trigger— que Supabase le regala a cada tabla nueva.
+select 'authenticated sobre la tabla del rastro: ' ||
+         coalesce((select string_agg(distinct privilege_type, ', ' order by privilege_type)
+                     from information_schema.role_table_grants
+                    where table_schema = 'public'
+                      and table_name = 'dato_de_demostracion'
+                      and grantee = 'authenticated'), 'ninguno'),
        case when (select string_agg(distinct privilege_type, ',' order by privilege_type)
                     from information_schema.role_table_grants
-                   where table_name = 'dato_de_demostracion' and grantee = 'authenticated')
+                   where table_schema = 'public'
+                     and table_name = 'dato_de_demostracion'
+                     and grantee = 'authenticated')
                  = 'SELECT'
-            then 'BIEN' else 'MAL' end
+            then 'BIEN' else 'MAL: corre ARREGLAR-PERMISOS.sql' end
+
+union all
+/*
+ * NINGUNA TABLA DEL PRODUCTO LE DA `truncate` A UNA SESION.
+ *
+ * Es el permiso que Supabase regala y que nadie escribe, y el unico de los
+ * siete que las reglas de fila NO pueden recortar: `truncate` no lee ni escribe
+ * filas, vacia la tabla. Con el puesto, una sola sentencia dejaria en cero
+ * `cliente` o `movimiento_caja` de todos los centros a la vez.
+ *
+ * Se comprueba aqui —y no solo al crear la tabla— porque el regalo se repite
+ * con CADA tabla nueva: la unica defensa es preguntarle a la base.
+ */
+select 'ninguna tabla le da truncate a anon ni a authenticated (' ||
+         (select count(*)::text from information_schema.role_table_grants
+           where table_schema = 'public' and privilege_type = 'TRUNCATE'
+             and grantee in ('anon', 'authenticated')) || ')',
+       case when (select count(*) from information_schema.role_table_grants
+                   where table_schema = 'public' and privilege_type = 'TRUNCATE'
+                     and grantee in ('anon', 'authenticated')) = 0
+            then 'BIEN' else 'MAL: corre ARREGLAR-PERMISOS.sql' end
 
 union all
 select 'las tres funciones del bloque estan',

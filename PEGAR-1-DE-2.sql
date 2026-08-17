@@ -138,9 +138,23 @@ alter table dato_de_demostracion force row level security;
 -- comprueban el correo antes. Con `insert` suelto, cualquiera con sesion
 -- podria anotar como "de demostracion" una fila real del centro — y entonces
 -- quitar la demostracion se llevaria por delante un expediente de verdad.
+--
+-- SE REVOCA TODO Y DESPUES SE DA `select`, EN ESE ORDEN. Y no es estilo: es lo
+-- unico que funciona.
+--
+-- Supabase deja puesto un `alter default privileges ... grant all on tables to
+-- anon, authenticated, service_role`, asi que CADA TABLA NUEVA nace con los
+-- SIETE permisos —insert, select, update, delete, truncate, references y
+-- trigger— sin que nadie los escriba. Quitar solo insert, update y delete deja
+-- dentro los otros tres, y uno de ellos importa de verdad: **las reglas de fila
+-- no se aplican a `truncate`**. Con ese permiso puesto, una sesion cualquiera
+-- podria vaciar la tabla entera de todos los centros de un golpe.
+--
+-- Lo cacho `COMPROBAR-DEMOSTRACION.sql` contra la base de verdad, que es la
+-- unica forma de verlo: leyendo este archivo parecia correcto.
 revoke all on dato_de_demostracion from anon;
+revoke all on dato_de_demostracion from authenticated;
 grant select on dato_de_demostracion to authenticated;
-revoke insert, update, delete on dato_de_demostracion from authenticated;
 
 drop policy if exists dato_de_demostracion_leer on dato_de_demostracion;
 create policy dato_de_demostracion_leer on dato_de_demostracion

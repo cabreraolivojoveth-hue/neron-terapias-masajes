@@ -123,9 +123,23 @@ alter table dato_de_demostracion force row level security;
 -- comprueban el correo antes. Con `insert` suelto, cualquiera con sesion
 -- podria anotar como "de demostracion" una fila real del centro — y entonces
 -- quitar la demostracion se llevaria por delante un expediente de verdad.
+--
+-- SE REVOCA TODO Y DESPUES SE DA `select`, EN ESE ORDEN. Y no es estilo: es lo
+-- unico que funciona.
+--
+-- Supabase deja puesto un `alter default privileges ... grant all on tables to
+-- anon, authenticated, service_role`, asi que CADA TABLA NUEVA nace con los
+-- SIETE permisos —insert, select, update, delete, truncate, references y
+-- trigger— sin que nadie los escriba. Quitar solo insert, update y delete deja
+-- dentro los otros tres, y uno de ellos importa de verdad: **las reglas de fila
+-- no se aplican a `truncate`**. Con ese permiso puesto, una sesion cualquiera
+-- podria vaciar la tabla entera de todos los centros de un golpe.
+--
+-- Lo cacho `COMPROBAR-DEMOSTRACION.sql` contra la base de verdad, que es la
+-- unica forma de verlo: leyendo este archivo parecia correcto.
 revoke all on dato_de_demostracion from anon;
+revoke all on dato_de_demostracion from authenticated;
 grant select on dato_de_demostracion to authenticated;
-revoke insert, update, delete on dato_de_demostracion from authenticated;
 
 drop policy if exists dato_de_demostracion_leer on dato_de_demostracion;
 create policy dato_de_demostracion_leer on dato_de_demostracion
@@ -1932,3 +1946,41 @@ comment on function public.quitar_datos_de_demostracion(text) is
 
 revoke all on function public.quitar_datos_de_demostracion(text) from public, anon;
 grant execute on function public.quitar_datos_de_demostracion(text) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 6. EL PERMISO QUE SUPABASE LE REGALA A CADA TABLA NUEVA
+-- ---------------------------------------------------------------------
+--
+-- ESTO NO ES DEL BLOQUE 11: ES DE TODAS LAS TABLAS DEL PRODUCTO, y solo se vio
+-- al comprobar la ultima contra la base de verdad.
+--
+-- Supabase trae puesto un `alter default privileges in schema public grant all
+-- on tables to anon, authenticated, service_role`. "All" son SIETE permisos, no
+-- cuatro: insert, select, update, delete, **truncate**, references y trigger.
+-- Asi que cada tabla que crea este instalador nace con los siete, escriba lo
+-- que escriba el archivo despues.
+--
+-- POR QUE IMPORTA, Y ES LO UNICO QUE IMPORTA DE ESTE BLOQUE: **las reglas de
+-- fila NO se aplican a `truncate`**. Estan escritas para recortar que filas se
+-- leen y se escriben; `truncate` no lee ni escribe filas, vacia la tabla. Con
+-- ese permiso puesto, una sola sentencia dejaria en cero `cliente`, `venta` o
+-- `movimiento_caja` — de todos los centros a la vez, y sin que ninguna politica
+-- diga nada.
+--
+-- No es una puerta que este abierta hoy: PostgREST no manda `truncate` y nadie
+-- de fuera tiene una conexion directa con el rol `authenticated`. Es un permiso
+-- que sobra, y los permisos que sobran son los que se convierten en agujero el
+-- dia que cambia otra cosa. Se quitan.
+--
+-- `references` y `trigger` van en el mismo viaje por lo mismo: nada del
+-- producto los necesita, y con `trigger` se puede colgar codigo propio de una
+-- tabla ajena.
+--
+-- LO QUE NO SE TOCA es lo que el sistema si usa: `select`, `insert`, `update` y
+-- `delete` siguen exactamente como los dejo cada bloque, con sus reglas de fila
+-- mordiendo encima.
+--
+-- HAY QUE VOLVER A CORRERLO CADA VEZ QUE NAZCA UNA TABLA. Por eso vive al final
+-- del instalador y por eso `COMPROBAR-DEMOSTRACION.sql` lo comprueba: la unica
+-- defensa contra un permiso que se regala solo es preguntarle a la base.
+revoke truncate, references, trigger on all tables in schema public from anon, authenticated;
