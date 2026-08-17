@@ -48,7 +48,7 @@ const TABLAS = ['cliente', 'servicio', 'curso', 'producto', 'cita', 'venta',
   'proveedor', 'producto_proveedor', 'movimiento_inventario',
   'cotizacion', 'cotizacion_item', 'sesion_caja', 'gasto_recurrente',
   'recordatorio_recurrente', 'recordatorio_evento', 'recordatorio_ajustes',
-  'recordatorio_automatizacion'] as const;
+  'recordatorio_automatizacion', 'dato_de_demostracion'] as const;
 
 const cliente = new pg.Client(CADENA ? { connectionString: CADENA } : {});
 
@@ -2045,6 +2045,60 @@ async function correr(): Promise<void> {
     const e = await rechazado(() =>
       cliente.query(`select public.transferir_propiedad_del_centro($1,$2)`, [CENTRO, membresiaRecepcion]));
     anotar('NO se transfiere un centro ajeno', e !== null, e ?? 'lo transfirio');
+  });
+
+  grupo('Demostracion — el centro no se llena de datos inventados por accidente');
+
+  /*
+   * EL ATAQUE QUE MAS IMPORTA DE ESTE BLOQUE es el primero: la dueña de un
+   * centro de verdad, con TODOS los permisos, no puede cargar la demostracion.
+   * Si pudiera, el dia que alguien la apretara por curiosidad su centro se
+   * llenaria de cinco meses de pacientes inventados y ninguna cifra de ninguna
+   * pantalla volveria a significar nada.
+   *
+   * La llave no es un permiso —un permiso se le da a cualquiera sin querer—
+   * sino el correo del token, comparado en la base.
+   */
+  await como(DUENA, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select public.cargar_datos_de_demostracion($1, 1)`, [CENTRO]));
+    anotar('la dueña de un centro de verdad NO carga la demostracion', e !== null,
+      e ?? 'la cargo');
+  });
+
+  await como(DUENA, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select public.quitar_datos_de_demostracion($1)`, [CENTRO]));
+    anotar('y tampoco la quita: las dos puertas piden el mismo correo', e !== null,
+      e ?? 'la quito');
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select public.cargar_datos_de_demostracion($1, 1)`, [CENTRO]));
+    anotar('NO se siembra la demostracion en el centro de otro', e !== null, e ?? 'la sembro');
+  });
+
+  await como(RECEPCION, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select public.datos_de_demostracion($1)`, [CENTRO]));
+    anotar('sin gestionarConfiguracion no se pregunta ni si hay demostracion', e !== null,
+      e ?? 'lo pregunto');
+  });
+
+  await como(RECEPCION, async () => {
+    // La tabla del rastro la escriben SOLO las funciones. Con `insert` suelto,
+    // cualquiera podria anotar como "de demostracion" una fila real del centro
+    // — y entonces quitar la demostracion se llevaria un expediente de verdad.
+    const e = await rechazado(() =>
+      cliente.query(`insert into dato_de_demostracion (negocio_id, tabla, fila_id)
+                     values ($1, 'cliente', gen_random_uuid())`, [CENTRO]));
+    anotar('nadie escribe el rastro de la demostracion a mano', e !== null, e ?? 'lo escribio');
+  });
+
+  await como(DUENO_OTRO, async () => {
+    const n = await cuantos(`select * from dato_de_demostracion where negocio_id = $1`, [CENTRO]);
+    anotar('el dueño de otro centro NO ve que se sembro aqui', n === 0, `vio ${n}`);
   });
 
   grupo('Controles positivos — que el centro pueda trabajar');

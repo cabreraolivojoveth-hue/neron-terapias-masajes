@@ -16,6 +16,11 @@
  * abren desde el costado, que es donde el diseño las pone —"Ver detalles de mi
  * plan" y "Ver toda la actividad"—. Existen aqui igual para que su titulo y su
  * permiso vivan en la misma lista que los demas.
+ *
+ * Y UNA NO ES DEL DISEÑO: `demostracion`. No es del producto, es la
+ * herramienta con la que se ENSEÑA el producto, y por eso ademas del permiso
+ * pide un correo concreto. Vive en esta lista por lo mismo que las otras dos:
+ * dos listas de secciones se desincronizan.
  */
 
 import type { NombreDeIcono } from '../ui/iconos.js';
@@ -57,6 +62,20 @@ export interface SeccionDeConfiguracion {
    * escribir. Esconder la tarjeta es cortesia, no seguridad.
    */
   readonly capacidad: string | null;
+  /**
+   * Una seccion que SOLO existe para una cuenta concreta. `null` = para todas.
+   *
+   * HAY EXACTAMENTE UNA, y es la de los datos de demostracion: llenar un centro
+   * con cinco meses de historia inventada es lo unico de este sistema que le
+   * quitaria a alguien la confianza en sus propios numeros, asi que no se le
+   * ofrece a nadie que no sea quien enseña el producto.
+   *
+   * Y ES CORTESIA, NO SEGURIDAD, igual que la capacidad: quien escriba la
+   * direccion a mano llega a la seccion y se encuentra con que la base le
+   * rechaza la carga. El correo se compara alli, que es donde no se puede
+   * mentir.
+   */
+  readonly soloCorreo?: string | null;
 }
 
 export const SECCIONES: readonly SeccionDeConfiguracion[] = [
@@ -199,6 +218,24 @@ export const SECCIONES: readonly SeccionDeConfiguracion[] = [
     grupo: 'sistema',
     capacidad: 'gestionarConfiguracion',
   },
+  {
+    /**
+     * LA QUINTA TARJETA DE "SISTEMA", Y SOLO PARA UNA CUENTA.
+     *
+     * La captura de referencia trae cuatro. Esta no estaba en el diseño porque
+     * no es del producto: es la herramienta con la que se enseña el producto, y
+     * por eso vive detras de un correo en vez de detras de un permiso — un
+     * permiso se le puede dar a cualquiera sin querer.
+     */
+    id: 'demostracion',
+    titulo: 'Datos de demostración',
+    descripcion: 'Llena el centro con cinco meses de uso, para poder enseñarlo.',
+    icono: 'estrella',
+    tono: 'cursos',
+    grupo: 'sistema',
+    capacidad: 'gestionarConfiguracion',
+    soloCorreo: 'cabreraolivojoveth@gmail.com',
+  },
 
   /* ---- Las dos que se abren desde el costado ---------------------- */
   {
@@ -235,16 +272,25 @@ export function seccionPorId(id: string): SeccionDeConfiguracion | null {
 export function seccionesDelGrupo(
   grupo: GrupoDeConfiguracion,
   permisos: Readonly<Record<string, boolean>>,
+  correo = '',
 ): SeccionDeConfiguracion[] {
-  return SECCIONES.filter(
-    (s) => s.grupo === grupo && (s.capacidad === null || permisos[s.capacidad] === true),
-  );
+  return SECCIONES.filter((s) => s.grupo === grupo && puedeAbrir(s, permisos, correo));
 }
 
-/** ¿Puede esta persona abrir esta sección? La base lo vuelve a decidir. */
+/**
+ * ¿Puede esta persona abrir esta sección? La base lo vuelve a decidir.
+ *
+ * EL CORREO LLEGA VACIO SI NADIE LO PASA, y eso deja fuera las secciones de una
+ * sola cuenta — que es el lado seguro del olvido: quien no diga quien es, no la
+ * ve. Al reves, dar por buena una seccion reservada porque falta el dato, seria
+ * ofrecerle a cualquiera el boton que llena su centro de datos inventados.
+ */
 export function puedeAbrir(
   seccion: SeccionDeConfiguracion,
   permisos: Readonly<Record<string, boolean>>,
+  correo = '',
 ): boolean {
-  return seccion.capacidad === null || permisos[seccion.capacidad] === true;
+  if (seccion.capacidad !== null && permisos[seccion.capacidad] !== true) return false;
+  const suya = seccion.soloCorreo ?? null;
+  return suya === null || suya === correo.trim().toLocaleLowerCase('es');
 }

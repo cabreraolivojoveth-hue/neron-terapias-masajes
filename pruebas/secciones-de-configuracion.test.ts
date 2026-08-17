@@ -106,6 +106,48 @@ describe('los permisos de cada seccion', () => {
   });
 });
 
+describe('la seccion que es de UNA sola cuenta', () => {
+  const DEMO = 'cabreraolivojoveth@gmail.com';
+
+  it('no sale en la rejilla de nadie mas, ni siquiera con todos los permisos', () => {
+    /*
+     * Llenar un centro con cinco meses de historia inventada es lo unico de
+     * este sistema que le quitaria a alguien la confianza en sus propios
+     * numeros. Por eso va detras de un correo y no de un permiso: un permiso
+     * se le puede dar a cualquiera sin querer.
+     */
+    expect(seccionesDelGrupo('sistema', TODO).map((s) => s.id)).not.toContain('demostracion');
+    expect(seccionesDelGrupo('sistema', TODO, 'otra@correo.mx').map((s) => s.id))
+      .not.toContain('demostracion');
+  });
+
+  it('sin correo tampoco sale: el hueco cae al lado seguro', () => {
+    expect(puedeAbrir(seccionPorId('demostracion')!, TODO)).toBe(false);
+    expect(puedeAbrir(seccionPorId('demostracion')!, TODO, '')).toBe(false);
+  });
+
+  it('en la cuenta buena sale, y es la quinta de "Sistema y seguridad"', () => {
+    const suyas = seccionesDelGrupo('sistema', TODO, DEMO).map((s) => s.titulo);
+    expect(suyas).toEqual([
+      'Seguridad',
+      'Respaldos',
+      'Integraciones',
+      'Configuración avanzada',
+      'Datos de demostración',
+    ]);
+  });
+
+  it('el correo se compara sin mayusculas ni espacios de sobra', () => {
+    expect(puedeAbrir(seccionPorId('demostracion')!, TODO, `  ${DEMO.toUpperCase()} `)).toBe(true);
+  });
+
+  it('ademas del correo sigue pidiendo el permiso de configuracion', () => {
+    // Las dos condiciones, no una: el correo dice quien, el permiso dice que
+    // puede administrar este centro.
+    expect(puedeAbrir(seccionPorId('demostracion')!, {}, DEMO)).toBe(false);
+  });
+});
+
 describe('las dos que se abren desde el costado', () => {
   it('existen en la misma lista, sin grupo', () => {
     /*

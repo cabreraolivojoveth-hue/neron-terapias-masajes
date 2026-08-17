@@ -41,6 +41,15 @@ import {
 } from '../datos/categorias.js';
 import { useConsulta, useOperacion } from '../datos/consulta.js';
 import {
+  LO_QUE_TOCA_LA_DEMOSTRACION,
+  cargarDemostracionCompleta,
+  llaveDeLaDemostracion,
+  quitarDemostracion,
+  traerDemostracion,
+  type EstadoDeLaDemostracion,
+  type PasoDeLaDemostracion,
+} from '../datos/demostracion.js';
+import {
   BITACORA_SIN_FILTROS,
   COMO_SE_DICE_LA_LICENCIA,
   CONFIGURACION_VACIA,
@@ -84,6 +93,7 @@ import { useSesion } from '../identidad/sesion.js';
 import { AdministrarCategorias } from '../ui/administrar-categorias.js';
 import { Icono } from '../ui/iconos.js';
 import { BitacoraDelCentro, comoSeLee, cuandoOcurrio } from './bitacora-del-centro.js';
+import { DatosDeDemostracion } from './datos-de-demostracion.js';
 import { DatosDelCentro as FichaDelCentro } from './datos-del-centro.js';
 import { EquipoYPermisos } from './equipo-y-permisos.js';
 import { LoQueViveEnOtroLado, type SeccionEnlazada } from './lo-que-vive-en-otro-lado.js';
@@ -121,6 +131,7 @@ export function CentroDeConfiguracion() {
   const { ir, ruta } = useNavegacion();
 
   const negocio = acceso?.negocioId ?? '';
+  const correo = acceso?.correo ?? '';
   const permisos = acceso?.permisos ?? {};
   const soyDuena = acceso?.rol === 'dueno';
   const puedeConfigurar = permisos['gestionarConfiguracion'] === true;
@@ -145,6 +156,16 @@ export function CentroDeConfiguracion() {
   const [consultaBitacora, setConsultaBitacora] =
     useState<ConsultaDeLaBitacora>(BITACORA_SIN_FILTROS);
   const [ultimaExportacion, setUltimaExportacion] = useState<Exportacion | null>(null);
+  /**
+   * POR DONDE VA LA CARGA DE DEMOSTRACION, y por que vive en el padre.
+   *
+   * La carga son nueve llamadas seguidas de casi un minuto en total. El aviso
+   * de cada paso llega desde `cargarDemostracionCompleta`, que no es un
+   * componente: si el progreso viviera dentro de la tarjeta, habria que
+   * pasarle una funcion que la propia tarjeta se llama a si misma. Aqui es un
+   * estado normal que baja como propiedad.
+   */
+  const [progresoDemo, setProgresoDemo] = useState<PasoDeLaDemostracion | null>(null);
   /**
    * "Guardado", y solo cuando el servidor de verdad lo acepto.
    *
@@ -202,6 +223,17 @@ export function CentroDeConfiguracion() {
   const lasCategorias = useConsulta<Categoria[]>(
     negocio && categorias ? llaveDeCategorias(negocio, categorias.ambito) : null,
     () => traerCategorias(negocio, categorias!.ambito),
+  );
+
+  /*
+   * LA DEMOSTRACION SOLO SE PREGUNTA AL ABRIRLA. Es un viaje al servidor que a
+   * casi nadie le importa —la tarjeta ni siquiera existe fuera de la cuenta que
+   * enseña el producto— y hacerlo al pintar la rejilla seria pagarlo catorce
+   * veces al dia por nada.
+   */
+  const demostracion = useConsulta<EstadoDeLaDemostracion>(
+    negocio && seccion === 'demostracion' ? llaveDeLaDemostracion(negocio) : null,
+    () => traerDemostracion(negocio),
   );
 
   /* --- El recado y la direccion ------------------------------------- */
@@ -279,6 +311,19 @@ export function CentroDeConfiguracion() {
   const archivo = useOperacion((id: string) => archivarCategoria(id), [
     'categorias',
     ...LO_QUE_TOCA_LA_CONFIGURACION,
+  ]);
+
+  /*
+   * CARGAR Y QUITAR REFRESCAN EL SISTEMA ENTERO, no solo Configuracion. Una
+   * demostracion toca los doce modulos a la vez: sin invalidarlos todos, Inicio
+   * enseñaria quinientas citas y la Agenda seguiria vacia en la misma pantalla.
+   */
+  const siembra = useOperacion(
+    () => cargarDemostracionCompleta(negocio, setProgresoDemo),
+    [...LO_QUE_TOCA_LA_DEMOSTRACION],
+  );
+  const retiro = useOperacion(() => quitarDemostracion(negocio), [
+    ...LO_QUE_TOCA_LA_DEMOSTRACION,
   ]);
 
   /* --- Lo que se pinta ---------------------------------------------- */
@@ -386,7 +431,7 @@ export function CentroDeConfiguracion() {
         <div className="pz-cuerpo cfg-cuerpo">
           <div className="cfg-principal mv-cambia">
             {GRUPOS_DE_CONFIGURACION.map((g) => {
-              const suyas = seccionesDelGrupo(g.id, permisos);
+              const suyas = seccionesDelGrupo(g.id, permisos, correo);
               /* UN GRUPO SIN TARJETAS DESAPARECE. Dejarlo con su titulo y
                  vacio hace que quien lo mira crea que el sistema se rompio —
                  es la misma regla del menu lateral. */
@@ -699,6 +744,32 @@ export function CentroDeConfiguracion() {
                 ultima={ultimaExportacion}
                 error={null}
                 onExportar={(que) => void exportar(que)}
+              />
+            ) : null}
+
+            {laSeccion.id === 'demostracion' ? (
+              <DatosDeDemostracion
+                correo={correo}
+                estado={demostracion.datos}
+                cargando={demostracion.estado === 'cargando' && demostracion.datos === null}
+                error={demostracion.error ?? siembra.error ?? retiro.error}
+                progreso={progresoDemo}
+                trabajando={
+                  siembra.trabajando ? 'cargando' : retiro.trabajando ? 'quitando' : null
+                }
+                onCargar={() => {
+                  setProgresoDemo(null);
+                  void siembra.ejecutar().then(() => demostracion.recargar());
+                }}
+                onQuitar={() => {
+                  void retiro.ejecutar().then(() => {
+                    // El progreso se tira: con la demostracion fuera, una lista
+                    // de nueve pasos en verde diria que sigue cargada.
+                    setProgresoDemo(null);
+                    demostracion.recargar();
+                  });
+                }}
+                onReintentar={demostracion.recargar}
               />
             ) : null}
 

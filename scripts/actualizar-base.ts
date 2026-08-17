@@ -64,7 +64,18 @@ const RAIZ = join(import.meta.dirname, '..');
  * Asi que la frontera pasa al bloque 10 y el archivo vuelve a ser corto. Para
  * eso se invento.
  */
-const DESDE = '-- CONFIGURACION — EL CENTRO, SU EQUIPO Y SU RASTRO (bloque 10)';
+/*
+ * SE MOVIO LA FRONTERA EL 16/08/2026, POR TERCERA VEZ.
+ *
+ * El bloque 10 ya corrio en `hgypobbanvkwnqmepqim` y esta comprobado CONTRA LA
+ * BASE —tabla `invitacion` con sus reglas, `licencia.plan`, las dieciseis
+ * funciones y `registrar_venta` leyendo el impuesto—, asi que arrastrarlo otra
+ * vez solo hacia el archivo mas largo. Y esta vez importa mas que nunca: el
+ * bloque 11 trae UNA funcion de mil setecientas lineas que no se puede partir
+ * por la mitad, asi que todo lo que se le sume delante acerca el archivo al
+ * tamaño con el que el editor de Supabase pierde el hilo de los `$$`.
+ */
+const DESDE = '-- DATOS DE DEMOSTRACION — CINCO MESES DE USO, PARA ENSEÑAR EL SISTEMA (bloque 11)';
 
 /**
  * FUNCIONES QUE VIVEN ANTES DE LA FRONTERA Y AUN ASI CAMBIARON.
@@ -78,15 +89,13 @@ const DESDE = '-- CONFIGURACION — EL CENTRO, SU EQUIPO Y SU RASTRO (bloque 10)
  * eso desordena el archivo y es como se partio la seccion de Reportes en dos.
  */
 /*
- * `registrar_venta` ENTRA AQUI PORQUE EL BLOQUE 10 LA CAMBIO.
- *
- * Vive muy por encima de la frontera —es del bloque 6— y aun asi cambio: hasta
- * hoy escribia `impuesto_centavos = 0` a mano, y ahora lee la tasa que se
- * configura en Configuracion. Sin sacarla por aqui, el archivo saldria sin ella
- * y el impuesto configurado no se aplicaria a ninguna venta: la pantalla lo
- * enseñaria y el servidor seguiria guardando cero.
+ * VACIO PARA EL BLOQUE 11, y es una comprobacion, no un descuido: los datos de
+ * demostracion NO tocan ni una funcion de las que ya estaban. Todo lo suyo es
+ * nuevo y vive al final del instalador. El dia que un bloque si corrija algo de
+ * mas arriba, su nombre va aqui — que es como `registrar_venta` viajo con el
+ * bloque 10.
  */
-const ADEMAS = ['public.ventas_del_rango', 'public.resumen_inicio', 'public.registrar_venta'];
+const ADEMAS: string[] = [];
 
 const CABECERA = `-- =====================================================================
 -- ACTUALIZAR-BASE.sql — SOLO LO NUEVO
@@ -101,33 +110,31 @@ const CABECERA = `-- ===========================================================
 -- Es seguro correrlo las veces que haga falta: no borra datos, no reescribe
 -- filas, y todo va con \`if not exists\` o \`create or replace\`.
 --
--- QUE TRAE:
+-- QUE TRAE: SOLO EL BLOQUE 11, los datos de demostracion. Lo de antes ya corrio
+-- y esta comprobado contra la base.
 --
---   1. RECORDATORIOS (bloque 7). Si ya lo corriste, volver a correrlo no hace
---      daño.
---   2. CONFIGURACION (bloque 10), al final:
---      · \`licencia\` gana la columna \`plan\`, que escribe la plataforma.
---      · Nace \`invitacion\`, con sus reglas de fila y su permiso. Es la unica
---        tabla nueva del bloque: \`membresia.usuario_id\` es not null, asi que
---        no se puede dar de alta a quien todavia no tiene cuenta.
---      · Dieciseis funciones: la ficha del centro, el equipo, los roles, la
---        bitacora, la licencia, exportar y transferir la propiedad.
+--   · Nace \`dato_de_demostracion\`, con sus reglas de fila y su permiso. Es el
+--     rastro de que fila nacio de una demostracion, y es lo unico que permite
+--     QUITARLA despues sin tocar lo que hayas capturado tu.
+--   · \`cargar_datos_de_demostracion\` siembra cinco meses de uso en NUEVE pasos
+--     —catalogo, pacientes, un mes por paso, y al final cursos, mensajes,
+--     recordatorios y bitacora—. Cada paso es su propia llamada: de un viaje,
+--     el tiempo limite de PostgREST la cortaria a la mitad.
+--   · \`quitar_datos_de_demostracion\` borra exactamente lo sembrado, en el
+--     orden de las llaves foraneas.
+--   · \`datos_de_demostracion\` dice si hay algo cargado y cuanto.
 --
--- Y ARRIBA, EN LAS CORRECCIONES:
+-- SOLO DESDE LA CUENTA \`cabreraolivojoveth@gmail.com\`. El correo se compara
+-- en la base, no en la pantalla: esconder la tarjeta es cortesia, y aqui hacia
+-- falta seguridad. Cualquier otra cuenta recibe un error de permisos aunque
+-- llame a la base a mano.
 --
---   · \`registrar_venta\` VUELVE A CREARSE, y esto es lo importante del bloque:
---     hasta hoy escribia \`impuesto_centavos = 0\` a mano. Ahora lee la tasa que
---     se configura en Configuracion y la desglosa —hacia atras si el precio ya
---     la lleva dentro, encima si no—. Sin correr esto, la pantalla enseñaria el
---     impuesto configurado y el servidor seguiria guardando cero.
---   · \`resumen_inicio\` y \`ventas_del_rango\`, sin cambios de esta vez.
+-- NO TOCA NI UNA FILA DE LO QUE YA HAY. Todo lo que crea es nuevo, y hasta que
+-- alguien apriete el boton no escribe ni un renglon de datos.
 --
--- LO YA COBRADO NO SE TOCA: la cuenta del impuesto solo corre al registrar una
--- venta nueva. Cambiar la tasa hoy no reescribe el mes pasado.
---
--- Sin correr esto, el sitio se publica igual y Configuracion abre con un error
--- que no dice nada util: el navegador pide funciones que la base no tiene.
--- Vercel publica el navegador, no la base.
+-- Sin correr esto, el sitio se publica igual y la seccion "Datos de
+-- demostracion" falla pidiendo funciones que la base no tiene. Vercel publica
+-- el navegador, no la base.
 --
 -- Este archivo lo genera \`scripts/actualizar-base.ts\` a partir de
 -- INSTALAR-EN-TERAPIAS.sql. No se edita a mano: se corre el guion.

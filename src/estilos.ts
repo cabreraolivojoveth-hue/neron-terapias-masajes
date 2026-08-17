@@ -3484,6 +3484,21 @@ function loQueTodaviaEsDeUnModulo(): string {
 .cfg-exportables { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: ${v('espacio-2')}; }
 .cfg-respaldos__ultima { font-size: ${v('texto-chico')}; color: ${v('texto-suave')}; }
 
+/* ---- Datos de demostracion ---- */
+.cfg-demo { display: flex; flex-direction: column; gap: ${v('espacio-4')}; }
+/* Los nueve pasos, con el que va corriendo marcado. La lista se queda EN
+   PANTALLA al terminar: una barra que desaparece no deja ver que se cargo. */
+.cfg-pasos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: ${v('espacio-1')}; }
+.cfg-pasos__paso {
+  display: flex; align-items: center; gap: ${v('espacio-2')};
+  font-size: ${v('texto-chico')}; color: ${v('texto-tenue')};
+}
+/* El estado NO se dice solo con color: delante va una palomita o un punto, y
+   el que corre ademas lo escribe. Es la misma regla que la zona de peligro. */
+.cfg-pasos__paso--hecho { color: ${v('texto-suave')}; }
+.cfg-pasos__paso--corriendo { color: ${v('texto')}; font-weight: 600; }
+.cfg-pasos__marca { flex: none; display: inline-flex; width: 18px; justify-content: center; }
+
 /* ---- Plan ---- */
 .cfg-plan { display: flex; flex-direction: column; gap: ${v('espacio-4')}; }
 .cfg-plan__dias { display: block; font-size: ${v('texto-micro')}; color: ${v('texto-tenue')}; }

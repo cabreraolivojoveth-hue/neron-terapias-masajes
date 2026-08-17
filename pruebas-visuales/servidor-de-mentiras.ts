@@ -734,6 +734,21 @@ const RESPUESTAS: Readonly<Record<string, unknown>> = {
     creadoEn: enHoras(-8000),
     miembros: 2,
   },
+  /**
+   * LA DEMOSTRACION, SIN CARGAR.
+   *
+   * `puede` va en true por la misma razon que todos los permisos de la vitrina:
+   * la foto tiene que enseñar la pantalla COMPLETA. En la aplicacion de verdad
+   * lo decide la base comparando el correo del token, y aqui no hay token.
+   */
+  datos_de_demostracion: {
+    puede: true,
+    cargada: false,
+    filas: 0,
+    sembradaEn: null,
+    pasos: 9,
+    porTabla: {},
+  },
   licencia_del_centro: {
     administrada: true,
     plan: 'Plan de ejemplo',
