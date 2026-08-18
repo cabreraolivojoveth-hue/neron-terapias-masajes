@@ -21,6 +21,23 @@
 -- Cada renglon dice BIEN o MAL. Si hay un solo MAL, no se aprieta el boton de
 -- la demostracion todavia: la pantalla fallaria pidiendo algo que no existe.
 
+-- Las tablas de ESTE producto. Se nombran porque el proyecto de Supabase
+-- puede tener tablas de otro programa, y sus permisos no son asunto de esta
+-- comprobacion: contarlas daba 'MAL' por algo que estaba bien.
+with tablas_del_producto(table_name) as (
+  select unnest(array[
+    'automatizacion_de_mensajes', 'canal_de_mensajes', 'categoria', 'cita',
+    'cliente', 'contador_de_folio', 'conversacion', 'conversacion_etiqueta',
+    'cotizacion', 'cotizacion_item', 'curso', 'dato_de_demostracion',
+    'difusion', 'gasto', 'gasto_recurrente', 'inscripcion',
+    'invitacion', 'material_curso', 'mensaje', 'movimiento_caja',
+    'movimiento_inventario', 'pago', 'plantilla_de_mensaje', 'producto',
+    'producto_proveedor', 'proveedor', 'recordatorio', 'recordatorio_ajustes',
+    'recordatorio_automatizacion', 'recordatorio_evento', 'recordatorio_recurrente', 'reporte_guardado',
+    'servicio', 'sesion_caja', 'sesion_curso', 'venta',
+    'venta_item'
+  ])
+)
 select 'la tabla del rastro existe' as que,
        case when to_regclass('public.dato_de_demostracion') is not null
             then 'BIEN' else 'MAL' end as como
@@ -65,13 +82,22 @@ union all
  * Se comprueba aqui —y no solo al crear la tabla— porque el regalo se repite
  * con CADA tabla nueva: la unica defensa es preguntarle a la base.
  */
-select 'ninguna tabla le da truncate a anon ni a authenticated (' ||
-         (select count(*)::text from information_schema.role_table_grants
-           where table_schema = 'public' and privilege_type = 'TRUNCATE'
-             and grantee in ('anon', 'authenticated')) || ')',
-       case when (select count(*) from information_schema.role_table_grants
-                   where table_schema = 'public' and privilege_type = 'TRUNCATE'
-                     and grantee in ('anon', 'authenticated')) = 0
+--
+-- SE MIRAN LAS TABLAS DE ESTE PRODUCTO, no todas las del esquema. Antes se
+-- contaban todas, y en un proyecto compartido con otro programa de Neron eso
+-- salia 'MAL' por permisos ajenos que estan perfectamente bien — e invitaba a
+-- correr ARREGLAR-PERMISOS.sql para "arreglar" tablas que no son de aqui.
+select 'ninguna tabla del producto le da truncate a anon ni a authenticated (' ||
+         (select count(*)::text from information_schema.role_table_grants g
+            join information_schema.tables t
+              on t.table_schema = g.table_schema and t.table_name = g.table_name
+           where g.table_schema = 'public' and g.privilege_type = 'TRUNCATE'
+             and g.grantee in ('anon', 'authenticated')
+             and g.table_name in (select table_name from tablas_del_producto)) || ')',
+       case when (select count(*) from information_schema.role_table_grants g
+                   where g.table_schema = 'public' and g.privilege_type = 'TRUNCATE'
+                     and g.grantee in ('anon', 'authenticated')
+                     and g.table_name in (select table_name from tablas_del_producto)) = 0
             then 'BIEN' else 'MAL: corre ARREGLAR-PERMISOS.sql' end
 
 union all

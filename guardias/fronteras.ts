@@ -922,6 +922,80 @@ function guardiaTodaTablaConReglasTieneSuPermiso(): void {
 
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/* N — Ningun .sql habla por los demas programas                       */
+/* ------------------------------------------------------------------ */
+/**
+ * ESTA GUARDIA NACIO DE UN DIA CONCRETO, y es el peor tipo de fallo: el que
+ * no se ve donde pasa.
+ *
+ * Un archivo de este producto decia:
+ *
+ *     revoke truncate, references, trigger on all tables in schema public …
+ *
+ * `all tables in schema public` no significa "mis tablas": significa TODAS las
+ * del proyecto de Supabase. Corrido en un proyecto donde vive otro programa de
+ * Neron, le cambia los permisos a SUS tablas. Y en ese otro programa el
+ * sintoma no se parece en nada a un permiso mal puesto: la pantalla se abre
+ * con el inventario vacio, los creditos vacios, todo vacio. Igual que si
+ * alguien hubiera borrado los datos.
+ *
+ * Se vigilan dos cosas:
+ *
+ *  1. Que ningun `.sql` vuelva a hablar de "todas las tablas del esquema".
+ *  2. Que la lista de tablas propias —la del bloque que quita `truncate`— este
+ *     COMPLETA. Sin esto, la primera regla se cumple y aun asi una tabla nueva
+ *     se queda sin proteger, callada. Un mapa declarado y una prueba que
+ *     comprueba que el mapa esta completo.
+ */
+function guardiaNingunSqlHablaPorOtrosProgramas(): void {
+  const sqls: string[] = [];
+  for (const dir of [RAIZ, join(RAIZ, 'basedatos')]) {
+    let entradas: string[];
+    try { entradas = readdirSync(dir); } catch { continue; }
+    for (const n of entradas) if (n.toLowerCase().endsWith('.sql')) sqls.push(join(dir, n));
+  }
+
+  for (const ruta of sqls) {
+    const crudo = readFileSync(ruta, 'utf8');
+    const nombre = relative(RAIZ, ruta);
+    const renglones = crudo.split('\n');
+    for (let i = 0; i < renglones.length; i += 1) {
+      const linea = renglones[i]!;
+      if (/^\s*--/.test(linea)) continue; // un comentario que lo explica no es el fallo
+      if (!/all\s+(tables|sequences)\s+in\s+schema\s+public/i.test(linea)) continue;
+      fallar(nombre, `el renglon ${i + 1} habla de "all tables in schema public"`,
+        'Eso alcanza a las tablas de CUALQUIER otro programa que comparta el proyecto de Supabase. ' +
+        'Le cambia los permisos sin que nadie se entere, y del otro lado no se ve como un permiso ' +
+        'mal puesto: se ve como si se hubieran borrado los datos. Nombra tus tablas una por una.');
+    }
+  }
+
+  /* La lista de tablas propias tiene que estar completa. */
+  const instalador = join(RAIZ, 'INSTALAR-EN-TERAPIAS.sql');
+  let crudo: string;
+  try { crudo = readFileSync(instalador, 'utf8'); } catch { return; }
+
+  const declaradas = new Set<string>();
+  const bloque = /tablas_del_producto\s+text\[\]\s*:=\s*array\[([\s\S]*?)\]/.exec(crudo);
+  if (!bloque) {
+    fallar('INSTALAR-EN-TERAPIAS.sql', 'no esta la lista de tablas propias (`tablas_del_producto`)',
+      'Es la lista que reemplazo a "todas las tablas del esquema". Sin ella, o se vuelve a hablar ' +
+      'por los demas programas, o no se le quita `truncate` a nadie.');
+    return;
+  }
+  for (const m of bloque[1]!.matchAll(/'([a-z_]+)'/g)) declaradas.add(m[1]!);
+
+  for (const m of crudo.matchAll(/^create table (?:if not exists )?([a-z_]+)/gm)) {
+    const tabla = m[1]!;
+    if (declaradas.has(tabla)) continue;
+    fallar('INSTALAR-EN-TERAPIAS.sql', `la tabla "${tabla}" no esta en la lista \`tablas_del_producto\``,
+      'Supabase le regala siete permisos a cada tabla nueva, y `truncate` es el unico que las reglas ' +
+      'de fila NO pueden recortar: vacia la tabla entera, de todos los centros a la vez. La lista es ' +
+      'lo que se lo quita; una tabla fuera de la lista nace con ese permiso puesto y nadie lo nota.');
+  }
+}
+
 const GUARDIAS = [
   { nombre: 'ni un dato de ejemplo', correr: guardiaSinDatosDeEjemplo },
   { nombre: 'el registro de modulos cuadra con el menu', correr: guardiaRegistroCompleto },
@@ -955,6 +1029,10 @@ const GUARDIAS = [
   {
     nombre: 'toda tabla con reglas de fila tiene su permiso',
     correr: guardiaTodaTablaConReglasTieneSuPermiso,
+  },
+  {
+    nombre: 'ningun .sql habla por los demas programas',
+    correr: guardiaNingunSqlHablaPorOtrosProgramas,
   },
 ];
 

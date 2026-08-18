@@ -297,7 +297,40 @@ grant execute on function public.quitar_datos_de_demostracion(text) to authentic
 -- HAY QUE VOLVER A CORRERLO CADA VEZ QUE NAZCA UNA TABLA. Por eso vive al final
 -- del instalador y por eso `COMPROBAR-DEMOSTRACION.sql` lo comprueba: la unica
 -- defensa contra un permiso que se regala solo es preguntarle a la base.
-revoke truncate, references, trigger on all tables in schema public from anon, authenticated;
+do $$
+declare
+  -- LAS TABLAS DE ESTE PRODUCTO, nombradas una por una. Antes esta linea decia
+  -- `on all tables in schema public`, que no significa "las mias" sino TODAS
+  -- las del proyecto de Supabase. Corrido en un proyecto donde vive otro
+  -- programa de Neron, le quitaba permisos a sus tablas sin que nadie se
+  -- entere; y en ese otro programa eso no se ve como un permiso mal puesto,
+  -- se ve como si los datos se hubieran borrado. Paso.
+  --
+  -- Si nace una tabla, se agrega aqui. Olvidarla no es silencioso: la guardia
+  -- de fronteras compara esta lista con los `create table` del repositorio y
+  -- rompe la publicacion si falta alguna.
+  tablas_del_producto text[] := array[
+    'automatizacion_de_mensajes', 'canal_de_mensajes', 'categoria', 'cita',
+    'cliente', 'contador_de_folio', 'conversacion', 'conversacion_etiqueta',
+    'cotizacion', 'cotizacion_item', 'curso', 'dato_de_demostracion',
+    'difusion', 'gasto', 'gasto_recurrente', 'inscripcion',
+    'invitacion', 'material_curso', 'mensaje', 'movimiento_caja',
+    'movimiento_inventario', 'pago', 'plantilla_de_mensaje', 'producto',
+    'producto_proveedor', 'proveedor', 'recordatorio', 'recordatorio_ajustes',
+    'recordatorio_automatizacion', 'recordatorio_evento', 'recordatorio_recurrente', 'reporte_guardado',
+    'servicio', 'sesion_caja', 'sesion_curso', 'venta',
+    'venta_item'
+  ];
+  t text;
+begin
+  foreach t in array tablas_del_producto loop
+    -- `to_regclass` devuelve nulo si la tabla todavia no existe: asi este
+    -- bloque se puede correr en una base a medio actualizar sin reventar.
+    if to_regclass('public.' || quote_ident(t)) is not null then
+      execute format('revoke truncate, references, trigger on public.%I from anon, authenticated', t);
+    end if;
+  end loop;
+end $$;
 
 -- =====================================================================
 -- BLOQUE 12 — EL SISTEMA COMO UNO SOLO
