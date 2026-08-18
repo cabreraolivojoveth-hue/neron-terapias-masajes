@@ -105,6 +105,19 @@ describe('los estados que dejan a medias', () => {
     expect(screen.getByRole('button', { name: 'Salir' })).toBeDefined();
   });
 
+  it('sin negocio se puede CREAR el propio centro ahi mismo', () => {
+    /**
+     * Es el sitio que de verdad cierra el agujero. Si el proyecto pide
+     * confirmar el correo, `signUp` no devuelve sesion y el alta se queda a la
+     * mitad —cuenta si, centro no—: quien vuelve despues de confirmar cae
+     * EXACTAMENTE aqui. Sin este formulario queda en un callejon, dentro del
+     * sistema y sin pertenecer a nada.
+     */
+    conEstado('sin-negocio');
+    expect(screen.getByLabelText(/Nombre del centro/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Crear mi centro' })).toBeDefined();
+  });
+
   it('falta segundo factor tambien se explica', () => {
     conEstado('falta-segundo-factor');
     expect(screen.getByText(/Falta el segundo paso/i)).toBeDefined();

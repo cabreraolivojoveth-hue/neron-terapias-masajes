@@ -11,12 +11,25 @@ import { useState, type FormEvent } from 'react';
 import { supabase } from '../supabase.js';
 import { LEMA_POR_OMISION, NOMBRE_POR_OMISION } from '../datos/configuracion.js';
 import { Hoja } from '../marco/hoja.js';
+import { CrearCuenta } from './crear-cuenta.js';
 
 export function Entrar() {
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  /**
+   * LAS DOS PANTALLAS SON UNA SOLA, y no es por ahorrar un archivo.
+   *
+   * Aqui todavia no hay sesion, asi que tampoco hay navegacion —el
+   * `ProveedorDeNavegacion` vive del lado de adentro—. Mandar la direccion a
+   * `?crear` obligaria a montar rutas antes de entrar solo para esto, y una
+   * direccion que se puede compartir a media alta es una invitacion a recargar
+   * en el peor momento. Con un interruptor local, volver es volver.
+   */
+  const [creando, setCreando] = useState(false);
+
+  if (creando) return <CrearCuenta onVolver={() => setCreando(false)} />;
 
   async function enviar(e: FormEvent): Promise<void> {
     e.preventDefault();
@@ -83,6 +96,19 @@ export function Entrar() {
         <Boton type="submit" tono="principal" trabajando={enviando} completo>
           Entrar
         </Boton>
+
+        {/*
+          LA SALIDA PARA QUIEN TODAVIA NO TIENE NADA.
+          Sin este renglon, la unica forma de tener una cuenta era que alguien
+          de adentro invitara — y para entrar al primer centro habria que estar
+          ya en un centro.
+        */}
+        <p className="terapias-entrar__pie">
+          ¿Es tu primera vez?{' '}
+          <Boton type="button" tono="tenue" onClick={() => setCreando(true)}>
+            Crear una cuenta
+          </Boton>
+        </p>
       </form>
     </main>
   );

@@ -44,6 +44,7 @@ import {
 } from './datos/configuracion.js';
 import { ponerLaMoneda } from './datos/moneda.js';
 import { Entrar } from './pantallas/entrar.js';
+import { CrearMiCentro } from './pantallas/crear-cuenta.js';
 import { HAY_CONEXION } from './supabase.js';
 
 /* ------------------------------------------------------------------ */
@@ -367,8 +368,8 @@ function Segun() {
         accion={<Boton tono="contorno" onClick={() => void cerrarSesion()}>Salir</Boton>}
       >
         <p>
-          Entraste bien, pero nadie te ha dado de alta en un centro. Pídele a quien administra el
-          sistema que te invite con este correo.
+          Entraste bien, pero tu cuenta no pertenece a ningún centro todavía. Hay dos caminos, y
+          cuál te toca depende de si trabajas en un centro que ya existe o estás abriendo el tuyo.
         </p>
         {/*
           Y SI YA TE INVITARON, AQUI SE APLICA. Una invitacion se guarda contra
@@ -378,6 +379,19 @@ function Segun() {
           misma pantalla cada vez que entra, sin nada que hacer.
         */}
         <BuscarMiInvitacion />
+        {/*
+          EL FORMULARIO DE ALTA VIVE TAMBIEN AQUI, Y ESTE ES EL SITIO QUE DE
+          VERDAD CIERRA EL AGUJERO.
+
+          Es la misma leccion que costo el segundo factor: si el proyecto pide
+          confirmar el correo, `signUp` no devuelve sesion y la pantalla de
+          crear cuenta se queda a la mitad —cuenta si, centro no—. Quien vuelve
+          despues de confirmar cae EXACTAMENTE aqui. Ponerlo solo del otro lado
+          habria dejado a esa persona en un callejon: entra bien, no pertenece a
+          nada, y no hay ni un boton que la saque.
+        */}
+        <p>¿Nadie te invitó porque el centro es tuyo? Créalo ahora:</p>
+        <CrearMiCentro />
       </Aviso>
     );
   }

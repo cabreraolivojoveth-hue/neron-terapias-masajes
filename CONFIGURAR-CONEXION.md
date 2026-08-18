@@ -29,6 +29,25 @@ En el mismo SQL Editor:
 Los dos se pueden volver a correr las veces que haga falta: no borran ni
 duplican nada.
 
+### Si tu base ya estaba instalada de antes
+
+Pega también `PEGAR-CREAR-CUENTA.sql`. Es una sola función y trae la puerta por
+la que nace la primera cuenta: sin ella, el botón **Crear una cuenta** de la
+pantalla de entrada falla diciendo que la base no tiene `crear_mi_centro`.
+
+Va incluida en `INSTALAR-EN-TERAPIAS.sql` (bloque 14), así que si acabas de
+correr ese archivo completo ya la tienes y este paso te lo puedes saltar.
+
+### Permitir que la gente se dé de alta
+
+En Supabase → **Authentication** → Providers → Email:
+
+- **Enable Sign Up** encendido. Apagado, `signUp` responde "Signups not allowed"
+  y no hay forma de crear la primera cuenta.
+- **Confirm email** es decisión tuya. Encendido es más seguro y el sistema lo
+  soporta: la cuenta se crea, se manda el correo, y al volver a entrar la
+  pantalla pide el nombre del centro para terminar.
+
 ## 4. El archivo de llaves, en tu máquina
 
 Crea un archivo llamado `.env` en la carpeta del proyecto, con esto adentro:
@@ -57,6 +76,6 @@ npm install
 npm run ataques
 ```
 
-Los 55 ataques intentan leer el expediente de otro centro, cobrarse una venta
-ajena, meter dinero a la caja sin operación detrás. **Están bien cuando fallan
-el intento.**
+Los ataques intentan leer el expediente de otro centro, cobrarse una venta
+ajena, meter dinero a la caja sin operación detrás, darse de alta de dueño en un
+centro que no es suyo. **Están bien cuando fallan el intento.**

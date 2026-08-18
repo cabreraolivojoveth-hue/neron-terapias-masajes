@@ -102,6 +102,35 @@ describe('cuando falla la entrada', () => {
   });
 });
 
+describe('la salida para quien todavia no tiene nada', () => {
+  it('desde aqui se puede CREAR una cuenta, y se puede volver', async () => {
+    /**
+     * Antes de este boton el sistema tenia una puerta y ninguna llave: la
+     * unica forma de tener cuenta era que alguien de adentro invitara, asi que
+     * para entrar al primer centro habia que estar ya en un centro.
+     */
+    render(<Entrar />);
+    const u = userEvent.setup();
+    await u.click(screen.getByRole('button', { name: 'Crear una cuenta' }));
+
+    expect(screen.getByLabelText(/Nombre del centro/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Crear cuenta' })).toBeDefined();
+    // Y el camino de vuelta existe: sin el, quien entra por curiosidad se
+    // queda sin forma de regresar mas que recargando.
+    await u.click(screen.getByRole('button', { name: 'Entrar' }));
+    expect(screen.getByLabelText('Contraseña')).toBeDefined();
+    expect(screen.queryByLabelText(/Nombre del centro/)).toBeNull();
+  });
+
+  it('abrir el alta NO manda el formulario de entrar', async () => {
+    // Un boton sin `type` dentro de un <form> es de envio: intentaria entrar
+    // con los campos vacios antes de cambiar de pantalla.
+    render(<Entrar />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Crear una cuenta' }));
+    expect(auth.signInWithPassword).not.toHaveBeenCalled();
+  });
+});
+
 describe('lo que se le manda al servidor', () => {
   it('el correo va sin espacios de sobra', async () => {
     // Copiar y pegar un correo arrastra un espacio al final mas veces de las

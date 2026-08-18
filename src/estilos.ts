@@ -139,6 +139,41 @@ function loQueTodaviaEsDeUnModulo(): string {
   padding: ${v('espacio-2')} ${v('espacio-3')};
   border-radius: ${v('radio-sistema')};
 }
+/*
+ * El grupo de campos de un formulario dentro de la caja.
+ *
+ * EXISTE PORQUE EL FORMULARIO DE CREAR EL CENTRO SE PINTA EN DOS SITIOS: en su
+ * pantalla propia, donde la caja ya reparte el espacio, y DENTRO del aviso de
+ * "tu cuenta todavía no está en ningún centro", donde no hay nada que lo
+ * reparta. Sin esta clase, ahí los campos salen pegados unos a otros.
+ */
+.terapias-entrar__grupo {
+  display: flex;
+  flex-direction: column;
+  gap: ${v('espacio-4')};
+  width: 100%;
+}
+/*
+ * La buena noticia. Lleva su propio borde y su fondo por la misma razon que el
+ * error: el color verde solo no le dice nada a quien no lo distingue, ni a
+ * quien mira la tableta del mostrador con el sol encima.
+ */
+.terapias-entrar__aviso {
+  margin: 0;
+  color: ${v('exito')};
+  font-size: ${v('texto-chico')};
+  border-left: 3px solid ${v('exito')};
+  background: ${v('exito-tenue')};
+  padding: ${v('espacio-2')} ${v('espacio-3')};
+  border-radius: ${v('radio-sistema')};
+}
+/* El renglón de abajo: "¿Primera vez? Crea tu centro" y su vuelta. */
+.terapias-entrar__pie {
+  margin: 0;
+  text-align: center;
+  color: ${v('texto-suave')};
+  font-size: ${v('texto-chico')};
+}
 .terapias-aviso__caja { max-width: 460px; text-align: left; align-items: flex-start; }
 .terapias-aviso__texto { color: ${v('texto-suave')}; font-size: ${v('texto-chico')}; }
 .terapias-aviso__texto p { margin: 0 0 ${v('espacio-3')}; }

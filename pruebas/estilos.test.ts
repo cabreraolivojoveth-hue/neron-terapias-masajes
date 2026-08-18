@@ -94,4 +94,10 @@ describe('accesibilidad', () => {
   it('el error de entrar no depende solo del color', () => {
     expect(css).toMatch(/\.terapias-entrar__error\s*\{[^}]*border-left/s);
   });
+
+  it('la buena noticia del alta tampoco depende solo del color', () => {
+    // El verde solo no le dice nada a quien no lo distingue, ni a quien mira
+    // la tableta del mostrador con el sol encima.
+    expect(css).toMatch(/\.terapias-entrar__aviso\s*\{[^}]*border-left/s);
+  });
 });

@@ -52,15 +52,35 @@ const TABLAS = ['cliente', 'servicio', 'curso', 'producto', 'cita', 'venta',
 
 const cliente = new pg.Client(CADENA ? { connectionString: CADENA } : {});
 
-/** Corre algo COMO esa persona: el mismo mecanismo que usa Supabase. */
-async function como<T>(usuario: string | null, trabajo: () => Promise<T>): Promise<T> {
+/**
+ * Corre algo COMO esa persona: el mismo mecanismo que usa Supabase.
+ *
+ * EL CORREO VA APARTE Y NO SIEMPRE, y no es por ahorrar: casi ninguna funcion
+ * lo mira —les basta `auth.uid()`— y las dos que SI lo miran, `crear_mi_centro`
+ * y `reclamar_invitaciones`, son justo las que hacen nacer una membresia. Poder
+ * mandar un token CON identidad pero SIN correo es lo que permite atacarlas por
+ * ahi: hay proveedores de identidad que no entregan esa reclamacion, y una
+ * funcion que diera de alta igual estaria escribiendo un correo vacio en la
+ * puerta de todo.
+ */
+async function como<T>(
+  usuario: string | null,
+  trabajo: () => Promise<T>,
+  correo?: string,
+): Promise<T> {
   await cliente.query('begin');
   try {
     await cliente.query(`select set_config('request.jwt.claims', $1, true)`, [
       // Sin sesion se manda un token VACIO PERO VALIDO, que es lo que llega
       // de verdad: la peticion existe, simplemente no trae identidad. Un
       // texto vacio no es JSON y reventaria antes de probar nada.
-      usuario ? JSON.stringify({ sub: usuario, role: 'authenticated' }) : '{}',
+      usuario
+        ? JSON.stringify({
+            sub: usuario,
+            role: 'authenticated',
+            ...(correo ? { email: correo } : {}),
+          })
+        : '{}',
     ]);
     await cliente.query('set local role authenticated');
     return await trabajo();
@@ -2046,6 +2066,110 @@ async function correr(): Promise<void> {
       cliente.query(`select public.transferir_propiedad_del_centro($1,$2)`, [CENTRO, membresiaRecepcion]));
     anotar('NO se transfiere un centro ajeno', e !== null, e ?? 'lo transfirio');
   });
+
+  grupo('Alta — el primer centro nace sin que nadie invite, y solo el propio');
+
+  /*
+   * ESTE GRUPO ES LA UNICA COSA QUE EJECUTA `crear_mi_centro`, Y ESA ES SU
+   * RAZON DE SER.
+   *
+   * La funcion es `plpgsql`, y Postgres NO revisa el cuerpo de una `plpgsql` al
+   * crearla: un nombre de columna equivocado ahi dentro pasa los tipos, las
+   * dieciocho guardias, las mil cuatrocientas pruebas y la compilacion, y
+   * revienta la primera vez que alguien aprieta el boton — o sea, despues de
+   * publicar. Es exactamente el fallo que documenta `aplicarEsquema` mas
+   * arriba, y volveria a pasar aqui si nadie la llamara nunca.
+   *
+   * Y lo que se ataca es lo que de verdad importa: `crear_mi_centro` es la
+   * SEGUNDA Y ULTIMA puerta por la que nace una membresia sin que nadie invite.
+   * Si se abriera de mas, cualquiera se daria de alta de dueño donde quisiera.
+   */
+
+  /** Una cuenta que todavia no pertenece a nada. */
+  const RECIEN_LLEGADA = '55555555-5555-4555-8555-555555555555';
+  const SU_CENTRO = `t_${RECIEN_LLEGADA.replace(/-/g, '')}`;
+
+  await como(null, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select public.crear_mi_centro('Centro Colado','Nadie')`));
+    anotar('sin sesion NO nace ningun centro', e !== null, e ?? 'lo creo');
+  });
+
+  await como(RECIEN_LLEGADA, async () => {
+    // Con identidad pero SIN correo. La membresia lo necesita para invitar
+    // despues: escribirla con el correo vacio deja un centro al que su dueña
+    // no puede sumar a nadie, y eso no se descubre hasta meses despues.
+    const e = await rechazado(() =>
+      cliente.query(`select public.crear_mi_centro('Centro Sin Correo','Alguien')`));
+    anotar('un token sin correo NO da de alta', e !== null, e ?? 'lo creo');
+  });
+
+  await como(RECIEN_LLEGADA, async () => {
+    await cliente.query(`select public.crear_mi_centro('  Centro   Nuevo  ','  Ana   Ruiz ')`);
+    const r = await cliente.query(
+      `select n.id, n.nombre, n.producto, m.rol, m.correo, m.activo, m.nombre as quien
+         from membresia m join negocio n on n.id = m.negocio_id
+        where m.usuario_id = $1`, [RECIEN_LLEGADA]);
+    const f = r.rows[0];
+
+    anotar('una cuenta nueva SI crea su centro, y entra de dueña',
+      f?.rol === 'dueno' && f?.activo === true, `rol ${String(f?.rol)}`);
+
+    /*
+     * EL ATAQUE MAS IMPORTANTE DEL GRUPO, aunque parezca una comprobacion
+     * tonta: el id del centro NO es un parametro. Si lo fuera, bastaria
+     * escribir el id del centro de otro para darse de alta ahi de dueño.
+     */
+    anotar('el id del centro sale del uid, no de un parametro',
+      f?.id === SU_CENTRO, `salio ${String(f?.id)}`);
+
+    anotar('el correo lo pone la base desde el token, no la pantalla',
+      f?.correo === 'nueva@ejemplo.mx', `puso ${String(f?.correo)}`);
+
+    anotar('los espacios de sobra se quitan en la base',
+      f?.nombre === 'Centro Nuevo' && f?.quien === 'Ana Ruiz',
+      `"${String(f?.nombre)}" / "${String(f?.quien)}"`);
+
+    anotar('el centro nace marcado como de Terapias',
+      f?.producto === 'terapias', String(f?.producto));
+
+    const est = await cuantos('select * from estado where negocio_id = $1', [SU_CENTRO]);
+    anotar('y con su bloque de estado, que es lo que da el alta de negocio',
+      est === 1, `hay ${est}`);
+  }, 'nueva@ejemplo.mx');
+
+  await como(DUENA, async () => {
+    /*
+     * UNA CUENTA, UN CENTRO. El directorio devuelve UNA membresia: una segunda
+     * dejaria a la persona dentro del centro equivocado sin explicacion, y sin
+     * ningun error que lo delate.
+     */
+    const e = await rechazado(() =>
+      cliente.query(`select public.crear_mi_centro('Centro Paralelo','Dueña')`));
+    anotar('quien ya esta en un centro NO se crea otro', e !== null, e ?? 'lo creo');
+  }, 'duena@centro.mx');
+
+  await como(RECIEN_LLEGADA, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select public.crear_mi_centro('   ','Ana')`));
+    anotar('un centro sin nombre NO nace', e !== null, e ?? 'nacio');
+  }, 'nueva@ejemplo.mx');
+
+  await como(RECIEN_LLEGADA, async () => {
+    const e = await rechazado(() =>
+      cliente.query(`select public.crear_mi_centro('Centro Nuevo','   ')`));
+    anotar('sin el nombre de quien lo crea, tampoco', e !== null, e ?? 'nacio');
+  }, 'nueva@ejemplo.mx');
+
+  await como(DUENO_OTRO, async () => {
+    // Ni siquiera existiendo el centro: no hay parametro con el que apuntarle,
+    // asi que lo unico que puede pasar es que se le rechace por lo de arriba.
+    const antes = await cuantos('select * from membresia where negocio_id = $1', [CENTRO]);
+    await rechazado(() => cliente.query(`select public.crear_mi_centro('Centro Holistico','Yo')`));
+    const despues = await cuantos('select * from membresia where negocio_id = $1', [CENTRO]);
+    anotar('nadie se cuela al centro de otro por esta puerta', antes === despues,
+      `paso de ${antes} a ${despues}`);
+  }, 'dueno@otro.mx');
 
   grupo('Demostracion — el centro no se llena de datos inventados por accidente');
 

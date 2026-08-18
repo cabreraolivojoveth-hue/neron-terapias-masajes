@@ -670,7 +670,13 @@ function guardiaElModalEntraPorElEnvoltorio(): void {
  * mal puesto: una firma interrumpida por otra cosa siempre es un empalme.
  */
 function guardiaNingunaFuncionDeLaBaseSePartePorLaMitad(): void {
-  const ARCHIVOS = ['INSTALAR-EN-TERAPIAS.sql', 'ACTUALIZAR-BASE.sql'];
+  /**
+   * `PEGAR-CREAR-CUENTA.sql` esta en la lista por la MISMA razon que los otros
+   * dos, no por completitud: es un recorte del bloque 14 del instalador para
+   * quien ya tiene la base puesta, y un recorte es justo donde el texto se pega
+   * mal. Un archivo de pegar que nadie mira es un archivo que se rompe.
+   */
+  const ARCHIVOS = ['INSTALAR-EN-TERAPIAS.sql', 'ACTUALIZAR-BASE.sql', 'PEGAR-CREAR-CUENTA.sql'];
 
   for (const nombre of ARCHIVOS) {
     let crudo: string;
