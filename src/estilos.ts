@@ -500,9 +500,14 @@ function loQueTodaviaEsDeUnModulo(): string {
   min-width: 0;
 }
 /* En DIA la cita es una tarjeta ancha: marca, texto y estado en una fila. */
+/* La tercera columna es "minmax(0, auto)", no "auto". Con "auto" a secas la
+   columna nunca baja de lo que mide su contenido, asi que una palabra larga en
+   la pastilla empujaba la tarjeta entera fuera de su hueco. Con el cero
+   delante, la columna puede ceder y la pastilla recorta -que es para lo que se
+   le pusieron los puntos suspensivos-. */
 .agenda-cita--ancha {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, auto);
   align-items: center;
   gap: ${v('espacio-3')};
 }
@@ -555,8 +560,17 @@ function loQueTodaviaEsDeUnModulo(): string {
 /* Tintada y SIN MARCO, igual que la pastilla compartida. Con borde, la misma
    palabra —"Confirmada"— se dibujaba de dos maneras segun la pantalla en la
    que salia. */
+/* La pastilla NO puede estirar la tarjeta. Decia "flex: none" dentro de una
+   rejilla, donde eso no hace nada: la columna se dimensiona al contenido y
+   punto. Con una palabra larga la tarjeta entera se iba de ancho -375px de
+   contenido en un hueco de 271 en telefono-. Con "min-width: 0" y puntos
+   suspensivos, la pastilla cede primero, que es lo correcto: el nombre de
+   quien viene importa mas que ver "Confirmada" completa. */
 .agenda-cita__estado {
   flex: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: ${v('texto-micro')};
   font-weight: ${v('peso-medio')};
   padding: 3px ${v('espacio-3')};
