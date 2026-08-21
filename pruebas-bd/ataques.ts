@@ -2286,6 +2286,37 @@ async function correr(): Promise<void> {
 /* Salida ---------------------------------------------------------------- */
 
 async function principal(): Promise<void> {
+  /*
+   * SE SALTA EN VEZ DE FALLAR CUANDO NO HAY DONDE ATACAR.
+   *
+   * `demostracion.ts` ya lo hacia bien, y su comentario decia «igual que los
+   * ataques» — pero aqui nunca se implemento. El resultado: en cualquier
+   * maquina sin una Postgres local, `npm run consistencia` se caia SIEMPRE en
+   * el ultimo paso, con «No se pudieron correr los ataques: ECONNREFUSED».
+   *
+   * Eso no es un ataque que tuvo exito. Es que no habia base. Y confundir las
+   * dos cosas cuesta caro en las dos direcciones: si el candado se dispara
+   * siempre, se acaba quitando; y cuando de verdad un ataque pase, el mensaje
+   * va a ser el mismo que llevaba semanas ignorandose.
+   *
+   * Asi que: sin DATABASE_URL se dice en voz alta que NO se reviso, y se sale
+   * con cero. Que no se reviso tiene que verse; que no se reviso no puede
+   * tumbar la bateria entera.
+   */
+  if (!CADENA) {
+    console.log('');
+    console.log('  LOS ATAQUES NO CORRIERON.');
+    console.log('  Falta DATABASE_URL.');
+    console.log('');
+    console.log('  Esto NO quiere decir que las reglas esten bien: quiere decir que');
+    console.log('  nadie las probo. Necesita una Postgres LOCAL —contra Supabase no');
+    console.log('  corre nunca, porque el ensayo tumba y repone las reglas de verdad—.');
+    console.log('');
+    console.log('  Para correrlos:  DATABASE_URL=postgres://... npx tsx pruebas-bd/ataques.ts');
+    console.log('');
+    return;
+  }
+
   await cliente.connect();
   try {
     await aplicarEsquema();

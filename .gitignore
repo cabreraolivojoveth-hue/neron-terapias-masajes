@@ -6,3 +6,13 @@ dist/
 *.local
 .DS_Store
 capturas/
+
+# Reportes y capturas de las guardias. Se regeneran en cada corrida.
+# La barra del principio importa: sin ella tambien casaria con cualquier
+# carpeta "revision" mas adentro.
+/revision/
+
+# neron-guardias
+# La sesion que usan las guardias para poder entrar al sistema. Es una
+# sesion abierta: NUNCA se sube.
+guardias.sesion.json

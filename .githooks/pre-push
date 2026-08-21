@@ -1,0 +1,139 @@
+#!/bin/sh
+#
+# GUARDIA DE PRE-PUSH — nada roto sale de esta maquina.
+#
+# Se dispara con "Push origin" en GitHub Desktop y con `git push` en la terminal.
+# Si las guardias fallan, el push se detiene y no se publica nada.
+#
+# Para saltarlo en una emergencia real:   git push --no-verify
+# Si te descubres usandolo seguido, el problema no es el hook.
+#
+# ---------------------------------------------------------------------------
+# POR QUE SE LLAMA A `node` Y NO A `npm`.
+#
+# Este hook decia `npm run guardias`, y en GitHub Desktop reventaba con:
+#
+#     /usr/bin/env: 'bash': No such file or directory
+#
+# En Windows, `npm` no es un programa: es un guion que empieza por
+# `#!/usr/bin/env bash`. GitHub Desktop corre los hooks con el shell minimo
+# que trae Git, y ahi `bash` no existe. Asi que el hook se caia ANTES de
+# revisar nada — y como se caia con codigo distinto de cero, el mensaje decia
+# «las guardias encontraron algo». Mentira: no habian llegado a mirar.
+#
+# `node` si es un programa de verdad (node.exe) y no depende de ningun shell.
+# ---------------------------------------------------------------------------
+
+echo ""
+echo "──────────────────────────────────────────────"
+echo "  Guardias de NERON — revisando antes de subir"
+echo "──────────────────────────────────────────────"
+
+raiz=$(git rev-parse --show-toplevel 2>/dev/null)
+[ -n "$raiz" ] && cd "$raiz" || exit 0
+
+# Donde vive el sistema de guardias: instalado como dependencia, o en la
+# carpeta de al lado. Se busca en ese orden.
+entrada=""
+for candidata in \
+  "node_modules/neron-guardias/bin/neron-guardias.mjs" \
+  "../neron-guardias/bin/neron-guardias.mjs"
+do
+  [ -f "$candidata" ] && { entrada="$candidata"; break; }
+done
+
+if [ -z "$entrada" ]; then
+  echo ""
+  echo "  🙈 NO PUDE REVISAR: no encuentro el sistema de guardias."
+  echo ""
+  echo "  Lo busque en:"
+  echo "      node_modules/neron-guardias/"
+  echo "      ../neron-guardias/"
+  echo ""
+  echo "  Esto NO quiere decir que tu trabajo este bien. Quiere decir que"
+  echo "  nadie lo reviso. El push se detiene por eso."
+  echo ""
+  exit 1
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo ""
+  echo "  🙈 NO PUDE REVISAR: no encuentro Node en este entorno."
+  echo ""
+  exit 1
+fi
+
+# La rama a la que se esta empujando, para comparar contra ella.
+rama_actual=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+contra=""
+if git rev-parse --verify --quiet "origin/$rama_actual" >/dev/null 2>&1; then
+  contra="origin/$rama_actual"
+fi
+
+# El reporte anterior se aparta ANTES de correr. Si al terminar hay un reporte
+# nuevo en su sitio, las guardias miraron; si no hay ninguno, ni arrancaron.
+#
+# Se usa la PRESENCIA del archivo y no su fecha a proposito: comparar fechas
+# falla cuando todo ocurre dentro del mismo segundo, que es lo normal en una
+# revision rapida. Un candado que se equivoca en el caso rapido no sirve.
+reporte="guardias/reporte.json"
+respaldo="guardias/.reporte-anterior.json"
+rm -f "$respaldo"
+[ -f "$reporte" ] && mv -f "$reporte" "$respaldo"
+
+if [ -n "$contra" ]; then
+  node "$entrada" --motivo push --contra "$contra"
+else
+  node "$entrada" --motivo push
+fi
+resultado=$?
+
+if [ $resultado -eq 0 ]; then
+  rm -f "$respaldo"
+  echo ""
+  echo "  ✅ Guardias en orden. Subiendo."
+  echo ""
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# DOS FRACASOS DISTINTOS, DOS MENSAJES DISTINTOS.
+#
+# «Encontre un problema» y «no pude buscar» se ven igual desde afuera —los dos
+# son un codigo de salida distinto de cero— y son lo contrario. Decir el
+# primero cuando pasa el segundo manda a buscar un defecto que no existe.
+#
+# La forma de distinguirlos: si las guardias llegaron a escribir su reporte,
+# es que miraron. Si no hay reporte nuevo, ni arrancaron.
+# ---------------------------------------------------------------------------
+miraron="no"
+if [ -f "$reporte" ]; then
+  miraron="si"
+  rm -f "$respaldo"
+else
+  # No miraron: se devuelve el reporte de antes, que sigue siendo la ultima
+  # verdad conocida. Perderlo ademas seria castigar dos veces.
+  [ -f "$respaldo" ] && mv -f "$respaldo" "$reporte"
+fi
+
+echo ""
+if [ "$miraron" = "si" ]; then
+  echo "  ❌ PUSH DETENIDO."
+  echo ""
+  echo "  Las guardias encontraron algo. El detalle esta en:"
+  echo "      guardias/reporte.md      (para leerlo tu)"
+  echo "      guardias/reporte.json    (para pasarselo al agente)"
+  echo ""
+  echo "  Se arregla, se vuelve a intentar el push, y listo."
+else
+  echo "  🙈 PUSH DETENIDO — pero NO porque encontrara algo."
+  echo ""
+  echo "  Las guardias no llegaron a revisar: se cayeron al arrancar."
+  echo "  Arriba esta el error de verdad."
+  echo ""
+  echo "  Esto NO quiere decir que tu trabajo este roto. Quiere decir que"
+  echo "  nadie lo miro, y subir sin mirar es justo lo que este candado"
+  echo "  existe para impedir."
+fi
+echo ""
+exit 1

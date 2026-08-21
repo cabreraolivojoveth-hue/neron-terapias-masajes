@@ -1,0 +1,188 @@
+{
+  "$ayuda": "Mapa de las guardias. Antes de confiar en el, corre `npm run guardias -- revisar`: te dice que patrones no encuentran ni un archivo. Un patron vacio es una pantalla que nadie esta vigilando.",
+  "proyecto": "neron-terapias",
+
+  "$salida": "Donde caen el reporte y las capturas. NO es `guardias` —el nombre por omision— a proposito: en este proyecto esa carpeta ya existe y tiene codigo tuyo dentro (guardias/fronteras.ts, la que revisa que no se cuele un dato de ejemplo ni un color suelto). Dejar el nombre por omision habria escrito reportes encima de tu codigo y, peor, la carpeta entera se declara inerte automaticamente: fronteras.ts habria dejado de contar como codigo. Se llama `revision` y esta en .gitignore.",
+  "salida": "revision",
+
+  "$arranque": "SE REVISA CONTRA LA VITRINA, NO CONTRA LA APP CONECTADA. La vitrina (pruebas-visuales/) monta el MISMO arbol —mismo marco, mismos modulos, misma hoja de estilos— y solo cambia dos piezas por sus dobles: el servidor y la sesion. Eso compra tres cosas: no hace falta iniciar sesion (que en neron-pos fue el mayor estorbo), no se toca ni un dato del centro de verdad, y cada modulo se abre por su nombre en la direccion. Lo que la vitrina NO reemplaza: los datos reales tienen formas que uno no inventa —un nombre de paciente de 47 letras que si existe—. Para eso esta el modo de estres de la guardia de desborde, que mete textos largos a proposito.",
+  "arranque": {
+    "comando": "npm run vitrina",
+    "url": "http://localhost:5199",
+    "esperaMs": 90000
+  },
+
+  "$ordenes": "`consistencia` es TU bateria de ocho pasos entera, no una version recortada. Se penso en recortarla —tarda unos tres minutos y medio, casi todo vitest— pero recortarla habria sido mentir: las guardias dirian «verde» sin haber corrido las pruebas. Y la cuenta real no es la que parece: esos tres minutos y medio ya los pagabas corriendo `npm run consistencia` a mano. Lo que suman las guardias encima es un minuto de mirar las 12 pantallas en tres tamanos. Un minuto, no cuatro.",
+  "ordenes": {
+    "tipos": "npm run tipos",
+    "consistencia": "npm run consistencia"
+  },
+
+  "tamanos": [
+    { "nombre": "movil", "ancho": 390, "alto": 844 },
+    { "nombre": "tablet", "ancho": 820, "alto": 1180 },
+    { "nombre": "escritorio", "ancho": 1440, "alto": 900 }
+  ],
+
+  "preparar": {
+    "esperarSelector": "nav[aria-label='Menú principal']",
+    "esperarMs": 900
+  },
+
+  "$noLlegaste": "Textos que significan «no llegue a la pantalla que iba a medir». Si alguno aparece, la corrida se DETIENE en vez de medir. Sin esta red, una vitrina rota abre las 12 pantallas, en todas ve el mismo aviso, lo mide, y sale en verde. Un verde que no miro nada es peor que un rojo.",
+  "noLlegaste": [
+    "Falta configurar la conexión",
+    "El sistema no pudo arrancar",
+    "No pudimos conectar",
+    "Esa pantalla no existe",
+    "todavía no está",
+    "Tu cuenta todavía no está en ningún centro",
+    "Falta el segundo paso",
+    "¿Es tu primera vez?",
+    "Crear tu centro"
+  ],
+
+  "$siempre": "Codigo que usan todas las pantallas. Si se toca, se revisan todas.",
+  "siempre": [
+    "src/aplicacion.tsx",
+    "src/main.tsx",
+    "src/estilos.ts",
+    "src/marca.ts",
+    "src/supabase.ts",
+    "src/marco/**",
+    "src/ui/**",
+    "src/estilo/**",
+    "src/modulos/**",
+    "src/datos/**",
+    "src/identidad/**",
+    "src/pantallas/**",
+    "pruebas-visuales/**",
+    "index.html",
+    "package.json",
+    "vite.config.ts"
+  ],
+
+  "$inertes": "Archivos que no cambian ninguna pantalla, asi que no disparan guardias de interfaz.",
+  "inertes": [
+    "**/*.md",
+    "**/*.sql",
+    "**/*.bat",
+    "**/*.txt",
+    "basedatos/**",
+    "borradores/**",
+    "capturas/**",
+    "dist/**",
+    "docs/**",
+    ".github/**",
+    "pruebas-bd/**",
+    "scripts/**",
+    ".gitignore",
+    ".gitattributes"
+  ],
+
+  "$modulos": "Los 12 del registro (src/modulos/registro.ts). La ruta es la de la vitrina: cada modulo se pide por su nombre.",
+  "modulos": [
+    {
+      "id": "inicio",
+      "nombre": "Inicio",
+      "ruta": "/pruebas-visuales/index.html?modulo=inicio",
+      "archivos": ["src/inicio/**"]
+    },
+    {
+      "id": "agenda",
+      "nombre": "Agenda",
+      "ruta": "/pruebas-visuales/index.html?modulo=agenda",
+      "archivos": ["src/agenda/**"]
+    },
+    {
+      "id": "clientes",
+      "nombre": "Clientes",
+      "ruta": "/pruebas-visuales/index.html?modulo=clientes",
+      "archivos": ["src/clientes/**"]
+    },
+    {
+      "id": "servicios",
+      "nombre": "Servicios",
+      "ruta": "/pruebas-visuales/index.html?modulo=servicios",
+      "archivos": ["src/servicios/**"]
+    },
+    {
+      "id": "cursos",
+      "nombre": "Cursos",
+      "ruta": "/pruebas-visuales/index.html?modulo=cursos",
+      "archivos": ["src/cursos/**"]
+    },
+    {
+      "id": "productos",
+      "nombre": "Productos",
+      "ruta": "/pruebas-visuales/index.html?modulo=productos",
+      "archivos": ["src/productos/**"]
+    },
+    {
+      "id": "caja",
+      "nombre": "Caja",
+      "ruta": "/pruebas-visuales/index.html?modulo=caja",
+      "archivos": ["src/caja/**", "src/ventas/**"]
+    },
+    {
+      "id": "gastos",
+      "nombre": "Gastos",
+      "ruta": "/pruebas-visuales/index.html?modulo=gastos",
+      "archivos": ["src/gastos/**"]
+    },
+    {
+      "id": "recordatorios",
+      "nombre": "Recordatorios",
+      "ruta": "/pruebas-visuales/index.html?modulo=recordatorios",
+      "archivos": ["src/recordatorios/**"]
+    },
+    {
+      "id": "mensajes",
+      "nombre": "Mensajes",
+      "ruta": "/pruebas-visuales/index.html?modulo=mensajes",
+      "archivos": ["src/mensajes/**"]
+    },
+    {
+      "id": "reportes",
+      "nombre": "Reportes",
+      "ruta": "/pruebas-visuales/index.html?modulo=reportes",
+      "archivos": ["src/reportes/**"]
+    },
+    {
+      "id": "configuracion",
+      "nombre": "Configuración",
+      "ruta": "/pruebas-visuales/index.html?modulo=configuracion",
+      "archivos": ["src/configuracion/**"]
+    }
+  ],
+
+  "$instantaneaEstado": "Sin llenar A PROPOSITO. Es lo que le da dientes a la guardia de «no se borra informacion»: una funcion global que devuelva una copia del estado guardado. En neron-terapias no hay estado en el navegador que se pueda perder —cada pantalla le pregunta al servidor lo que necesita y no guarda nada propio—, asi que no hay nada que comparar. Si algun dia una pantalla empieza a guardar borradores en el navegador, se expone la funcion y se llena este campo; hasta entonces, ponerlo seria fingir una guardia.",
+
+  "guardias": {
+    "tipos": { "activa": true },
+    "consistencia": { "activa": true },
+    "datosEstatica": { "activa": true },
+    "humo": {
+      "activa": true,
+      "erroresPermitidos": [
+        "ws://localhost",
+        "Failed to construct 'WebSocket'"
+      ],
+      "$erroresPermitidos": "Los dos son el canal de recarga en vivo que Vite abre contra si mismo mientras se programa. No existen en lo que se publica.",
+      "minimoTexto": 40,
+      "minimoElementos": 8
+    },
+    "desborde": {
+      "activa": true,
+      "toleranciaPx": 2,
+      "estres": true,
+      "textoLargo": "Maria Guadalupe Hernandez de la Cruz Villaseñor",
+      "numeroLargo": "$1,234,567,890.00"
+    },
+    "botones": {
+      "activa": true,
+      "clicMinimoPx": 24
+    },
+    "datosViva": { "activa": false }
+  }
+}

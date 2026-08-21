@@ -1,0 +1,632 @@
+{
+  "$ayuda": "Deuda CONOCIDA de este proyecto. Lo que esta aqui no bloquea el push; lo nuevo si. Se rehace con `npm run guardias -- aceptar`. Este archivo SI se sube a git: es memoria del equipo.",
+  "proyecto": "neron-terapias",
+  "creada": "2026-08-21T03:15:10.560Z",
+  "motivo": "Se pidio revisar TODO.",
+  "cuantos": 89,
+  "defectos": [
+    {
+      "huella": "datos-codigo|escribe una fila completa sin combinar con lo que ya estaba — codigo nuevo|src/datos/clientes.ts:#",
+      "gravedad": "bloquea",
+      "que": "Escribe una fila completa sin combinar con lo que ya estaba — codigo nuevo",
+      "donde": "src/datos/clientes.ts:572",
+      "guardia": "datos-codigo"
+    },
+    {
+      "huella": "botones|el boton «» aparece # veces en la misma zona|inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio #×#",
+      "gravedad": "bloquea",
+      "que": "El boton «Nueva cita» aparece 2 veces en la misma zona",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio 1440×900",
+      "guardia": "botones"
+    },
+    {
+      "huella": "botones|el boton «» aparece # veces en la misma zona|inicio (/pruebas-visuales/index.html?modulo=inicio) · movil #×#",
+      "gravedad": "bloquea",
+      "que": "El boton «Nueva cita» aparece 2 veces en la misma zona",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · movil 390×844",
+      "guardia": "botones"
+    },
+    {
+      "huella": "botones|el boton «» aparece # veces en la misma zona|inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet #×#",
+      "gravedad": "bloquea",
+      "que": "El boton «Nueva cita» aparece 2 veces en la misma zona",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet 820×1180",
+      "guardia": "botones"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en div.agenda-barra|agenda (/pruebas-visuales/index.html?modulo=agenda) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en div.agenda-barra",
+      "donde": "Agenda (/pruebas-visuales/index.html?modulo=agenda) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en span.ini-cita__inicio (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en span.ini-cita__inicio (se repite 5 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en span.ini-cita__fin (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en span.ini-cita__fin (se repite 5 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en li (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en li (se repite 5 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--confirmada (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--confirmada (se repite 3 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--pendiente|inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--pendiente",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--completada|inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--completada",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en li (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en li (se repite 4 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en span.ini-cita__inicio (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en span.ini-cita__inicio (se repite 5 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en span.ini-cita__fin (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en span.ini-cita__fin (se repite 5 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-boton.pz-boton--ancho|inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-boton.pz-boton--ancho",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en li (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en li (se repite 5 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--confirmada (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--confirmada (se repite 3 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--pendiente|inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--pendiente",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--completada|inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--completada",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span|inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en li (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en li (se repite 4 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en span.ini-cita__inicio (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en span.ini-cita__inicio (se repite 5 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en span.ini-cita__fin (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en span.ini-cita__fin (se repite 5 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-boton.pz-boton--ancho|inicio (/pruebas-visuales/index.html?modulo=inicio) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-boton.pz-boton--ancho",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en li (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en li (se repite 5 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--confirmada (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--confirmada (se repite 3 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--pendiente|inicio (/pruebas-visuales/index.html?modulo=inicio) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--pendiente",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--completada|inicio (/pruebas-visuales/index.html?modulo=inicio) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--completada",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span|inicio (/pruebas-visuales/index.html?modulo=inicio) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en li (se repite # veces)|inicio (/pruebas-visuales/index.html?modulo=inicio) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en li (se repite 4 veces)",
+      "donde": "Inicio (/pruebas-visuales/index.html?modulo=inicio) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en div.agenda-barra|agenda (/pruebas-visuales/index.html?modulo=agenda) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en div.agenda-barra",
+      "donde": "Agenda (/pruebas-visuales/index.html?modulo=agenda) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "botones|el boton «» aparece # veces en la misma zona|clientes (/pruebas-visuales/index.html?modulo=clientes) · movil #×#",
+      "gravedad": "bloquea",
+      "que": "El boton «Ver todos» aparece 2 veces en la misma zona",
+      "donde": "Clientes (/pruebas-visuales/index.html?modulo=clientes) · movil 390×844",
+      "guardia": "botones"
+    },
+    {
+      "huella": "botones|el boton «» aparece # veces en la misma zona|clientes (/pruebas-visuales/index.html?modulo=clientes) · tablet #×#",
+      "gravedad": "bloquea",
+      "que": "El boton «Ver todos» aparece 2 veces en la misma zona",
+      "donde": "Clientes (/pruebas-visuales/index.html?modulo=clientes) · tablet 820×1180",
+      "guardia": "botones"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-renglon (se repite # veces)|clientes (/pruebas-visuales/index.html?modulo=clientes) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-renglon (se repite 6 veces)",
+      "donde": "Clientes (/pruebas-visuales/index.html?modulo=clientes) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--activo (se repite # veces)|clientes (/pruebas-visuales/index.html?modulo=clientes) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--activo (se repite 4 veces)",
+      "donde": "Clientes (/pruebas-visuales/index.html?modulo=clientes) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--inactivo (se repite # veces)|clientes (/pruebas-visuales/index.html?modulo=clientes) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--inactivo (se repite 2 veces)",
+      "donde": "Clientes (/pruebas-visuales/index.html?modulo=clientes) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "botones|el boton «» aparece # veces en la misma zona|clientes (/pruebas-visuales/index.html?modulo=clientes) · escritorio #×#",
+      "gravedad": "bloquea",
+      "que": "El boton «Ver todos» aparece 2 veces en la misma zona",
+      "donde": "Clientes (/pruebas-visuales/index.html?modulo=clientes) · escritorio 1440×900",
+      "guardia": "botones"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-renglon (se repite # veces)|clientes (/pruebas-visuales/index.html?modulo=clientes) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-renglon (se repite 6 veces)",
+      "donde": "Clientes (/pruebas-visuales/index.html?modulo=clientes) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--activo (se repite # veces)|clientes (/pruebas-visuales/index.html?modulo=clientes) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--activo (se repite 4 veces)",
+      "donde": "Clientes (/pruebas-visuales/index.html?modulo=clientes) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--inactivo (se repite # veces)|clientes (/pruebas-visuales/index.html?modulo=clientes) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.pz-pastilla--inactivo (se repite 2 veces)",
+      "donde": "Clientes (/pruebas-visuales/index.html?modulo=clientes) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|el texto se sale del recuadro: no cabe a lo ancho en span.pz-pie__cuenta — dice «»|servicios (/pruebas-visuales/index.html?modulo=servicios) · movil #×# · modo normal",
+      "gravedad": "bloquea",
+      "que": "El texto se sale del recuadro: no cabe a lo ancho en span.pz-pie__cuenta — dice «Mostrando 1 a 5 de 5 servicios»",
+      "donde": "Servicios (/pruebas-visuales/index.html?modulo=servicios) · movil 390×844 · modo normal",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en span.pz-pie__cuenta|servicios (/pruebas-visuales/index.html?modulo=servicios) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en span.pz-pie__cuenta",
+      "donde": "Servicios (/pruebas-visuales/index.html?modulo=servicios) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|el texto se sale del recuadro: no cabe a lo ancho en span.pz-pie__cuenta — dice «»|cursos (/pruebas-visuales/index.html?modulo=cursos) · movil #×# · modo normal",
+      "gravedad": "bloquea",
+      "que": "El texto se sale del recuadro: no cabe a lo ancho en span.pz-pie__cuenta — dice «Mostrando 1 a 3 de 3 cursos»",
+      "donde": "Cursos (/pruebas-visuales/index.html?modulo=cursos) · movil 390×844 · modo normal",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en span.cur-tarjeta__cabeza (se repite # veces)|cursos (/pruebas-visuales/index.html?modulo=cursos) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en span.cur-tarjeta__cabeza (se repite 3 veces)",
+      "donde": "Cursos (/pruebas-visuales/index.html?modulo=cursos) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en span.pz-pie__cuenta|cursos (/pruebas-visuales/index.html?modulo=cursos) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en span.pz-pie__cuenta",
+      "donde": "Cursos (/pruebas-visuales/index.html?modulo=cursos) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.cur-estado--proximo (se repite # veces)|cursos (/pruebas-visuales/index.html?modulo=cursos) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.cur-estado--proximo (se repite 3 veces)",
+      "donde": "Cursos (/pruebas-visuales/index.html?modulo=cursos) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|el texto se sale del recuadro: no cabe a lo ancho en span.pz-pie__cuenta — dice «»|productos (/pruebas-visuales/index.html?modulo=productos) · movil #×# · modo normal",
+      "gravedad": "bloquea",
+      "que": "El texto se sale del recuadro: no cabe a lo ancho en span.pz-pie__cuenta — dice «Mostrando 1 a 4 de 4 productos»",
+      "donde": "Productos (/pruebas-visuales/index.html?modulo=productos) · movil 390×844 · modo normal",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en span.cur-tarjeta__cabeza (se repite # veces)|productos (/pruebas-visuales/index.html?modulo=productos) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en span.cur-tarjeta__cabeza (se repite 4 veces)",
+      "donde": "Productos (/pruebas-visuales/index.html?modulo=productos) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en span.pz-pie__cuenta|productos (/pruebas-visuales/index.html?modulo=productos) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en span.pz-pie__cuenta",
+      "donde": "Productos (/pruebas-visuales/index.html?modulo=productos) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.prd-estado--disponible (se repite # veces)|productos (/pruebas-visuales/index.html?modulo=productos) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.prd-estado--disponible (se repite 2 veces)",
+      "donde": "Productos (/pruebas-visuales/index.html?modulo=productos) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.prd-estado--bajo|productos (/pruebas-visuales/index.html?modulo=productos) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.prd-estado--bajo",
+      "donde": "Productos (/pruebas-visuales/index.html?modulo=productos) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.prd-estado--agotado|productos (/pruebas-visuales/index.html?modulo=productos) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.pz-pastilla.prd-estado--agotado",
+      "donde": "Productos (/pruebas-visuales/index.html?modulo=productos) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en div.vta-buscar|caja (/pruebas-visuales/index.html?modulo=caja) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en div.vta-buscar",
+      "donde": "Caja (/pruebas-visuales/index.html?modulo=caja) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-boton|caja (/pruebas-visuales/index.html?modulo=caja) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-boton",
+      "donde": "Caja (/pruebas-visuales/index.html?modulo=caja) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en div.vta-buscar|caja (/pruebas-visuales/index.html?modulo=caja) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en div.vta-buscar",
+      "donde": "Caja (/pruebas-visuales/index.html?modulo=caja) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en div.vta-buscar|caja (/pruebas-visuales/index.html?modulo=caja) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en div.vta-buscar",
+      "donde": "Caja (/pruebas-visuales/index.html?modulo=caja) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-boton|caja (/pruebas-visuales/index.html?modulo=caja) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-boton",
+      "donde": "Caja (/pruebas-visuales/index.html?modulo=caja) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|el texto se sale del recuadro: no cabe a lo ancho en span.pz-pie__cuenta — dice «»|gastos (/pruebas-visuales/index.html?modulo=gastos) · movil #×# · modo normal",
+      "gravedad": "bloquea",
+      "que": "El texto se sale del recuadro: no cabe a lo ancho en span.pz-pie__cuenta — dice «Mostrando 1 a 5 de 5 gastos»",
+      "donde": "Gastos (/pruebas-visuales/index.html?modulo=gastos) · movil 390×844 · modo normal",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|el texto se sale del recuadro: no cabe a lo ancho en span.pz-pie__cuenta — dice «»|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · movil #×# · modo normal",
+      "gravedad": "bloquea",
+      "que": "El texto se sale del recuadro: no cabe a lo ancho en span.pz-pie__cuenta — dice «Mostrando 1 a 5 de 5 recordatorios»",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · movil 390×844 · modo normal",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en div.rec-resumen|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en div.rec-resumen",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-renglon (se repite # veces)|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-renglon (se repite 5 veces)",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-boton.pz-boton--ancho|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-boton.pz-boton--ancho",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en section.pz-tarjeta.rec-consejo|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en section.pz-tarjeta.rec-consejo",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.rec-cuando.rec-cuando--urge (se repite # veces)|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.rec-cuando.rec-cuando--urge (se repite 2 veces)",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.rec-cuando (se repite # veces)|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.rec-cuando (se repite 3 veces)",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en div.rec-resumen|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en div.rec-resumen",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en section.pz-tarjeta.rec-consejo|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en section.pz-tarjeta.rec-consejo",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|el texto se sale del recuadro: no cabe a lo ancho en div.rec-resumen — dice «»|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · escritorio #×# · modo normal",
+      "gravedad": "bloquea",
+      "que": "El texto se sale del recuadro: no cabe a lo ancho en div.rec-resumen — dice «Pendientes12Hoy5Próximos8Completados27»",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · escritorio 1440×900 · modo normal",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en div.rec-resumen|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en div.rec-resumen",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-renglon (se repite # veces)|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-renglon (se repite 5 veces)",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-boton.pz-boton--ancho|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en button.pz-boton.pz-boton--ancho",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en section.pz-tarjeta.rec-consejo|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en section.pz-tarjeta.rec-consejo",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.rec-cuando.rec-cuando--urge (se repite # veces)|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.rec-cuando.rec-cuando--urge (se repite 2 veces)",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en span.rec-cuando (se repite # veces)|recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en span.rec-cuando (se repite 3 veces)",
+      "donde": "Recordatorios (/pruebas-visuales/index.html?modulo=recordatorios) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "botones|el boton «» aparece # veces en la misma zona|reportes (/pruebas-visuales/index.html?modulo=reportes) · movil #×#",
+      "gravedad": "bloquea",
+      "que": "El boton «Ver todos» aparece 3 veces en la misma zona",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · movil 390×844",
+      "guardia": "botones"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en div.caja-anillo__centro|reportes (/pruebas-visuales/index.html?modulo=reportes) · movil #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en div.caja-anillo__centro",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · movil 390×844 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "botones|el boton «» aparece # veces en la misma zona|reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet #×#",
+      "gravedad": "bloquea",
+      "que": "El boton «Ver todos» aparece 3 veces en la misma zona",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet 820×1180",
+      "guardia": "botones"
+    },
+    {
+      "huella": "desborde|el texto se sale del recuadro: no cabe a lo ancho en div.pz-dato.pz-dato--renglon.rep-neta — dice «»|reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet #×# · modo normal",
+      "gravedad": "bloquea",
+      "que": "El texto se sale del recuadro: no cabe a lo ancho en div.pz-dato.pz-dato--renglon.rep-neta — dice «Ganancia neta$18,600.00»",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet 820×1180 · modo normal",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|el texto se sale del recuadro: se sale de su recuadro en strong.tt-dato — dice «»|reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet #×# · modo normal",
+      "gravedad": "bloquea",
+      "que": "El texto se sale del recuadro: se sale de su recuadro en strong.tt-dato — dice «$18,600.00»",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet 820×1180 · modo normal",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "botones|el boton «» aparece # veces en la misma zona|reportes (/pruebas-visuales/index.html?modulo=reportes) · escritorio #×#",
+      "gravedad": "bloquea",
+      "que": "El boton «Ver todos» aparece 3 veces en la misma zona",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · escritorio 1440×900",
+      "guardia": "botones"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en div.caja-anillo__centro|reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en div.caja-anillo__centro",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en div.rep-tarjeta__cabeza (se repite # veces)|reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en div.rep-tarjeta__cabeza (se repite 3 veces)",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en div.pz-dato.pz-dato--renglon.rep-neta|reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en div.pz-dato.pz-dato--renglon.rep-neta",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en strong.tt-dato (se repite # veces)|reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en strong.tt-dato (se repite 2 veces)",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en button.pz-enlace.pz-enlace--pelado (se repite # veces)|reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en button.pz-enlace.pz-enlace--pelado (se repite 3 veces)",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · tablet 820×1180 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en div.caja-anillo__centro|reportes (/pruebas-visuales/index.html?modulo=reportes) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en div.caja-anillo__centro",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: no cabe a lo ancho en div.rep-tarjeta__cabeza (se repite # veces)|reportes (/pruebas-visuales/index.html?modulo=reportes) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: no cabe a lo ancho en div.rep-tarjeta__cabeza (se repite 3 veces)",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en strong.tt-dato|reportes (/pruebas-visuales/index.html?modulo=reportes) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en strong.tt-dato",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    },
+    {
+      "huella": "desborde|con un dato largo, el texto se sale: se sale de su recuadro en button.pz-enlace.pz-enlace--pelado (se repite # veces)|reportes (/pruebas-visuales/index.html?modulo=reportes) · escritorio #×# · modo dato largo",
+      "gravedad": "bloquea",
+      "que": "Con un dato largo, el texto se sale: se sale de su recuadro en button.pz-enlace.pz-enlace--pelado (se repite 3 veces)",
+      "donde": "Reportes (/pruebas-visuales/index.html?modulo=reportes) · escritorio 1440×900 · modo dato largo",
+      "guardia": "desborde"
+    }
+  ]
+}

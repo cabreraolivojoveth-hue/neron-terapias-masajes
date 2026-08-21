@@ -1,7 +1,10 @@
 /**
  * DONDE ESTA EL NAVEGADOR CON EL QUE SE MIRA LA PANTALLA.
  *
- * Lo usan las dos herramientas de mirar: `capturas.ts` y `medir.ts`.
+ * Lo usan las CUATRO herramientas de mirar: `capturas.ts`, `medir.ts`,
+ * `velos.ts` y `alcance.ts`. (Eran dos cuando se escribio esto; el comentario
+ * se quedo viejo, que es como una lista deja de servir para saber quien usa
+ * algo.)
  *
  * POR QUE ES UN ARCHIVO APARTE Y NO UNA LINEA EN CADA UNO: antes cada script
  * traia su propia copia apuntando siempre a "/opt/pw-browsers/chromium". En la

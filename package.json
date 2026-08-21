@@ -16,7 +16,8 @@
     "capturas": "tsx scripts/capturas.ts",
     "velos": "tsx scripts/velos.ts",
     "alcance": "tsx scripts/alcance.ts",
-    "demostracion": "tsx pruebas-bd/demostracion.ts"
+    "demostracion": "tsx pruebas-bd/demostracion.ts",
+    "guardias": "node ../neron-guardias/bin/neron-guardias.mjs"
   },
   "dependencies": {
     "@neron/base": "git+https://github.com/cabreraolivojoveth-hue/base-neronprogramas.git#v1.1.0",
