@@ -131,9 +131,30 @@ function ColumnaDelDia({
           key={cita.id}
           type="button"
           className={clasesDe(cita, cita.id === seleccionada, compacta)}
+          /*
+           * EL ALTO ES UN MINIMO, NO UNA ORDEN.
+           *
+           * Antes decia `height`. El bloque quedaba clavado al alto que le toca
+           * por duracion, con `overflow: hidden` encima, y el texto que no cabia
+           * se cortaba a media letra. Habia un piso de 48px en la hoja de
+           * estilos para eso; el problema es que 48 era un numero medido en UNA
+           * maquina. En la de aqui hacian falta 49 y la ultima linea salia
+           * cortada por abajo: tres pixeles. Perseguir ese numero es perderlo
+           * otra vez en la siguiente maquina, porque depende de la tipografia
+           * que el sistema tenga instalada.
+           *
+           * Con `minHeight` el bloque crece si el texto lo necesita, y sigue
+           * ocupando su rato en la columna cuando no. Eso ya era la decision
+           * declarada en la hoja de estilos —«se prefiere que dos bloques cortos
+           * se rocen a que uno no se pueda leer»—; lo unico que faltaba era que
+           * el codigo la cumpliera.
+           *
+           * `max()` se evalua en el navegador, asi que el piso de 48px y el
+           * porcentaje conviven sin pelearse por quien manda.
+           */
           style={{
             top: `${arriba}%`,
-            height: `${alto}%`,
+            minHeight: `max(48px, ${alto}%)`,
             left: `${(carril / carriles) * 100}%`,
             width: `${(1 / carriles) * 100}%`,
           }}

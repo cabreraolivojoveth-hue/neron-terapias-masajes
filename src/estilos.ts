@@ -533,10 +533,14 @@ function loQueTodaviaEsDeUnModulo(): string {
   border-radius: ${v('radio-redondo')};
   background: ${v('superficie-elevada')};
 }
-/* Una cita de media hora en una franja de doce horas mide treinta pixeles: sin
-   este minimo, el texto se corta a media letra. Se prefiere que dos bloques
-   cortos se rocen a que uno no se pueda leer. */
-.agenda-cita--ancha { min-height: 48px; }
+/* El piso de 48px se movio al bloque, en vistas.tsx, dentro de un
+   "min-height: max(48px, N%)". Tenerlo aqui ademas no servia: el alto que
+   ponia el codigo era "height", una orden, y ganaba siempre — el minimo de
+   esta hoja no se aplicaba nunca en las citas que si tenian su porcentaje.
+   Ahora hay un solo sitio que decide el alto, que es como se deja de perseguir
+   un numero por dos archivos.
+   (Y ojo: aqui dentro no se pueden usar acentos graves. Esta hoja vive en una
+   plantilla de JavaScript y el primero que se escriba la corta en seco.) */
 /* La hoja de la marca dentro del bloque toma el color del estado, no el verde
    de siempre: si no, una cita cancelada llevaria una hoja verde. */
 .agenda-cita__marca .terapias-hoja { color: inherit; }
